@@ -2,26 +2,360 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96%;
+    --secondary-foreground: 222.2 84% 4.9%;
+    --muted: 210 40% 96%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96%;
+    --accent-foreground: 222.2 84% 4.9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 94.1%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Optimización de scroll */
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+  }
+
+  /* Mejoras de accesibilidad */
+  :focus-visible {
+    outline: 2px solid hsl(var(--primary));
+    outline-offset: 2px;
+  }
+
+  /* Optimización de imágenes */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Mejoras de tipografía */
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.25;
+  }
+
+  p {
+    line-height: 1.6;
+  }
+
+  /* Optimización de enlaces */
+  a {
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  /* Mejoras de botones */
+  button {
+    transition: all 0.2s ease;
+  }
+
+  /* Optimización de formularios */
+  input, textarea, select {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Mejoras de animaciones */
+  .animate-in {
+    animation: animateIn 0.3s ease-out;
+  }
+
+  .animate-out {
+    animation: animateOut 0.3s ease-in;
+  }
+
+  @keyframes animateIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes animateOut {
+    from {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-10px);
+    }
+  }
+}
+
+@layer components {
+  /* Componentes personalizados optimizados */
+  .btn-primary {
+    @apply bg-[#0061A8] hover:bg-[#0061A8]/90 text-white font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#0061A8]/20;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-gray-300;
+  }
+
+  .card-hover {
+    @apply hover:shadow-lg transition-all duration-300 hover:scale-[1.02];
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-[#0061A8] to-[#F4C762] bg-clip-text text-transparent;
+  }
+
+  .bg-gradient-primary {
+    @apply bg-gradient-to-r from-[#0061A8] to-[#F4C762];
+  }
+
+  /* Optimización de navbar */
+  .navbar-transparent {
+    @apply bg-transparent backdrop-blur-none;
+  }
+
+  .navbar-solid {
+    @apply bg-white/95 backdrop-blur-lg shadow-lg border-b border-gray-100;
+  }
+
+  /* Optimización de responsive */
+  .container-responsive {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Mejoras de loading */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+  }
+
+  /* Optimización de imágenes */
+  .image-optimized {
+    @apply object-cover transition-transform duration-300;
+  }
+
+  .image-hover {
+    @apply hover:scale-105;
+  }
+
+  /* Mejoras de accesibilidad */
+  .sr-only {
+    @apply absolute w-px h-px p-0 -m-px overflow-hidden whitespace-nowrap border-0;
+  }
+
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-[#0061A8]/20 focus:ring-offset-2;
+  }
+
+  /* Optimización de scroll */
+  .scroll-smooth {
+    scroll-behavior: smooth;
+  }
+
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Mejoras de animaciones */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in;
+  }
+
+  .slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }
 
 @layer utilities {
+  /* Utilidades optimizadas */
   .text-balance {
     text-wrap: balance;
+  }
+
+  .line-clamp-1 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+  }
+
+  .line-clamp-2 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+  }
+
+  .line-clamp-3 {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+  }
+
+  /* Optimización de responsive */
+  @media (max-width: 640px) {
+    .xs\:text-xs { font-size: 0.75rem; line-height: 1rem; }
+    .xs\:text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+    .xs\:text-base { font-size: 1rem; line-height: 1.5rem; }
+    .xs\:text-lg { font-size: 1.125rem; line-height: 1.75rem; }
+    .xs\:text-xl { font-size: 1.25rem; line-height: 1.75rem; }
+    .xs\:text-2xl { font-size: 1.5rem; line-height: 2rem; }
+    .xs\:text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
+    .xs\:text-4xl { font-size: 2.25rem; line-height: 2.5rem; }
+    .xs\:text-5xl { font-size: 3rem; line-height: 1; }
+    .xs\:text-6xl { font-size: 3.75rem; line-height: 1; }
+    .xs\:text-7xl { font-size: 4.5rem; line-height: 1; }
+  }
+
+  /* Optimización para pantallas ultra pequeñas */
+  @media (max-width: 374px) {
+    .navbar-ultra-compact {
+      padding-left: 0.25rem;
+      padding-right: 0.25rem;
+    }
+
+    .logo-ultra-compact {
+      max-width: 50%;
+    }
+
+    .button-ultra-compact {
+      min-width: 24px;
+      min-height: 24px;
+      padding: 0.125rem;
+    }
+
+    .text-ultra-compact {
+      font-size: 0.625rem;
+      line-height: 0.75rem;
+    }
+  }
+
+  /* Mejoras de accesibilidad táctil */
+  @media (pointer: coarse) {
+    .touch-target {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  /* Animaciones suaves para transiciones */
+  .smooth-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Optimización de fuentes para pantallas pequeñas */
+  @media (max-width: 320px) {
+    .font-responsive {
+      font-size: clamp(0.625rem, 2vw, 0.75rem);
+    }
+  }
+
+  /* Mejoras de rendimiento */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  .will-change-opacity {
+    will-change: opacity;
+  }
+
+  /* Optimización de contraste */
+  .high-contrast {
+    filter: contrast(1.2);
+  }
+
+  /* Mejoras de legibilidad */
+  .text-shadow {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  }
+
+  .text-shadow-lg {
+    text-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
   }
 }

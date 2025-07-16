@@ -1,0 +1,561 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { 
+  Activity, 
+  Shield, 
+  AlertTriangle, 
+  CheckCircle, 
+  XCircle, 
+  Download, 
+  RefreshCw,
+  Eye,
+  Clock,
+  User,
+  Database,
+  CreditCard,
+  Settings
+} from "lucide-react"
+
+interface AuditStats {
+  summary: {
+    total_logs: number
+    success_rate: string
+    error_rate: string
+  }
+  by_category: Record<string, number>
+  by_level: Record<string, number>
+  by_success: {
+    success: number
+    failed: number
+  }
+  suspicious_activity?: any
+  recent_logs: Array<{
+    id: string
+    user_email: string
+    action: string
+    category: string
+    level: string
+    success: boolean
+    created_at: string
+    level_class: string
+  }>
+  daily_stats: Array<{
+    date: string
+    category: string
+    level: string
+    success: boolean
+    count: number
+  }>
+}
+
+interface AuditLog {
+  id: string
+  user_email: string
+  action: string
+  category: string
+  level: string
+  details: any
+  success: boolean
+  created_at: string
+  ip_address?: string
+  user_agent?: string
+}
+
+export function AuditDashboard() {
+  const [stats, setStats] = useState<AuditStats | null>(null)
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState("overview")
+  const [filters, setFilters] = useState({
+    category: "",
+    level: "",
+    days: 30
+  })
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true)
+      const response = await fetch(`/api/admin/audit-stats?days=${filters.days}`)
+      
+      if (!response.ok) {
+        throw new Error("Error obteniendo estadísticas")
+      }
+      
+      const data = await response.json()
+      
+      // Transformar los datos de la nueva API al formato esperado por el componente
+      const transformedStats: AuditStats = {
+        summary: {
+          total_logs: data.stats.total,
+          success_rate: data.stats.total > 0 ? (data.stats.by_success.success / data.stats.total * 100).toFixed(2) : '0',
+          error_rate: data.stats.total > 0 ? (data.stats.by_success.failed / data.stats.total * 100).toFixed(2) : '0'
+        },
+        by_category: data.stats.by_category,
+        by_level: data.stats.by_level,
+        by_success: data.stats.by_success,
+        suspicious_activity: data.suspicious_activity,
+        recent_logs: data.stats.recent_activity?.map((log: any) => ({
+          id: log.id,
+          user_email: log.user_id || 'Sistema',
+          action: log.action,
+          category: log.category,
+          level: log.level,
+          success: log.level !== 'error',
+          created_at: log.created_at,
+          level_class: log.level
+        })) || [],
+        daily_stats: []
+      }
+      
+      setStats(transformedStats)
+    } catch (err) {
+      setError((err as Error).message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const fetchLogs = async () => {
+    try {
+      const params = new URLSearchParams({
+        limit: "50",
+        ...(filters.category && { category: filters.category }),
+        ...(filters.level && { level: filters.level })
+      })
+      
+      const response = await fetch(`/api/admin/audit-logs?${params}`)
+      
+      if (!response.ok) {
+        throw new Error("Error obteniendo logs")
+      }
+      
+      const data = await response.json()
+      
+      // Transformar los logs al formato esperado por el componente
+      const transformedLogs: AuditLog[] = data.logs.map((log: any) => ({
+        id: log.id,
+        user_email: log.user_id || 'Sistema',
+        action: log.action,
+        category: log.category,
+        level: log.level,
+        details: log.details,
+        success: log.level !== 'error',
+        created_at: log.created_at,
+        ip_address: log.ip_address,
+        user_agent: log.user_agent
+      }))
+      
+      setLogs(transformedLogs)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const exportLogs = async (format: 'json' | 'csv' = 'json') => {
+    try {
+      const params = new URLSearchParams({
+        format,
+        limit: "1000"
+      })
+      
+      const response = await fetch(`/api/admin/audit-logs?${params}`)
+      
+      if (!response.ok) {
+        throw new Error("Error exportando logs")
+      }
+      
+      if (format === 'csv') {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      } else {
+        const data = await response.json()
+        const blob = new Blob([JSON.stringify(data.logs, null, 2)], { type: 'application/json' })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`
+        a.click()
+        window.URL.revokeObjectURL(url)
+      }
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const cleanupLogs = async () => {
+    try {
+      const response = await fetch('/api/admin/audit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cleanup', days_to_keep: 90 })
+      })
+      
+      if (!response.ok) {
+        throw new Error("Error limpiando logs")
+      }
+      
+      const data = await response.json()
+      alert(`Se eliminaron ${data.deleted_count} logs antiguos`)
+      fetchStats()
+      fetchLogs()
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  useEffect(() => {
+    fetchStats()
+    fetchLogs()
+  }, [filters])
+
+  const getLevelIcon = (level: string) => {
+    switch (level) {
+      case 'critical':
+        return <XCircle className="h-4 w-4 text-red-600" />
+      case 'error':
+        return <AlertTriangle className="h-4 w-4 text-orange-600" />
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
+      default:
+        return <CheckCircle className="h-4 w-4 text-green-600" />
+    }
+  }
+
+  const getCategoryIcon = (category: string) => {
+    switch (category) {
+      case 'authentication':
+        return <User className="h-4 w-4" />
+      case 'payment':
+        return <CreditCard className="h-4 w-4" />
+      case 'admin_action':
+        return <Settings className="h-4 w-4" />
+      case 'data_access':
+      case 'data_modification':
+        return <Database className="h-4 w-4" />
+      default:
+        return <Activity className="h-4 w-4" />
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-600" />
+        <span className="ml-2">Cargando auditoría...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Dashboard de Auditoría</h1>
+          <p className="text-muted-foreground">
+            Monitoreo de seguridad y actividad del sistema
+          </p>
+        </div>
+        <div className="flex space-x-2">
+          <Button onClick={() => fetchStats()} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Actualizar
+          </Button>
+          <Button onClick={() => exportLogs('csv')} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={() => exportLogs('json')} variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Exportar JSON
+          </Button>
+        </div>
+      </div>
+
+      {/* Estadísticas principales */}
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total de Logs</CardTitle>
+              <Database className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stats.summary.total_logs}</div>
+              <p className="text-xs text-muted-foreground">
+                Últimos {filters.days} días
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tasa de Éxito</CardTitle>
+              <CheckCircle className="h-4 w-4 text-green-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-600">
+                {stats.summary.success_rate}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stats.by_success.success} exitosos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tasa de Error</CardTitle>
+              <XCircle className="h-4 w-4 text-red-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-red-600">
+                {stats.summary.error_rate}%
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {stats.by_success.failed} fallidos
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Actividad Sospechosa</CardTitle>
+              <Shield className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-orange-600">
+                {stats.suspicious_activity?.failed_logins || 0}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Últimas 24 horas
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Tabs principales */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="overview">Resumen</TabsTrigger>
+          <TabsTrigger value="logs">Logs Recientes</TabsTrigger>
+          <TabsTrigger value="suspicious">Actividad Sospechosa</TabsTrigger>
+          <TabsTrigger value="settings">Configuración</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Por categoría */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Actividad por Categoría</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {stats && Object.entries(stats.by_category).map(([category, count]) => (
+                    <div key={category} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getCategoryIcon(category)}
+                        <span className="capitalize">{category}</span>
+                      </div>
+                      <Badge variant="secondary">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Por nivel */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Logs por Nivel</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {stats && Object.entries(stats.by_level).map(([level, count]) => (
+                    <div key={level} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getLevelIcon(level)}
+                        <span className="capitalize">{level}</span>
+                      </div>
+                      <Badge variant="secondary">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="logs" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Logs Recientes</CardTitle>
+              <CardDescription>
+                Últimas actividades registradas en el sistema
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Usuario</TableHead>
+                    <TableHead>Acción</TableHead>
+                    <TableHead>Categoría</TableHead>
+                    <TableHead>Nivel</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead>Fecha</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {stats?.recent_logs.map((log) => (
+                    <TableRow key={log.id}>
+                      <TableCell className="font-medium">
+                        {log.user_email || 'Sistema'}
+                      </TableCell>
+                      <TableCell>{log.action}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {getCategoryIcon(log.category)}
+                          <span className="capitalize">{log.category}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {getLevelIcon(log.level)}
+                          <span className="capitalize">{log.level}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={log.success ? "default" : "destructive"}>
+                          {log.success ? "Exitoso" : "Fallido"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {new Date(log.created_at).toLocaleString()}
+                          </span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="suspicious" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Actividad Sospechosa</CardTitle>
+              <CardDescription>
+                Eventos que requieren atención inmediata
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {stats?.suspicious_activity ? (
+                <div className="space-y-4">
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      <strong>{stats.suspicious_activity.failed_logins}</strong> intentos de login fallidos en las últimas 24 horas
+                    </AlertDescription>
+                  </Alert>
+
+                  {stats.suspicious_activity.multiple_failed_logins && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Múltiples intentos fallidos:</h4>
+                      <div className="space-y-2">
+                        {stats.suspicious_activity.multiple_failed_logins.map((item: any, index: number) => (
+                          <div key={index} className="p-3 border rounded-lg">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium">{item.user_email}</span>
+                              <Badge variant="destructive">{item.count} intentos</Badge>
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              IP: {item.ip_address} | Último: {new Date(item.last_attempt).toLocaleString()}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
+                  <p className="text-muted-foreground">No se detectó actividad sospechosa</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="settings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Configuración de Auditoría</CardTitle>
+              <CardDescription>
+                Gestionar logs y configuración del sistema de auditoría
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold mb-2">Limpieza de Logs</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Eliminar logs antiguos para optimizar el rendimiento
+                  </p>
+                  <Button onClick={cleanupLogs} variant="outline">
+                    Limpiar logs antiguos (90+ días)
+                  </Button>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold mb-2">Exportación</h4>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Exportar logs para análisis externo
+                  </p>
+                  <div className="flex space-x-2">
+                    <Button onClick={() => exportLogs('csv')} variant="outline">
+                      Exportar CSV
+                    </Button>
+                    <Button onClick={() => exportLogs('json')} variant="outline">
+                      Exportar JSON
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+} 
