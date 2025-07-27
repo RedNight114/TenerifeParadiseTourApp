@@ -109,13 +109,13 @@ BEGIN
         COUNT(*) INTO cancelled_count
     FROM reservations 
     WHERE reservations.service_id = service_id 
-        AND status = 'cancelled';
+        AND reservations.status = 'cancelled';
     
     SELECT 
         COUNT(*) INTO active_count
     FROM reservations 
     WHERE reservations.service_id = service_id 
-        AND status IN ('confirmed', 'pending');
+        AND reservations.status IN ('confirmed', 'pending');
     
     -- Si hay reservas activas, no permitir eliminación
     IF active_count > 0 THEN
@@ -126,8 +126,8 @@ BEGIN
     IF reservation_count > 0 AND cancelled_count = reservation_count THEN
         -- Eliminar reservas canceladas primero (por si acaso)
         DELETE FROM reservations 
-        WHERE service_id = service_id 
-            AND status = 'cancelled';
+        WHERE reservations.service_id = service_id 
+            AND reservations.status = 'cancelled';
         
         RAISE NOTICE 'Eliminadas % reservas canceladas', cancelled_count;
     END IF;
@@ -169,12 +169,12 @@ BEGIN
     FROM services s
     LEFT JOIN (
         SELECT 
-            service_id,
+            reservations.service_id,
             COUNT(*) as total_count,
-            COUNT(*) FILTER (WHERE status = 'cancelled') as cancelled_count,
-            COUNT(*) FILTER (WHERE status IN ('confirmed', 'pending')) as active_count
+            COUNT(*) FILTER (WHERE reservations.status = 'cancelled') as cancelled_count,
+            COUNT(*) FILTER (WHERE reservations.status IN ('confirmed', 'pending')) as active_count
         FROM reservations
-        GROUP BY service_id
+        GROUP BY reservations.service_id
     ) r ON s.id = r.service_id
     ORDER BY s.title;
 END;
