@@ -56,9 +56,9 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Optimizaciones de webpack
-  webpack: (config, { dev, isServer }) => {
+  webpack: async (config, { dev, isServer }) => {
     // Configurar alias para path mapping (específico para Vercel)
-    const path = require('path');
+    const path = await import('path');
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': path.resolve(__dirname),
