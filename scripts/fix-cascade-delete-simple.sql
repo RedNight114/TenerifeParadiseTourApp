@@ -86,9 +86,9 @@ SECURITY DEFINER
 AS $$
 DECLARE
     service_title TEXT;
-    reservation_count INTEGER;
-    cancelled_count INTEGER;
-    active_count INTEGER;
+    reservation_count BIGINT;
+    cancelled_count BIGINT;
+    active_count BIGINT;
 BEGIN
     -- Verificar que el servicio existe
     SELECT title INTO service_title
@@ -145,9 +145,9 @@ CREATE OR REPLACE FUNCTION list_services_with_reservations()
 RETURNS TABLE (
     service_id UUID,
     service_title TEXT,
-    total_reservations INTEGER,
-    cancelled_reservations INTEGER,
-    active_reservations INTEGER,
+    total_reservations BIGINT,
+    cancelled_reservations BIGINT,
+    active_reservations BIGINT,
     can_delete BOOLEAN
 )
 LANGUAGE plpgsql
