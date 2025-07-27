@@ -265,24 +265,39 @@ export function useServices(): UseServicesReturn {
 
       console.log('✅ Servicio encontrado:', existingService.title)
 
-      // Intentar eliminar
-      const { error: deleteError } = await supabase
-        .from("services")
-        .delete()
-        .eq("id", id)
+      // Intentar usar la función SQL personalizada primero
+      const { data: result, error: functionError } = await supabase
+        .rpc('delete_service_with_reservations', { service_id: id })
 
-      if (deleteError) {
-        console.error('❌ Error de eliminación:', deleteError)
+      if (functionError) {
+        console.log('⚠️ Función SQL no disponible, intentando eliminación directa...')
         
-        // Analizar el tipo de error
-        if (deleteError.code === '42501') {
-          throw new Error('No tienes permisos para eliminar servicios. Contacta al administrador.')
-        } else if (deleteError.code === '23503') {
-          throw new Error('No se puede eliminar el servicio porque tiene reservas asociadas.')
-        } else if (deleteError.code === 'PGRST116') {
-          throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.')
-        } else {
-          throw new Error(`Error al eliminar: ${deleteError.message}`)
+        // Fallback: intentar eliminar directamente
+        const { error: deleteError } = await supabase
+          .from("services")
+          .delete()
+          .eq("id", id)
+
+        if (deleteError) {
+          console.error('❌ Error de eliminación:', deleteError)
+          
+          // Analizar el tipo de error
+          if (deleteError.code === '42501') {
+            throw new Error('No tienes permisos para eliminar servicios. Contacta al administrador.')
+          } else if (deleteError.code === '23503') {
+            throw new Error('No se puede eliminar el servicio porque tiene reservas asociadas. Ejecuta el script SQL para configurar eliminación en cascada.')
+          } else if (deleteError.code === 'PGRST116') {
+            throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.')
+          } else {
+            throw new Error(`Error al eliminar: ${deleteError.message}`)
+          }
+        }
+      } else {
+        console.log('✅ Resultado de eliminación:', result)
+        
+        // Verificar si hubo error en la función SQL
+        if (typeof result === 'string' && result.startsWith('Error:')) {
+          throw new Error(result)
         }
       }
 
