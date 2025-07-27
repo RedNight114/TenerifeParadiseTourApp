@@ -12,10 +12,8 @@ const nextConfig = {
     },
     // Optimizaciones de rendimiento
     optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    // Optimización de imágenes
-    optimizeCss: true,
-    // Compresión de bundles
-    compress: true,
+    // Optimización de imágenes (temporalmente deshabilitada)
+    // optimizeCss: true,
   },
   // Configuración de imágenes para Vercel Blob Storage
   images: {
