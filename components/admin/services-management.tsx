@@ -289,11 +289,32 @@ export function ServicesManagement() {
   }
 
   const handleDeleteService = async (service: Service) => {
-    if (confirm(`¿Estás seguro de que quieres eliminar "${service.title}"?`)) {
+    if (confirm(`¿Estás seguro de que quieres eliminar "${service.title}"?\n\nEsta acción no se puede deshacer.`)) {
       try {
+        console.log('🗑️ Iniciando eliminación de servicio:', service.title)
         await deleteService(service.id)
-        } catch (error) {
-        alert(error instanceof Error ? error.message : "Error al eliminar el servicio")
+        console.log('✅ Servicio eliminado exitosamente')
+      } catch (error) {
+        console.error('❌ Error al eliminar servicio:', error)
+        
+        let errorMessage = "Error al eliminar el servicio"
+        
+        if (error instanceof Error) {
+          errorMessage = error.message
+          
+          // Mostrar mensajes más específicos
+          if (error.message.includes('permisos')) {
+            errorMessage = '❌ No tienes permisos para eliminar servicios. Contacta al administrador.'
+          } else if (error.message.includes('reservas')) {
+            errorMessage = '❌ No se puede eliminar el servicio porque tiene reservas asociadas. Primero cancela las reservas.'
+          } else if (error.message.includes('autenticación')) {
+            errorMessage = '❌ Error de autenticación. Por favor, inicia sesión nuevamente.'
+          } else if (error.message.includes('no encontrado')) {
+            errorMessage = '❌ El servicio ya no existe o fue eliminado por otro usuario.'
+          }
+        }
+        
+        alert(errorMessage)
       }
     }
   }

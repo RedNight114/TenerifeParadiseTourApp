@@ -246,12 +246,52 @@ export function useServices(): UseServicesReturn {
   const deleteService = useCallback(async (id: string) => {
     try {
       setError(null)
-      const { error } = await supabase.from("services").delete().eq("id", id)
-      if (error) throw error
+      console.log('🗑️ Intentando eliminar servicio:', id)
+      
+      // Primero verificar si el servicio existe
+      const { data: existingService, error: fetchError } = await supabase
+        .from("services")
+        .select("id, title")
+        .eq("id", id)
+        .single()
+
+      if (fetchError) {
+        throw new Error(`Servicio no encontrado: ${fetchError.message}`)
+      }
+
+      if (!existingService) {
+        throw new Error("Servicio no encontrado")
+      }
+
+      console.log('✅ Servicio encontrado:', existingService.title)
+
+      // Intentar eliminar
+      const { error: deleteError } = await supabase
+        .from("services")
+        .delete()
+        .eq("id", id)
+
+      if (deleteError) {
+        console.error('❌ Error de eliminación:', deleteError)
+        
+        // Analizar el tipo de error
+        if (deleteError.code === '42501') {
+          throw new Error('No tienes permisos para eliminar servicios. Contacta al administrador.')
+        } else if (deleteError.code === '23503') {
+          throw new Error('No se puede eliminar el servicio porque tiene reservas asociadas.')
+        } else if (deleteError.code === 'PGRST116') {
+          throw new Error('Error de autenticación. Por favor, inicia sesión nuevamente.')
+        } else {
+          throw new Error(`Error al eliminar: ${deleteError.message}`)
+        }
+      }
+
+      console.log('✅ Servicio eliminado exitosamente')
       await fetchServices(true) // Refresh after deletion
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Error deleting service"
       setError(errorMessage)
+      console.error('❌ Error en deleteService:', err)
       throw err
     }
   }, [fetchServices])
