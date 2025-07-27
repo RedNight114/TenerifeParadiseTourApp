@@ -1,68 +1,75 @@
 "use client"
 
-import React, { Suspense, lazy } from "react"
-import { ServiceCard } from "./service-card"
+import { useMemo } from "react"
+import { ServiceCard } from "@/components/service-card"
+import { useServices } from "@/hooks/use-services"
 import { Skeleton } from "@/components/ui/skeleton"
-import type { Service } from "@/lib/supabase"
-
-// Lazy load del componente ServiceCard para mejor performance
-const LazyServiceCard = lazy(() => import("./service-card").then(module => ({ default: module.ServiceCard })))
 
 interface ServicesGridProps {
-  services: Service[]
+  services?: any[]
   loading?: boolean
+  showFeatured?: boolean
+  limit?: number
 }
 
-// Skeleton para loading
-const ServiceCardSkeleton = () => (
-  <div className="bg-white rounded-lg shadow-md overflow-hidden">
-    <Skeleton className="h-48 w-full" />
-    <div className="p-4 space-y-2">
-      <Skeleton className="h-6 w-3/4" />
-      <Skeleton className="h-4 w-full" />
-      <Skeleton className="h-4 w-2/3" />
-      <div className="flex justify-between items-center pt-2">
-        <Skeleton className="h-8 w-20" />
-        <Skeleton className="h-10 w-24" />
-      </div>
-    </div>
-  </div>
-)
+export function ServicesGrid({ 
+  services: propServices, 
+  loading: propLoading, 
+  showFeatured = false,
+  limit 
+}: ServicesGridProps) {
+  const { services, loading } = useServices()
 
-export const ServicesGrid = React.memo(function ServicesGrid({ services, loading = false }: ServicesGridProps) {
-  if (loading) {
+  // Use provided services or fallback to hook services
+  const displayServices = useMemo(() => {
+    const sourceServices = propServices || services
+    
+    if (showFeatured) {
+      return sourceServices.filter((s) => s.featured)
+    }
+    
+    if (limit) {
+      return sourceServices.slice(0, limit)
+    }
+    
+    return sourceServices
+  }, [propServices, services, showFeatured, limit])
+
+  const isLoading = propLoading !== undefined ? propLoading : loading
+
+  if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {Array.from({ length: 6 }).map((_, index) => (
-          <ServiceCardSkeleton key={index} />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {Array.from({ length: 8 }).map((_, index) => (
+          <div key={index} className="space-y-3">
+            <Skeleton className="h-48 w-full rounded-lg" />
+            <div className="space-y-2">
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+            </div>
+          </div>
         ))}
       </div>
     )
   }
 
-  if (!services || services.length === 0) {
+  if (displayServices.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="max-w-md mx-auto">
-          <div className="text-gray-400 mb-4">
-            <svg className="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0112 15c-2.34 0-4.47-.881-6.08-2.33" />
-            </svg>
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No se encontraron servicios</h3>
-          <p className="text-gray-500">Intenta ajustar los filtros de búsqueda o vuelve más tarde.</p>
-        </div>
+        <p className="text-gray-500 text-lg">No se encontraron servicios</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      <Suspense fallback={<ServiceCardSkeleton />}>
-        {services.map((service) => (
-          <LazyServiceCard key={service.id} service={service} />
-        ))}
-      </Suspense>
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      {displayServices.map((service, index) => (
+        <ServiceCard 
+          key={service.id} 
+          service={service}
+          priority={index < 4} // Priorizar las primeras 4 imágenes
+        />
+      ))}
     </div>
   )
-})
+}

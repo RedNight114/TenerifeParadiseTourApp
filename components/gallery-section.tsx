@@ -3,11 +3,15 @@
 import { useState, useEffect } from "react"
 import Image from "next/image"
 import { supabase } from "@/lib/supabase"
-import { Loader2 } from "lucide-react"
+import { Loader2, ChevronDown, ChevronUp } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { normalizeImageUrl } from "@/lib/utils"
 
 export function GallerySection() {
   const [images, setImages] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAll, setShowAll] = useState(false)
+  const [initialImages, setInitialImages] = useState<string[]>([])
 
   useEffect(() => {
     const fetchServiceImages = async () => {
@@ -18,7 +22,7 @@ export function GallerySection() {
         .select("images")
         .eq("featured", true)
         .not("images", "is", null)
-        .limit(10) // Limit to 10 services to not overload the gallery
+        .limit(20)
 
       if (error) {
         setLoading(false)
@@ -26,15 +30,18 @@ export function GallerySection() {
       }
 
       // Flatten the array of image arrays and shuffle them
-      const allImages = data.flatMap((service) => service.images)
-      const shuffledImages = allImages.sort(() => 0.5 - Math.random()).slice(0, 12) // Take up to 12 random images
+      const allImages = data.flatMap((service: any) => service.images || []).filter(Boolean)
+      const shuffledImages = allImages.sort(() => 0.5 - Math.random())
 
-      setImages(shuffledImages)
+      setImages(shuffledImages as string[])
+      setInitialImages((shuffledImages.slice(0, 8) as string[]))
       setLoading(false)
     }
 
     fetchServiceImages()
   }, [])
+
+  const displayedImages = showAll ? images : initialImages
 
   return (
     <section className="py-16 bg-white">
@@ -51,19 +58,48 @@ export function GallerySection() {
             <Loader2 className="h-12 w-12 animate-spin text-[#0061A8]" />
           </div>
         ) : images.length > 0 ? (
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-            {images.map((imgSrc, index) => (
-              <div key={index} className="overflow-hidden rounded-lg shadow-lg break-inside-avoid">
-                <Image
-                  src={imgSrc || "/placeholder.svg"}
-                  alt={`Galería de experiencia en Tenerife ${index + 1}`}
-                  width={500}
-                  height={500}
-                  className="w-full h-auto object-cover hover:scale-105 transition-transform duration-300"
-                />
+          <>
+            <div className="w-full flex flex-col items-center">
+              <div
+                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-6xl mx-auto"
+              >
+                {displayedImages.map((imgSrc, index) => (
+                  <div key={index} className="overflow-hidden rounded-lg shadow-lg flex items-center justify-center bg-gray-100 aspect-square">
+                    <Image
+                      src={normalizeImageUrl(imgSrc)}
+                      alt={`Galería de experiencia en Tenerife ${index + 1}`}
+                      width={500}
+                      height={500}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                    />
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+
+              {/* Botón Ver más/Ver menos */}
+              {images.length > 8 && (
+                <div className="text-center mt-8">
+                  <Button
+                    onClick={() => setShowAll(!showAll)}
+                    variant="outline"
+                    className="border-[#0061A8] text-[#0061A8] hover:bg-[#0061A8] hover:text-white font-semibold px-8 py-3 transition-all duration-300"
+                  >
+                    {showAll ? (
+                      <>
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Ver Menos
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="h-4 w-4 mr-2" />
+                        Ver Más ({images.length - 8} más)
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>
         ) : (
           <div className="text-center py-12 border-2 border-dashed rounded-lg">
             <p className="text-muted-foreground">No hay imágenes destacadas para mostrar en este momento.</p>

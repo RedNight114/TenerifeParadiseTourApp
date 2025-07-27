@@ -6,11 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Plus, Edit, Trash2, Eye, EyeOff, Star, StarOff, Loader2, X, MoreVertical } from "lucide-react"
+import { Search, Plus, Edit, Trash2, Eye, EyeOff, Star, StarOff, Loader2, X, MoreVertical, RefreshCw } from "lucide-react"
 import { useServices } from "@/hooks/use-services"
 import { useCategories } from "@/hooks/use-categories"
 import { ServiceForm } from "./service-form"
 import type { Service } from "@/lib/supabase"
+import { normalizeImageUrl } from "@/lib/utils"
 
 // Modal personalizado
 interface ModalProps {
@@ -180,6 +181,7 @@ export function ServicesManagement() {
     loading: servicesLoading,
     error: servicesError,
     fetchServices,
+    refreshServices,
     createService,
     updateService,
     deleteService,
@@ -222,6 +224,10 @@ export function ServicesManagement() {
   }
 
   const handleEditService = (service: Service) => {
+    console.log('📝 Editando servicio:', service)
+    console.log('🖼️ service.images:', service.images)
+    console.log('🖼️ Tipo de service.images:', typeof service.images)
+    console.log('🖼️ Es array?', Array.isArray(service.images))
     setEditingService(service)
     setIsModalOpen(true)
   }
@@ -234,16 +240,49 @@ export function ServicesManagement() {
   const handleSubmitService = async (serviceData: any) => {
     try {
       setIsSubmitting(true)
+      console.log('🔄 Guardando servicio:', serviceData)
+      console.log('📊 Tipo de serviceData.images:', typeof serviceData.images)
+      console.log('📊 Valor de serviceData.images:', serviceData.images)
+      console.log('📊 Es array?', Array.isArray(serviceData.images))
+      console.log('📊 Longitud del array:', Array.isArray(serviceData.images) ? serviceData.images.length : 'N/A')
+      
       if (editingService) {
-        await updateService(editingService.id, serviceData)
-        } else {
-        await createService(serviceData)
-        }
+        console.log('📝 Actualizando servicio existente:', editingService.id)
+        const result = await updateService(editingService.id, serviceData)
+        console.log('✅ Servicio actualizado:', result)
+      } else {
+        console.log('➕ Creando nuevo servicio')
+        const result = await createService(serviceData)
+        console.log('✅ Servicio creado:', result)
+      }
 
       handleCloseModal()
       await fetchServices() // Recargar servicios
+      console.log('✅ Lista de servicios actualizada')
     } catch (error) {
-      alert(error instanceof Error ? error.message : "Error al guardar el servicio")
+      console.error('❌ Error al guardar servicio:', error)
+      
+      // Mostrar error más detallado
+      let errorMessage = 'Error desconocido al guardar el servicio'
+      
+      if (error instanceof Error) {
+        errorMessage = error.message
+        
+        // Analizar tipos específicos de errores
+        if (error.message.includes('duplicate key')) {
+          errorMessage = 'Ya existe un servicio con ese título'
+        } else if (error.message.includes('foreign key')) {
+          errorMessage = 'La categoría seleccionada no existe'
+        } else if (error.message.includes('not null')) {
+          errorMessage = 'Faltan campos requeridos'
+        } else if (error.message.includes('permission')) {
+          errorMessage = 'No tienes permisos para guardar servicios'
+        } else if (error.message.includes('network')) {
+          errorMessage = 'Error de conexión. Verifica tu internet'
+        }
+      }
+      
+      alert(`Error al guardar el servicio: ${errorMessage}`)
     } finally {
       setIsSubmitting(false)
     }
@@ -361,7 +400,17 @@ export function ServicesManagement() {
               </select>
             </div>
 
-            <div className="flex items-end">
+            <div className="flex items-end gap-2">
+              <Button
+                variant="outline"
+                onClick={refreshServices}
+                disabled={servicesLoading}
+                className="flex-1"
+                title="Refrescar datos desde la base de datos"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${servicesLoading ? 'animate-spin' : ''}`} />
+                Refrescar
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => {
@@ -369,7 +418,7 @@ export function ServicesManagement() {
                   setSelectedCategory("all")
                   setAvailabilityFilter("all")
                 }}
-                className="w-full"
+                className="flex-1"
               >
                 Limpiar filtros
               </Button>
@@ -415,7 +464,7 @@ export function ServicesManagement() {
               <div className="aspect-video relative">
                 {service.images && service.images.length > 0 ? (
                   <img
-                    src={service.images[0] || "/placeholder.svg"}
+                    src={normalizeImageUrl(service.images[0])}
                     alt={service.title}
                     className="w-full h-full object-cover"
                   />

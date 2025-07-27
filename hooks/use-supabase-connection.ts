@@ -1,84 +1,62 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { supabase } from "@/lib/supabase"
+import { useState, useEffect, useCallback } from 'react'
+import { getSupabaseClient } from '@/lib/supabase-optimized'
 
 export function useSupabaseConnection() {
-  const [isConnected, setIsConnected] = useState<boolean | null>(null)
+  const [isConnected, setIsConnected] = useState<boolean>(false)
+  const [isLoading, setIsLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [lastCheck, setLastCheck] = useState<Date>(new Date())
 
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-        
-        // Intentar una consulta simple para verificar la conexión
-        const { data, error } = await supabase
-          .from('profiles')
-          .select('count')
-          .limit(1)
-          .single()
-
-        if (error) {
-          // Si es un error de autenticación, la conexión está bien
-          if (error.code === 'PGRST116' || error.code === '42501') {
-            setIsConnected(true)
-            setError(null)
-          } else {
-            setIsConnected(false)
-            setError(error.message)
-          }
-        } else {
-          setIsConnected(true)
-          setError(null)
-        }
-      } catch (err) {
-        setIsConnected(false)
-        setError(err instanceof Error ? err.message : 'Error de conexión desconocido')
-      } finally {
-        setIsLoading(false)
-      }
-    }
-
-    checkConnection()
-
-    // Verificar conexión periódicamente
-    const interval = setInterval(checkConnection, 30000) // Cada 30 segundos
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const retryConnection = async () => {
+  const checkConnection = useCallback(async () => {
     setIsLoading(true)
     setError(null)
     
     try {
-      const { data, error } = await supabase
+      const supabase = getSupabaseClient()
+      
+      // Verificar conexión básica
+      const { data, error: connectionError } = await supabase
         .from('profiles')
-        .select('count')
+        .select('id')
         .limit(1)
-        .single()
-
-      if (error && error.code !== 'PGRST116' && error.code !== '42501') {
-        throw error
+      
+      if (connectionError) {
+        throw new Error(`Error de conexión: ${connectionError.message}`)
       }
       
       setIsConnected(true)
-      setError(null)
+      setLastCheck(new Date())
+      
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
+      setError(errorMessage)
       setIsConnected(false)
-      setError(err instanceof Error ? err.message : 'Error de conexión desconocido')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  const retryConnection = useCallback(() => {
+    checkConnection()
+  }, [checkConnection])
+
+  useEffect(() => {
+    checkConnection()
+    
+    // Verificar conexión cada 30 segundos
+    const interval = setInterval(checkConnection, 30000)
+    
+    return () => clearInterval(interval)
+  }, [checkConnection])
 
   return {
     isConnected,
-    error,
     isLoading,
-    retryConnection
+    error,
+    lastCheck,
+    retryConnection,
+    checkConnection
   }
 } 

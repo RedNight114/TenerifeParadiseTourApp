@@ -1,7 +1,7 @@
 "use client"
 
 import React from "react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Search, MapPin, Calendar } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -16,6 +16,13 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
   const [searchQuery, setSearchQuery] = useState("")
   const [location, setLocation] = useState("")
   const [date, setDate] = useState("")
+  const [imageLoaded, setImageLoaded] = useState(false)
+  const [isClient, setIsClient] = useState(false)
+
+  // Prevenir errores de hidratación
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
 
   const handleSearch = () => {
     // Implementar lógica de búsqueda
@@ -26,15 +33,40 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
     })
   }
 
+  // Función para manejar la carga de imagen
+  const handleImageLoad = () => {
+    if (isClient) {
+      setImageLoaded(true)
+    }
+  }
+
+  const handleImageError = () => {
+    if (isClient) {
+      setImageLoaded(false)
+    }
+  }
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+      {/* Background Image with Fallback */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{
-          backgroundImage: "url('/images/hero-background.avif')",
+          backgroundImage: isClient && imageLoaded 
+            ? "url('/images/hero-background.avif')"
+            : "linear-gradient(135deg, #0061A8 0%, #00B4D8 50%, #90E0EF 100%)"
         }}
       >
+        {/* Preload image - solo en cliente */}
+        {isClient && (
+          <img
+            src="/images/hero-background.avif"
+            alt=""
+            className="hidden"
+            onLoad={handleImageLoad}
+            onError={handleImageError}
+          />
+        )}
         <div className="absolute inset-0 bg-black/40" />
       </div>
 

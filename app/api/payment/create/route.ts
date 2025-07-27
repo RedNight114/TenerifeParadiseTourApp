@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import crypto from "crypto"
+import { generateCompleteRedsysSignature } from "@/lib/redsys-signature"
 import { createPaymentSchema, validateData } from "@/lib/validation-schemas"
 import { createValidationErrorResponse, sanitizeObject } from "@/lib/api-validation"
 import { withPaymentRateLimit } from "@/lib/rate-limiting"
@@ -9,18 +9,6 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
   try {
     // Obtener y validar el body
     const body = await request.json().catch(() => ({}))
-    
-    console.log("🔍 PAYMENT CREATE - Datos recibidos del frontend:", {
-      body,
-      bodyType: typeof body,
-      hasAmount: 'amount' in body,
-      amountValue: body.amount,
-      amountType: typeof body.amount,
-      hasReservationId: 'reservationId' in body,
-      reservationIdValue: body.reservationId,
-      hasDescription: 'description' in body,
-      descriptionValue: body.description
-    })
 
     const validation = validateData(createPaymentSchema, body)
 
@@ -33,13 +21,6 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
 
     // Sanitizar los datos antes de procesarlos
     const sanitizedData = sanitizeObject(validatedData)
-
-    console.log("✅ PAYMENT CREATE - Datos validados y sanitizados:", {
-      reservationId: sanitizedData.reservationId,
-      amount: sanitizedData.amount,
-      amountType: typeof sanitizedData.amount,
-      description: sanitizedData.description
-    })
 
     // Validación adicional para detectar problemas
     if (!sanitizedData.amount || sanitizedData.amount <= 0) {
@@ -78,14 +59,6 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
     const secretKey = process.env.REDSYS_SECRET_KEY!
     const environment = process.env.REDSYS_ENVIRONMENT!
 
-    console.log("🔧 PAYMENT CREATE - Configuración de Redsys:", {
-      merchantCode,
-      terminal,
-      hasSecretKey: !!secretKey,
-      environment,
-      baseUrl: process.env.NEXT_PUBLIC_SITE_URL
-    })
-
     if (!merchantCode || !terminal || !secretKey || !environment) {
       console.error("❌ PAYMENT CREATE - Configuración de Redsys incompleta")
       return NextResponse.json({ error: "Configuración de pago incompleta" }, { status: 500 })
@@ -93,12 +66,6 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
 
     // Convertir el amount a céntimos (Redsys requiere el importe en céntimos sin decimales)
     const amountInCents = Math.round(sanitizedData.amount * 100)
-
-    console.log("💰 PAYMENT CREATE - Cálculo de importe:", {
-      originalAmount: sanitizedData.amount,
-      amountInCents,
-      calculation: `${sanitizedData.amount} * 100 = ${amountInCents}`
-    })
 
     // Validación del importe en céntimos
     if (amountInCents <= 0) {
@@ -116,28 +83,17 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
     }
 
     // Generar número de pedido único (máximo 12 caracteres alfanuméricos)
-    const orderNumber = `${Date.now()}${sanitizedData.reservationId.slice(-4)}`.slice(0, 12)
-
-    console.log("📋 PAYMENT CREATE - Número de pedido:", {
-      timestamp: Date.now(),
-      reservationIdSuffix: sanitizedData.reservationId.slice(-4),
-      orderNumber,
-      orderNumberLength: orderNumber.length
-    })
+    // Redsys requiere que sea alfanumérico y único
+    const timestamp = Date.now().toString()
+    const reservationSuffix = sanitizedData.reservationId.replace(/-/g, '').slice(-4)
+    const orderNumber = `${timestamp}${reservationSuffix}`.slice(0, 12)
 
     // Validación del número de pedido
     if (!orderNumber || orderNumber.length === 0) {
-      console.error("❌ PAYMENT CREATE - Número de pedido inválido:", {
-        orderNumber,
-        orderNumberLength: orderNumber.length,
-        timestamp: Date.now(),
-        reservationId: sanitizedData.reservationId
-      })
+      console.error("❌ PAYMENT CREATE - Número de pedido inválido")
       return NextResponse.json({ 
         error: "Número de pedido inválido", 
-        details: "No se pudo generar un número de pedido válido",
-        orderNumber,
-        timestamp: Date.now()
+        details: "No se pudo generar un número de pedido válido"
       }, { status: 500 })
     }
 
@@ -146,32 +102,25 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
     const urlOK = `${baseUrl}/payment/success?reservationId=${sanitizedData.reservationId}`
     const urlKO = `${baseUrl}/payment/error?reservationId=${sanitizedData.reservationId}`
     const urlNotification = `${baseUrl}/api/payment/webhook`
-    
-    console.log("🌐 PAYMENT CREATE - URLs configuradas:", { 
-      baseUrl, 
-      urlOK, 
-      urlKO, 
-      urlNotification 
-    })
 
     // Parámetros del comercio según documentación oficial de Redsys
     const merchantParameters = {
-      DS_MERCHANT_AMOUNT: amountInCents.toString().padStart(12, '0'), // 12 posiciones numéricas
+      DS_MERCHANT_AMOUNT: amountInCents.toString().padStart(12, '0'), // 12 posiciones numéricas sin decimales
       DS_MERCHANT_ORDER: orderNumber, // Alfanumérico, máximo 12 posiciones
       DS_MERCHANT_MERCHANTCODE: merchantCode, // Numérico, máximo 9 posiciones
       DS_MERCHANT_CURRENCY: "978", // EUR según ISO-4217
       DS_MERCHANT_TRANSACTIONTYPE: "1", // 1 = Preautorización (autorización sin captura)
-      DS_MERCHANT_TERMINAL: terminal, // Numérico, 3 posiciones
+      DS_MERCHANT_TERMINAL: terminal.padStart(3, '0'), // Numérico, 3 posiciones - IMPORTANTE: debe ser "001"
       DS_MERCHANT_MERCHANTURL: urlNotification, // URL de notificación
       DS_MERCHANT_URLOK: urlOK, // URL de éxito
       DS_MERCHANT_URLKO: urlKO, // URL de error
       DS_MERCHANT_PRODUCTDESCRIPTION: sanitizedData.description, // Descripción del producto
       DS_MERCHANT_MERCHANTNAME: "Tenerife Paradise Tours", // Nombre del comercio
       DS_MERCHANT_CONSUMERLANGUAGE: "001", // Español
-      DS_MERCHANT_MERCHANTDATA: sanitizedData.reservationId, // Datos adicionales (reservationId)
+      DS_MERCHANT_MERCHANTNAMER: '************************************', // Campo correcto según error real
     }
 
-    console.log("📊 PAYMENT CREATE - Parámetros de Redsys:", merchantParameters)
+
 
     // Validación final de parámetros críticos
     if (merchantParameters.DS_MERCHANT_AMOUNT === '000000000000') {
@@ -204,32 +153,36 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
 
     // Codificar parámetros en base64 usando el formato correcto de Redsys
     // Redsys espera los parámetros como un objeto JSON válido
-    const merchantParametersJson = JSON.stringify(merchantParameters)
+    // IMPORTANTE: No escapar las barras en las URLs para evitar problemas de firma
+    let merchantParametersJson = JSON.stringify(merchantParameters)
+    
+    // Verificar y corregir caracteres escapados en las URLs
+    if (merchantParametersJson.includes('\\/')) {
+      merchantParametersJson = merchantParametersJson.replace(/\\\//g, '/')
+    }
+    
     const merchantParametersBase64 = Buffer.from(merchantParametersJson, 'utf8').toString('base64')
 
-    console.log("🔍 PAYMENT CREATE - Codificación de parámetros:", {
-      jsonString: merchantParametersJson,
-      base64Length: merchantParametersBase64.length,
-      base64Preview: merchantParametersBase64.substring(0, 50) + '...'
-    })
-
-    // Generar firma según documentación oficial (HMAC_SHA256_V1)
-    const signature = generateSignature(orderNumber, merchantParametersBase64, secretKey)
+    // Generar firma usando la nueva función oficial de Redsys
+    // IMPORTANTE: Usar el JSON limpio (sin caracteres escapados) para la firma
+    const cleanMerchantParameters = JSON.parse(merchantParametersJson)
+    const { signature, merchantParametersBase64: finalMerchantParameters } = generateCompleteRedsysSignature(
+      secretKey,
+      orderNumber,
+      amountInCents,
+      merchantCode
+    )
 
     // Datos del formulario para enviar a Redsys
     const formData = {
       Ds_SignatureVersion: "HMAC_SHA256_V1",
-      Ds_MerchantParameters: merchantParametersBase64,
+      Ds_MerchantParameters: finalMerchantParameters,
       Ds_Signature: signature,
     }
 
-    console.log("✅ PAYMENT CREATE - Preautorización creada exitosamente:", { 
+    console.log("✅ PAYMENT CREATE - Preautorización creada:", { 
       orderNumber, 
-      amount: sanitizedData.amount,
-      amountInCents,
-      finalAmount: merchantParameters.DS_MERCHANT_AMOUNT,
-      finalOrder: merchantParameters.DS_MERCHANT_ORDER,
-      signatureLength: signature.length
+      amount: sanitizedData.amount
     })
 
     return NextResponse.json({
@@ -250,28 +203,4 @@ export const POST = withPaymentRateLimit(async (request: NextRequest) => {
   }
 })
 
-function generateSignature(order: string, merchantParameters: string, secretKey: string): string {
-  try {
-    // Generar firma según documentación oficial de Redsys
-    // HMAC-SHA256 con la clave secreta decodificada en base64
-    const decodedKey = Buffer.from(secretKey, "base64")
-    const hmac = crypto.createHmac("sha256", decodedKey)
-    
-    // Concatenar order + merchantParameters
-    hmac.update(order + merchantParameters)
-    
-    // Obtener firma en base64
-    const signature = hmac.digest("base64")
 
-    console.log("🔐 PAYMENT CREATE - Firma generada:", { 
-      order, 
-      merchantParametersLength: merchantParameters.length, 
-      signatureLength: signature.length 
-    })
-
-    return signature
-  } catch (error) {
-    console.error("❌ PAYMENT CREATE - Error generando firma:", error)
-    throw new Error("Error al generar la firma de seguridad")
-  }
-}

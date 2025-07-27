@@ -1,62 +1,52 @@
-import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { GeistSans } from "geist/font/sans"
+import { GeistMono } from "geist/font/mono"
 import "./globals.css"
-import { Navbar } from "@/components/navbar"
-import { Footer } from "@/components/footer"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { SupabaseDebug } from "@/components/supabase-debug"
-import { ConnectionError } from "@/components/connection-error"
-import { DetailedDebug } from "@/components/detailed-debug"
-
-const inter = Inter({ 
-  subsets: ["latin"],
-  display: 'swap',
-  variable: '--font-inter',
-})
+import { AuthProvider } from "@/components/auth-provider"
+import { CookieBanner } from "@/components/cookie-banner"
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tenerifeparadisetoursexcursions.com'),
   title: {
-    default: "Tenerife Paradise Tours & Excursions - Descubre el Paraíso de Tenerife",
-    template: "%s | Tenerife Paradise Tours"
+    default: "Tenerife Paradise Tours & Excursions",
+    template: "%s | Tenerife Paradise Tours & Excursions"
   },
-  description: "Vive experiencias únicas en Tenerife. Tours, excursiones, alquiler de vehículos y gastronomía local. Reserva tu aventura perfecta con los mejores precios y garantía.",
-  keywords: [
-    "Tenerife", "tours", "excursiones", "actividades", "alquiler coches", 
-    "gastronomía", "Canarias", "Teide", "ballenas", "quad", "descapotable",
-    "turismo", "viajes", "experiencias", "aventura", "playas", "volcán"
-  ],
-  authors: [{ name: "Tenerife Paradise Tours & Excursions" }],
-  creator: "Tenerife Paradise Tours & Excursions",
-  publisher: "Tenerife Paradise Tours & Excursions",
+  description: "Descubre las mejores experiencias en Tenerife. Tours, actividades, alquiler de vehículos y experiencias gastronómicas únicas en la isla.",
+  keywords: ["Tenerife", "tours", "excursiones", "actividades", "alquiler", "gastronomía", "turismo", "Canarias"],
+  authors: [{ name: "Tenerife Paradise Tours" }],
+  creator: "Tenerife Paradise Tours",
+  publisher: "Tenerife Paradise Tours",
   formatDetection: {
     email: false,
     address: false,
     telephone: false,
   },
+  metadataBase: new URL('https://tenerife-paradise-tours.vercel.app'),
+  alternates: {
+    canonical: '/',
+  },
   openGraph: {
-    type: "website",
-    locale: "es_ES",
-    url: "https://tenerifeparadisetoursexcursions.com",
-    title: "Tenerife Paradise Tours & Excursions - Descubre el Paraíso de Tenerife",
-    description: "Vive experiencias únicas en Tenerife. Tours, excursiones, alquiler de vehículos y gastronomía local. ¡Reserva tu aventura perfecta!",
-    siteName: "Tenerife Paradise Tours & Excursions",
+    type: 'website',
+    locale: 'es_ES',
+    url: 'https://tenerife-paradise-tours.vercel.app',
+    title: 'Tenerife Paradise Tours & Excursions',
+    description: 'Descubre las mejores experiencias en Tenerife. Tours, actividades, alquiler de vehículos y experiencias gastronómicas únicas.',
+    siteName: 'Tenerife Paradise Tours',
     images: [
       {
-        url: "/images/hero-background.avif",
+        url: '/images/hero-tenerife-sunset.jpg',
         width: 1200,
         height: 630,
-        alt: "Tenerife Paradise Tours - Paisajes espectaculares de Tenerife",
+        alt: 'Tenerife Paradise Tours',
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Tenerife Paradise Tours & Excursions",
-    description: "Descubre el paraíso de Tenerife con nuestras experiencias únicas",
-    images: ["/images/hero-background.avif"],
-    creator: "@tenerifeparadise",
+    card: 'summary_large_image',
+    title: 'Tenerife Paradise Tours & Excursions',
+    description: 'Descubre las mejores experiencias en Tenerife',
+    images: ['/images/hero-tenerife-sunset.jpg'],
   },
   robots: {
     index: true,
@@ -64,34 +54,13 @@ export const metadata: Metadata = {
     googleBot: {
       index: true,
       follow: true,
-      "max-video-preview": -1,
-      "max-image-preview": "large",
-      "max-snippet": -1,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
     },
   },
   verification: {
-    google: "tu-codigo-verificacion-google",
-    yandex: "tu-codigo-verificacion-yandex",
-    yahoo: "tu-codigo-verificacion-yahoo",
-  },
-  alternates: {
-    canonical: "https://tenerifeparadisetoursexcursions.com",
-    languages: {
-      "es-ES": "https://tenerifeparadisetoursexcursions.com",
-      "en-US": "https://tenerifeparadisetoursexcursions.com/en",
-    },
-  },
-  category: "travel",
-  classification: "tourism",
-  other: {
-    "theme-color": "#0061A8",
-    "color-scheme": "light",
-    "apple-mobile-web-app-capable": "yes",
-    "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Tenerife Paradise",
-    "application-name": "Tenerife Paradise Tours",
-    "msapplication-TileColor": "#0061A8",
-    "msapplication-config": "/browserconfig.xml",
+    google: 'your-google-verification-code',
   },
 }
 
@@ -101,65 +70,32 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es" className={inter.variable}>
+    <html lang="es" suppressHydrationWarning>
       <head>
-        <link rel="icon" href="/favicon.ico" sizes="any" />
-        <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-        <link rel="manifest" href="/manifest.json" />
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-        <meta name="theme-color" content="#0061A8" />
+        {/* Preload critical resources */}
+        <link rel="preload" href="/images/hero-tenerife-sunset.jpg" as="image" />
         
-        {/* Preconnect para optimización */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* DNS prefetch for external domains */}
+        <link rel="dns-prefetch" href="//kykyyqga68e5j72o.public.blob.vercel-storage.com" />
+        <link rel="dns-prefetch" href="//supabase.co" />
+        
+        {/* Preconnect to external domains */}
+        <link rel="preconnect" href="https://kykyyqga68e5j72o.public.blob.vercel-storage.com" />
         <link rel="preconnect" href="https://supabase.co" />
-        <link rel="dns-prefetch" href="https://supabase.co" />
-        
-        {/* Structured Data */}
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
-              "@context": "https://schema.org",
-              "@type": "TravelAgency",
-              "name": "Tenerife Paradise Tours & Excursions",
-              "description": "Agencia de viajes especializada en tours y excursiones en Tenerife",
-              "url": "https://tenerifeparadisetoursexcursions.com",
-              "logo": "https://tenerifeparadisetoursexcursions.com/images/logo-tenerife.png",
-              "address": {
-                "@type": "PostalAddress",
-                "addressLocality": "Tenerife",
-                "addressRegion": "Canarias",
-                "addressCountry": "ES"
-              },
-              "contactPoint": {
-                "@type": "ContactPoint",
-                "telephone": "+34-617-30-39-29",
-                "contactType": "customer service",
-                "availableLanguage": ["Spanish", "English"]
-              },
-              "sameAs": [
-                "https://www.facebook.com/tenerifeparadise",
-                "https://www.instagram.com/tenerifeparadise",
-                "https://twitter.com/tenerifeparadise"
-              ]
-            })
-          }}
-        />
       </head>
-      <body className={`${inter.className} antialiased`}>
-        <ConnectionError />
-        <Navbar />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
-        <Toaster />
-        {process.env.NODE_ENV === 'development' && (
-          <>
-            <SupabaseDebug />
-            <DetailedDebug />
-          </>
-        )}
+      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {children}
+            <Toaster />
+            <CookieBanner />
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

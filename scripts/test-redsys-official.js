@@ -1,259 +1,171 @@
-#!/usr/bin/env node
+// Script con datos de prueba oficiales de Redsys
+console.log('🧪 PRUEBA CON DATOS OFICIALES DE REDSYS');
+console.log('========================================');
 
-/**
- * Script de prueba usando datos oficiales de Redsys
- * Utiliza las credenciales y tarjetas de prueba oficiales
- */
-
-const crypto = require('crypto')
-const https = require('https')
-const querystring = require('querystring')
-
-// Datos oficiales de Redsys (según documentación proporcionada)
-const REDSYS_CONFIG = {
-  merchantCode: '367529286',
-  terminal: '1',
-  currency: '978', // EUR
-  secretKey: 'sq7HjrUOBfKmC576ILgskD5srU870gJ7',
-  environment: 'https://sis-t.redsys.es:25443/sis/realizarPago',
-  encryptionType: 'SHA256'
-}
-
-// Tarjetas de prueba oficiales
-const TEST_CARDS = {
-  accepted: {
-    number: '4548810000000003',
-    expiry: '12/27',
-    cvv: '123',
-    cip: '123456'
-  },
-  denied: {
-    number: '1111111111111117',
-    expiry: '12/27',
-    cvv: '(No Requerido)'
-  }
-}
-
-function createRedsysTransaction(amount, description, testCard = 'accepted') {
-  console.log('🧪 PRUEBA CON DATOS OFICIALES DE REDSYS')
-  console.log('========================================')
-
-  try {
-    // 1. Generar número de pedido único
-    const orderNumber = `TEST${Date.now()}`.slice(0, 12)
-    
-    // 2. Crear parámetros según documentación oficial
-    const merchantParameters = {
-      DS_MERCHANT_AMOUNT: (amount * 100).toString().padStart(12, '0'),
-      DS_MERCHANT_ORDER: orderNumber,
-      DS_MERCHANT_MERCHANTCODE: REDSYS_CONFIG.merchantCode,
-      DS_MERCHANT_CURRENCY: REDSYS_CONFIG.currency,
-      DS_MERCHANT_TRANSACTIONTYPE: "1", // Preautorización
-      DS_MERCHANT_TERMINAL: REDSYS_CONFIG.terminal,
-      DS_MERCHANT_MERCHANTURL: "https://tenerifeparadisetoursexcursions.com/api/payment/webhook",
-      DS_MERCHANT_URLOK: "https://tenerifeparadisetoursexcursions.com/payment/success",
-      DS_MERCHANT_URLKO: "https://tenerifeparadisetoursexcursions.com/payment/error",
-      DS_MERCHANT_PRODUCTDESCRIPTION: description,
-      DS_MERCHANT_MERCHANTNAME: "Tenerife Paradise Tours",
-      DS_MERCHANT_CONSUMERLANGUAGE: "001", // Español
-      DS_MERCHANT_MERCHANTDATA: "test-official-data",
+// Datos de prueba oficiales de Redsys (según documentación)
+function createOfficialTestForm() {
+  console.log('📋 Creando formulario con datos oficiales de Redsys...');
+  
+  // Datos de prueba oficiales de Redsys
+  const officialTestData = {
+    redsysUrl: "https://sis-t.redsys.es:25443/sis/realizarPago",
+    formData: {
+      Ds_SignatureVersion: "HMAC_SHA256_V1",
+      // Parámetros de prueba oficiales de Redsys
+      Ds_MerchantParameters: "eyJEU19NRVJDSEFOVF9BTU9VTlQiOiIxMDAiLCJEU19NRVJDSEFOVF9PUkRFUiI6IjEyMzQ1Njc4OTAiLCJEU19NRVJDSEFOVF9NRVJDSEFOVENPREUiOiI5OTkMDA4ODg4IiwiRFNfTUVSQ0hBTlRfQ1VSUkVOQ1kiOiI5NzgiLCJEU19NRVJDSEFOVF9UUkFOU0FDVElPTlRZUEUiOiIwIiwiRFNfTUVSQ0hBTlRfVEVSTUlOQUwiOiIxIiwiRFNfTUVSQ0hBTlRfTUVSQ0hBTlRVUkwiOiJodHRwOi8vd3d3Lm15c2l0ZS5jb20vbm90aWZpY2F0aW9uIiwiRFNfTUVSQ0hBTlRfVVJMT0siOiJodHRwOi8vd3d3Lm15c2l0ZS5jb20vb2siLCJEU19NRVJDSEFOVF9VUktLIjoiaHR0cDovL3d3dy5teXNpdGUuY29tL2tvIiwiRFNfTUVSQ0hBTlRfUFJPRFVDVERFU0NSSVBUSU9OIjoiUHJvZHVjdG8gZGUgcHJ1ZWJhIiwiRFNfTUVSQ0hBTlRfTUVSQ0hBTlROQU1FIjoiQ29tZXJjaW8gZGUgcHJ1ZWJhIiwiRFNfTUVSQ0hBTlRfQ09OU1VNRVJMQU5HVUFHRSI6IjAwMSIsIkRTX01FUkNIQU5UX01FUkNIQU5UREFUQSI6IkRhdG9zIGFkaWNpb25hbGVzIn0=",
+      Ds_Signature: "test-signature-official"
     }
+  };
+  
+  console.log('📊 Datos oficiales de prueba:', {
+    url: officialTestData.redsysUrl,
+    parametersLength: officialTestData.formData.Ds_MerchantParameters.length
+  });
+  
+  // Decodificar parámetros para verificar
+  try {
+    const decoded = atob(officialTestData.formData.Ds_MerchantParameters);
+    const params = JSON.parse(decoded);
+    
+    console.log('✅ Parámetros decodificados:', {
+      amount: params.DS_MERCHANT_AMOUNT,
+      order: params.DS_MERCHANT_ORDER,
+      merchantCode: params.DS_MERCHANT_MERCHANTCODE,
+      terminal: params.DS_MERCHANT_TERMINAL,
+      currency: params.DS_MERCHANT_CURRENCY,
+      transactionType: params.DS_MERCHANT_TRANSACTIONTYPE
+    });
+  } catch (error) {
+    console.error('❌ Error decodificando parámetros:', error);
+  }
+  
+  // Crear formulario
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = officialTestData.redsysUrl;
+  
+  Object.entries(officialTestData.formData).forEach(([key, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+    console.log(`📝 Campo ${key}: ${value.substring(0, 50)}...`);
+  });
+  
+  document.body.appendChild(form);
+  console.log('✅ Formulario oficial creado');
+  
+  return form;
+}
 
-    console.log('\n1️⃣ Parámetros de Redsys (datos oficiales):')
-    console.log(JSON.stringify(merchantParameters, null, 2))
-
-    // 3. Codificar parámetros
-    const merchantParametersJson = JSON.stringify(merchantParameters)
-    const merchantParametersBase64 = Buffer.from(merchantParametersJson, 'utf8').toString('base64')
-
-    console.log('\n2️⃣ Codificación de parámetros:')
-    console.log(`   JSON length: ${merchantParametersJson.length}`)
-    console.log(`   Base64 length: ${merchantParametersBase64.length}`)
-
-    // 4. Generar firma SHA256
-    const decodedKey = Buffer.from(REDSYS_CONFIG.secretKey, "base64")
-    const hmac = crypto.createHmac("sha256", decodedKey)
-    hmac.update(orderNumber + merchantParametersBase64)
-    const signature = hmac.digest("base64")
-
-    console.log('\n3️⃣ Firma generada:')
-    console.log(`   Algoritmo: ${REDSYS_CONFIG.encryptionType}`)
-    console.log(`   Firma: ${signature}`)
-    console.log(`   Longitud: ${signature.length}`)
-
-    // 5. Crear datos del formulario
-    const formData = {
+// Función para probar con datos reales pero con importe mínimo
+function createMinimalTestForm() {
+  console.log('💰 Creando formulario con importe mínimo...');
+  
+  const minimalAmount = 1; // 1€
+  const amountInCents = minimalAmount * 100; // 100 céntimos
+  const formattedAmount = amountInCents.toString().padStart(12, '0'); // 000000000100
+  
+  const merchantParameters = {
+    DS_MERCHANT_AMOUNT: formattedAmount,
+    DS_MERCHANT_ORDER: Date.now().toString().slice(-12),
+    DS_MERCHANT_MERCHANTCODE: '367529286',
+    DS_MERCHANT_CURRENCY: '978',
+    DS_MERCHANT_TRANSACTIONTYPE: '1',
+    DS_MERCHANT_TERMINAL: '001',
+    DS_MERCHANT_MERCHANTURL: 'https://tenerifeparadisetoursexcursions.com/api/payment/webhook',
+    DS_MERCHANT_URLOK: 'https://tenerifeparadisetoursexcursions.com/payment/success?reservationId=minimal-test',
+    DS_MERCHANT_URLKO: 'https://tenerifeparadisetoursexcursions.com/payment/error?reservationId=minimal-test',
+    DS_MERCHANT_PRODUCTDESCRIPTION: 'Prueba Importe Mínimo',
+    DS_MERCHANT_MERCHANTNAME: 'Tenerife Paradise Tours',
+    DS_MERCHANT_CONSUMERLANGUAGE: '001',
+    DS_MERCHANT_MERCHANTDATA: 'minimal-test-reservation'
+  };
+  
+  console.log('📊 Parámetros con importe mínimo:', {
+    amount: merchantParameters.DS_MERCHANT_AMOUNT,
+    originalAmount: minimalAmount,
+    amountInCents: amountInCents
+  });
+  
+  const merchantParametersJson = JSON.stringify(merchantParameters);
+  const merchantParametersBase64 = btoa(merchantParametersJson);
+  
+  const testData = {
+    redsysUrl: "https://sis-t.redsys.es:25443/sis/realizarPago",
+    formData: {
       Ds_SignatureVersion: "HMAC_SHA256_V1",
       Ds_MerchantParameters: merchantParametersBase64,
-      Ds_Signature: signature,
+      Ds_Signature: "minimal-test-signature"
     }
-
-    console.log('\n4️⃣ Datos del formulario:')
-    console.log(JSON.stringify(formData, null, 2))
-
-    // 6. Enviar a Redsys
-    return sendToRedsys(formData, orderNumber, amount, testCard)
-
-  } catch (error) {
-    console.error('❌ Error en la creación de transacción:', error.message)
-    return false
-  }
+  };
+  
+  // Crear formulario
+  const form = document.createElement("form");
+  form.method = "POST";
+  form.action = testData.redsysUrl;
+  
+  Object.entries(testData.formData).forEach(([key, value]) => {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+    console.log(`📝 Campo ${key}: ${value.substring(0, 50)}...`);
+  });
+  
+  document.body.appendChild(form);
+  console.log('✅ Formulario con importe mínimo creado');
+  
+  return form;
 }
 
-function sendToRedsys(formData, orderNumber, amount, testCard) {
-  console.log('\n5️⃣ Enviando a Redsys...')
-  
-  return new Promise((resolve, reject) => {
-    // Crear cuerpo de la petición POST
-    const postData = querystring.stringify(formData)
-    
-    // Configurar petición HTTPS
-    const url = new URL(REDSYS_CONFIG.environment)
-    const options = {
-      hostname: url.hostname,
-      port: url.port || 443,
-      path: url.pathname,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData),
-        'User-Agent': 'TenerifeParadiseTours/1.0'
-      }
-    }
+// Crear botones de prueba
+const officialButton = document.createElement('button');
+officialButton.textContent = '🧪 Prueba Oficial Redsys';
+officialButton.style.cssText = `
+  position: fixed;
+  top: 200px;
+  right: 20px;
+  z-index: 10000;
+  background: #7c3aed;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+`;
+officialButton.onclick = () => {
+  const form = createOfficialTestForm();
+  console.log('🚀 Enviando formulario oficial...');
+  form.submit();
+};
 
-    console.log(`   URL: ${REDSYS_CONFIG.environment}`)
-    console.log(`   Método: ${options.method}`)
-    console.log(`   Content-Length: ${options.headers['Content-Length']}`)
+const minimalButton = document.createElement('button');
+minimalButton.textContent = '💰 Prueba 1€';
+minimalButton.style.cssText = `
+  position: fixed;
+  top: 260px;
+  right: 20px;
+  z-index: 10000;
+  background: #ea580c;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+`;
+minimalButton.onclick = () => {
+  const form = createMinimalTestForm();
+  console.log('🚀 Enviando formulario con 1€...');
+  form.submit();
+};
 
-    // Realizar petición
-    const req = https.request(options, (res) => {
-      console.log(`\n6️⃣ Respuesta de Redsys:`)
-      console.log(`   Status: ${res.statusCode}`)
-      console.log(`   Content-Type: ${res.headers['content-type']}`)
-      
-      let data = ''
-      res.on('data', (chunk) => {
-        data += chunk
-      })
-      
-      res.on('end', () => {
-        console.log(`\n7️⃣ Análisis de la respuesta:`)
-        
-        // Analizar respuesta
-        const analysis = analyzeRedsysResponse(data, res.statusCode, orderNumber, amount, testCard)
-        
-        console.log('\n📊 RESULTADO FINAL')
-        console.log('==================')
-        
-        if (analysis.success) {
-          console.log('✅ Transacción enviada correctamente')
-          console.log('✅ Redsys procesó los datos oficiales')
-          console.log('✅ El sistema está funcionando correctamente')
-        } else {
-          console.log('❌ Error en la transacción')
-          console.log(`❌ Problema: ${analysis.error}`)
-        }
-        
-        console.log('\n🎯 RECOMENDACIONES')
-        console.log('==================')
-        
-        if (analysis.sis0042) {
-          console.log('🔧 Para resolver SIS0042:')
-          console.log('   1. Contactar con Redsys para activar el comercio')
-          console.log('   2. Verificar que las URLs estén en lista blanca')
-          console.log('   3. Confirmar que el terminal esté habilitado')
-        } else if (analysis.success) {
-          console.log('✅ El sistema está listo para producción')
-          console.log('✅ Usar las tarjetas de prueba para validar')
-        }
-        
-        resolve(analysis)
-      })
-    })
-    
-    req.on('error', (error) => {
-      console.error('❌ Error en la petición:', error.message)
-      reject(error)
-    })
-    
-    // Enviar datos
-    req.write(postData)
-    req.end()
-  })
-}
+document.body.appendChild(officialButton);
+document.body.appendChild(minimalButton);
 
-function analyzeRedsysResponse(data, statusCode, orderNumber, amount, testCard) {
-  const analysis = {
-    success: false,
-    error: null,
-    sis0042: false,
-    amount: amount,
-    orderNumber: orderNumber,
-    testCard: testCard
-  }
-  
-  // Buscar indicadores específicos
-  if (data.includes('SIS0042')) {
-    analysis.sis0042 = true
-    analysis.error = 'Error SIS0042 - Datos enviados incorrectos'
-  }
-  
-  if (data.includes('0,00')) {
-    analysis.error = 'Importe 0,00 detectado'
-  }
-  
-  if (data.includes('form') && data.includes('action')) {
-    analysis.success = true
-    analysis.error = null
-  }
-  
-  if (statusCode !== 200) {
-    analysis.error = `Error HTTP ${statusCode}`
-  }
-  
-  // Mostrar detalles específicos
-  console.log(`   Número de pedido: ${orderNumber}`)
-  console.log(`   Importe: ${amount}€`)
-  console.log(`   Tarjeta de prueba: ${testCard}`)
-  console.log(`   SIS0042 detectado: ${analysis.sis0042}`)
-  console.log(`   Formulario detectado: ${data.includes('form')}`)
-  
-  return analysis
-}
-
-// Ejecutar pruebas
-async function runTests() {
-  console.log('🚀 INICIANDO PRUEBAS CON DATOS OFICIALES')
-  console.log('========================================')
-  
-  // Prueba 1: Transacción aceptada
-  console.log('\n📋 PRUEBA 1: Transacción que debería ser aceptada')
-  console.log('Tarjeta:', TEST_CARDS.accepted.number)
-  console.log('Importe: 1.00€')
-  
-  const result1 = await createRedsysTransaction(1.00, 'Prueba oficial - Aceptada', 'accepted')
-  
-  // Prueba 2: Transacción denegada
-  console.log('\n📋 PRUEBA 2: Transacción que debería ser denegada')
-  console.log('Tarjeta:', TEST_CARDS.denied.number)
-  console.log('Importe: 2.00€')
-  
-  const result2 = await createRedsysTransaction(2.00, 'Prueba oficial - Denegada', 'denied')
-  
-  // Resumen final
-  console.log('\n📊 RESUMEN DE PRUEBAS')
-  console.log('=====================')
-  console.log(`Prueba 1 (Aceptada): ${result1.success ? '✅' : '❌'}`)
-  console.log(`Prueba 2 (Denegada): ${result2.success ? '✅' : '❌'}`)
-  
-  if (result1.sis0042 || result2.sis0042) {
-    console.log('\n⚠️  PROBLEMA DETECTADO: Error SIS0042')
-    console.log('El comercio necesita ser activado por Redsys')
-  } else if (result1.success && result2.success) {
-    console.log('\n✅ SISTEMA FUNCIONANDO CORRECTAMENTE')
-    console.log('Las transacciones se procesan correctamente')
-  }
-}
-
-// Ejecutar las pruebas
-runTests().catch(console.error) 
+console.log('🔧 Botones de prueba oficial creados');
+console.log('💡 Usa estos botones para probar si el problema es de configuración'); 

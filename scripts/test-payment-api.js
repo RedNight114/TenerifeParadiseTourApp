@@ -1,121 +1,78 @@
-require('dotenv').config()
-const { createClient } = require('@supabase/supabase-js')
+require('dotenv').config({ path: '.env.local' })
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-)
+async function testPaymentAPI() {
+  console.log('🧪 TESTING PAYMENT API')
+  console.log('========================\n')
 
-// Usuario de prueba
-const testEmail = 'testuser@tenerifeparadise.com'
-const testPassword = 'test123456'
+  const testData = {
+    amount: 18.00,
+    reservationId: '4d7a591b-d143-4677-9c02-b5d81a2c89c2', // UUID válido
+    description: 'Reserva: Glamping'
+  }
 
-async function testPaymentApi() {
-  console.log('🧪 Probando API de pago...')
+  console.log('📤 Enviando datos a la API:', testData)
 
   try {
-    // 1. Login
-    const { data: { user }, error: loginError } = await supabase.auth.signInWithPassword({
-      email: testEmail,
-      password: testPassword
-    })
-
-    if (loginError) {
-      console.error('❌ Error en login:', loginError.message)
-      return
-    }
-    console.log('✅ Login exitoso:', user.email)
-
-    // 2. Obtener token de sesión
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session?.access_token) {
-      console.error('❌ No se pudo obtener el token de sesión')
-      return
-    }
-
-    // 3. Crear una reserva de prueba primero
-    const reservationData = {
-      user_id: user.id,
-      service_id: '9d2efab6-8323-4374-94a5-c7dbbd297630',
-      reservation_date: '2025-07-20',
-      reservation_time: '15:00',
-      guests: 1,
-      total_amount: 55,
-      status: 'pendiente',
-      payment_status: 'pendiente',
-      special_requests: null,
-      contact_name: 'Usuario de Prueba',
-      contact_email: testEmail,
-      contact_phone: '600000000'
-    }
-
-    console.log('📤 Creando reserva de prueba...')
-    const reservationResponse = await fetch('http://localhost:3000/api/reservations', {
+    // Simular la llamada a la API
+    const response = await fetch('http://localhost:3000/api/payment/create', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
       },
-      body: JSON.stringify(reservationData)
+      body: JSON.stringify(testData)
     })
 
-    if (!reservationResponse.ok) {
-      console.error('❌ Error creando reserva:', await reservationResponse.text())
-      return
-    }
+    const result = await response.json()
 
-    const reservation = await reservationResponse.json()
-    console.log('✅ Reserva creada:', reservation.id)
+    console.log('📥 Respuesta de la API:')
+    console.log('Status:', response.status)
+    console.log('Headers:', Object.fromEntries(response.headers.entries()))
+    console.log('Body:', JSON.stringify(result, null, 2))
 
-    // 4. Probar la API de pago
-    const paymentData = {
-      reservationId: reservation.id,
-      amount: 55,
-      description: 'Reserva: Tour Completo de la Isla'
-    }
+    if (response.ok) {
+      console.log('\n✅ API funcionando correctamente')
+      console.log('✅ Firma generada:', result.formData.Ds_Signature)
+      console.log('✅ Parámetros codificados:', result.formData.Ds_MerchantParameters)
+      console.log('✅ URL de Redsys:', result.redsysUrl)
+      
+      // Decodificar parámetros para verificación
+      const decodedParams = JSON.parse(Buffer.from(result.formData.Ds_MerchantParameters, 'base64').toString('utf8'))
+      console.log('\n📋 Parámetros decodificados:')
+      Object.entries(decodedParams).forEach(([key, value]) => {
+        console.log(`   ${key}: ${value}`)
+      })
 
-    console.log('📤 Probando API de pago...')
-    console.log('Datos:', JSON.stringify(paymentData, null, 2))
-
-    const paymentResponse = await fetch('http://localhost:3000/api/payment/create', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify(paymentData)
-    })
-
-    const paymentBody = await paymentResponse.json().catch(() => ({}))
-    console.log('\n📥 Respuesta de la API de pago:')
-    console.log('Status:', paymentResponse.status, paymentResponse.statusText)
-    console.log('Body:', paymentBody)
-
-    if (!paymentResponse.ok) {
-      console.error('❌ Error en la API de pago')
-      return
-    }
-
-    console.log('✅ Pago creado correctamente')
-    console.log('URL de Redsys:', paymentBody.redsysUrl)
-    console.log('Número de pedido:', paymentBody.orderNumber)
-
-    // 5. Limpiar - eliminar la reserva de prueba
-    const { error: deleteError } = await supabase
-      .from('reservations')
-      .delete()
-      .eq('id', reservation.id)
-
-    if (deleteError) {
-      console.error('⚠️ Error al eliminar reserva de prueba:', deleteError)
+      console.log('\n🎯 Próximo paso: Probar el formulario de envío a Redsys')
+      
+      // Crear formulario HTML para probar Redsys
+      console.log('\n📝 Formulario HTML para probar Redsys:')
+      console.log(`
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Redsys Payment</title>
+</head>
+<body>
+    <h1>Test Redsys Payment</h1>
+    <form action="${result.redsysUrl}" method="POST">
+        <input type="hidden" name="Ds_SignatureVersion" value="${result.formData.Ds_SignatureVersion}">
+        <input type="hidden" name="Ds_MerchantParameters" value="${result.formData.Ds_MerchantParameters}">
+        <input type="hidden" name="Ds_Signature" value="${result.formData.Ds_Signature}">
+        <button type="submit">Procesar Pago</button>
+    </form>
+</body>
+</html>
+      `)
     } else {
-      console.log('✅ Reserva de prueba eliminada')
+      console.error('\n❌ Error en la API:', result.error)
+      console.error('Detalles:', result.details)
     }
 
   } catch (error) {
-    console.error('❌ Error general:', error.message)
-    console.error('Stack trace:', error.stack)
+    console.error('\n❌ Error de conexión:', error.message)
+    console.log('\n💡 Asegúrate de que el servidor esté ejecutándose: npm run dev')
   }
 }
 
-testPaymentApi() 
+// Ejecutar la prueba
+testPaymentAPI().catch(console.error) 

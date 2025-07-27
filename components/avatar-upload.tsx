@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Camera, Upload, Loader2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string
@@ -65,6 +65,7 @@ export function AvatarUpload({
   const uploadAvatar = async (file: File) => {
     try {
       setUploading(true)
+      const client = getSupabaseClient()
 
       // Generar nombre único para el archivo
       const fileExt = file.name.split(".").pop()
@@ -74,7 +75,7 @@ export function AvatarUpload({
       const filePath = `${userId}/${fileName}`
 
       // Subir a Supabase Storage
-      const { error: uploadError } = await supabase.storage.from(BUCKET).upload(filePath, file, {
+      const { error: uploadError } = await client.storage.from(BUCKET).upload(filePath, file, {
         cacheControl: "3600",
         upsert: false,
       })
@@ -84,12 +85,12 @@ export function AvatarUpload({
       }
 
       // Obtener URL pública
-      const { data } = supabase.storage.from(BUCKET).getPublicUrl(filePath)
+      const { data } = client.storage.from(BUCKET).getPublicUrl(filePath)
 
       const publicUrl = data.publicUrl
 
       // Actualizar perfil en la base de datos
-      const { error: updateError } = await supabase.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId)
+      const { error: updateError } = await client.from("profiles").update({ avatar_url: publicUrl }).eq("id", userId)
 
       if (updateError) {
         throw updateError

@@ -69,10 +69,12 @@ export function RegisterModal({ isOpen, onClose }: RegisterModalProps) {
       const { error: signUpError } = await signUp(formData.email, formData.password, formData.fullName.trim())
 
       if (signUpError) {
-        if (signUpError.message.includes("User already registered")) {
+        const errorMessage = signUpError instanceof Error ? signUpError.message : String(signUpError)
+        
+        if (errorMessage.includes("User already registered")) {
           setError("Este email ya está registrado")
         } else {
-          setError(signUpError.message)
+          setError(errorMessage)
         }
       } else {
         setSuccess(true)

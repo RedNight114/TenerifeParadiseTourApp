@@ -42,9 +42,9 @@ export async function GET() {
 
     // Añadir páginas de servicios
     if (services) {
-      services.forEach(service => {
+      services.forEach((service: any) => {
         const lastmod = service.updated_at 
-          ? new Date(service.updated_at).toISOString()
+          ? new Date(String(service.updated_at)).toISOString()
           : currentDate
         
         sitemap += `

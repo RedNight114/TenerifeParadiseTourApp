@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import crypto from "crypto"
 import { confirmPaymentSchema, validateData } from "@/lib/validation-schemas"
 import { createValidationErrorResponse } from "@/lib/api-validation"
+import { generateRedsysSignature } from "@/lib/redsys-signature"
 
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
@@ -19,8 +20,6 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validation.data
 
-    console.log("Confirmando preautorización para reserva:", validatedData.reservationId)
-
     // Obtener la reserva
     const { data: reservation, error: fetchError } = await supabase
       .from("reservations")
@@ -29,15 +28,12 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (fetchError || !reservation) {
-      console.error("Reserva no encontrada:", validatedData.reservationId)
+      console.error("❌ CONFIRM - Reserva no encontrada:", validatedData.reservationId)
       return NextResponse.json({ error: "Reserva no encontrada" }, { status: 404 })
     }
 
     if (reservation.payment_status !== "preautorizado") {
-      console.error("Pago no está preautorizado:", {
-        reservationId: validatedData.reservationId,
-        currentStatus: reservation.payment_status
-      })
+      console.error("❌ CONFIRM - Pago no está preautorizado:", validatedData.reservationId)
       return NextResponse.json({ error: "El pago no está preautorizado" }, { status: 400 })
     }
 
@@ -62,11 +58,7 @@ export async function POST(request: NextRequest) {
         throw error
       }
 
-      console.log("Preautorización confirmada exitosamente:", {
-        reservationId: validatedData.reservationId,
-        authCode: confirmationResult.authCode,
-        responseCode: confirmationResult.responseCode
-      })
+      console.log("✅ CONFIRM - Preautorización confirmada:", validatedData.reservationId)
 
       return NextResponse.json({
         success: true,
@@ -115,8 +107,8 @@ async function confirmRedsysPreauthorization(reservation: any) {
     // Codificar parámetros en base64
     const merchantParametersBase64 = Buffer.from(JSON.stringify(merchantParameters)).toString("base64")
 
-    // Generar firma
-    const signature = generateSignature(orderNumber, merchantParametersBase64, secretKey)
+    // Generar firma usando la nueva función oficial de Redsys
+    const signature = generateRedsysSignature(secretKey, orderNumber, merchantParameters)
 
     // Datos para enviar a Redsys
     const requestData = {
@@ -175,14 +167,4 @@ async function confirmRedsysPreauthorization(reservation: any) {
   }
 }
 
-function generateSignature(order: string, merchantParameters: string, secretKey: string): string {
-  try {
-    const decodedKey = Buffer.from(secretKey, "base64")
-    const hmac = crypto.createHmac("sha256", decodedKey)
-    hmac.update(order + merchantParameters)
-    return hmac.digest("base64")
-  } catch (error) {
-    console.error("Error generando firma:", error)
-    throw new Error("Error al generar la firma de seguridad")
-  }
-}
+

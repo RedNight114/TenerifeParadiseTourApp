@@ -73,7 +73,12 @@ export function useAuthorization(): AuthorizationState {
         console.error('Error obteniendo permisos:', permissionsError)
         setPermissions([])
       } else {
-        setPermissions(userPermissions || [])
+        setPermissions((userPermissions || []).map((perm: any) => ({
+          permission_name: String(perm.permission_name),
+          resource: String(perm.resource),
+          action: String(perm.action),
+          description: String(perm.description)
+        })))
       }
 
       console.log('Autorización cargada:', {

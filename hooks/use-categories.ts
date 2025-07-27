@@ -20,7 +20,12 @@ export function useCategories() {
 
       if (error) throw error
 
-      setCategories(data || [])
+      setCategories((data || []).map((cat: any) => ({
+        id: String(cat.id),
+        name: String(cat.name),
+        description: cat.description ? String(cat.description) : undefined,
+        created_at: String(cat.created_at)
+      })))
       } catch (error) {
       setError(error instanceof Error ? error.message : "Error al cargar categorías")
     } finally {
@@ -41,7 +46,13 @@ export function useCategories() {
 
       if (error) throw error
 
-      setSubcategories(data || [])
+      setSubcategories((data || []).map((sub: any) => ({
+        id: String(sub.id),
+        name: String(sub.name),
+        description: sub.description ? String(sub.description) : undefined,
+        category_id: String(sub.category_id),
+        created_at: String(sub.created_at)
+      })))
       } catch (error) {
       setError(error instanceof Error ? error.message : "Error al cargar subcategorías")
     } finally {

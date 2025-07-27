@@ -1,22 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Configuración de linting y TypeScript
-  eslint: {
-    ignoreDuringBuilds: false,
-    dirs: ['app', 'components', 'hooks', 'lib'],
-  },
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-  
-  // Optimizaciones de rendimiento
-  compress: true,
-  poweredByHeader: false,
-  generateEtags: false,
-  
-  // Optimización de bundle
   experimental: {
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Configuración correcta para turbo
     turbo: {
       rules: {
         '*.svg': {
@@ -25,130 +10,48 @@ const nextConfig = {
         },
       },
     },
+    // Optimizaciones de rendimiento
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+    // Optimización de imágenes
+    optimizeCss: true,
+    // Compresión de bundles
+    compress: true,
   },
-  
-  // Headers de seguridad mejorados
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
-          {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains',
-          },
-        ],
-      },
-      {
-        source: '/api/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store, max-age=0',
-          },
-        ],
-      },
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/images/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/favicon.ico',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-    ]
-  },
-  
-  // Optimización de imágenes mejorada
+  // Configuración de imágenes para Vercel Blob Storage
   images: {
-    unoptimized: process.env.NODE_ENV === 'development',
-    formats: ['image/webp', 'image/avif'],
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    domains: [
-      'tenerifeparadisetoursexcursions.com',
-      'www.tenerifeparadisetoursexcursions.com',
-      'localhost',
-      'supabase.co',
-      '*.supabase.co',
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'kykyyqga68e5j72o.public.blob.vercel-storage.com',
+        port: '',
+        pathname: '/uploads/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+        port: '',
+        pathname: '/uploads/**',
+      },
     ],
-    minimumCacheTTL: 60,
+    // Optimizaciones de imagen
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 días
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // Optimización adicional
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
-  
-  // Configuración de redirecciones
-  async redirects() {
-    return [
-      {
-        source: '/admin',
-        destination: '/admin/dashboard',
-        permanent: true,
-      },
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-    ]
+  // Configuración básica
+  reactStrictMode: true,
+  swcMinify: true,
+  // Optimizaciones de compilación
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
   },
-  
-  // Configuración de rewrites para optimización
-  async rewrites() {
-    return [
-      {
-        source: '/robots.txt',
-        destination: '/api/robots',
-      },
-      {
-        source: '/sitemap.xml',
-        destination: '/api/sitemap',
-      },
-    ]
-  },
-  
-  // Optimización de webpack
+  // Optimizaciones de webpack
   webpack: (config, { dev, isServer }) => {
-    // Optimización para producción
+    // Optimizaciones solo para producción
     if (!dev && !isServer) {
       config.optimization.splitChunks = {
         chunks: 'all',
@@ -166,9 +69,95 @@ const nextConfig = {
           },
         },
       }
+      
+      // Optimización de CSS
+      config.optimization.minimize = true
     }
     
+    // Optimización de assets
+    config.module.rules.push({
+      test: /\.(png|jpe?g|gif|svg)$/i,
+      use: [
+        {
+          loader: 'image-webpack-loader',
+          options: {
+            mozjpeg: { progressive: true },
+            optipng: { enabled: false },
+            pngquant: { quality: [0.65, 0.90], speed: 4 },
+            gifsicle: { interlaced: false },
+            webp: { quality: 75 }
+          }
+        }
+      ]
+    })
+    
     return config
+  },
+  // Headers para optimización
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+        ],
+      },
+      {
+        source: '/images/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/fonts/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+        ],
+      },
+    ]
+  },
+  // Configuración de PWA
+  async rewrites() {
+    return [
+      {
+        source: '/sitemap.xml',
+        destination: '/api/sitemap',
+      },
+      {
+        source: '/robots.txt',
+        destination: '/api/robots',
+      },
+    ]
   },
 }
 

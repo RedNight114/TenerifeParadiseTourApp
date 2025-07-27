@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseClient } from "./supabase-optimized"
 
 // Tipos para autorización
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
@@ -21,10 +21,7 @@ export interface AuthorizationConfig {
 }
 
 // Cliente de Supabase para autorización
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabase = getSupabaseClient()
 
 // Función para obtener el perfil del usuario desde el token
 async function getUserProfile(request: NextRequest) {

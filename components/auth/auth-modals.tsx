@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuthModals } from "@/hooks/use-auth-modals"
-import { LoginModal } from "./login-modal"
+// LoginModal eliminado - no se usa
 import { RegisterModal } from "./register-modal"
 
 export function AuthModals() {
@@ -9,7 +9,7 @@ export function AuthModals() {
 
   return (
     <>
-      <LoginModal isOpen={isLoginOpen} onClose={closeLogin} />
+      {/* LoginModal eliminado - no se usa */}
       <RegisterModal isOpen={isRegisterOpen} onClose={closeRegister} />
     </>
   )

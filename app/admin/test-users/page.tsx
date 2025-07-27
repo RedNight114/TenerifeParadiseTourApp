@@ -66,17 +66,25 @@ export default function TestUsersPage() {
         if (profilesError) throw profilesError
 
         setUsers(
-          profiles.map((p) => ({
-            id: p.id,
-            email: p.email,
+          profiles.map((p: any) => ({
+            id: String(p.id),
+            email: String(p.email),
             email_confirmed_at: null,
             confirmed_at: null,
-            created_at: p.created_at,
-            role: p.role,
+            created_at: String(p.created_at),
+            role: p.role ? String(p.role) : undefined,
           })),
         )
       } else {
-        setUsers(authUsers || [])
+        setUsers(
+          (authUsers || []).map((u: any) => ({
+            id: String(u.id),
+            email: String(u.email),
+            email_confirmed_at: u.email_confirmed_at ? String(u.email_confirmed_at) : null,
+            confirmed_at: u.confirmed_at ? String(u.confirmed_at) : null,
+            created_at: String(u.created_at),
+          }))
+        )
       }
     } catch (err) {
       setError("Error al cargar usuarios")

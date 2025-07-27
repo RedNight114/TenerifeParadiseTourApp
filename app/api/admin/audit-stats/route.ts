@@ -57,18 +57,22 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
     }
 
     // Agrupar por acción
-    logs?.forEach((log) => {
-      stats.byAction[log.action] = (stats.byAction[log.action] || 0) + 1
-      stats.bySeverity[log.severity] = (stats.bySeverity[log.severity] || 0) + 1
-      if (log.user_id) {
-        stats.byUser[log.user_id] = (stats.byUser[log.user_id] || 0) + 1
+    logs?.forEach((log: any) => {
+      const action = String(log.action || 'unknown')
+      const severity = String(log.severity || 'info')
+      const userId = log.user_id ? String(log.user_id) : null
+      
+      stats.byAction[action] = (stats.byAction[action] || 0) + 1
+      stats.bySeverity[severity] = (stats.bySeverity[severity] || 0) + 1
+      if (userId) {
+        stats.byUser[userId] = (stats.byUser[userId] || 0) + 1
       }
     })
 
     // Crear timeline por día
     const timelineMap = new Map<string, number>()
-    logs?.forEach((log) => {
-      const date = new Date(log.created_at).toISOString().split("T")[0]
+    logs?.forEach((log: any) => {
+      const date = new Date(String(log.created_at || new Date())).toISOString().split("T")[0]
       timelineMap.set(date, (timelineMap.get(date) || 0) + 1)
     })
 
@@ -84,8 +88,8 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
         .select("id, full_name, email")
         .in("id", Object.keys(stats.byUser))
 
-      userData?.forEach((user) => {
-        userDetails[user.id] = {
+      userData?.forEach((user: any) => {
+        userDetails[String(user.id)] = {
           full_name: user.full_name,
           email: user.email,
         }
@@ -175,9 +179,9 @@ export async function POST(request: NextRequest) {
 
         // Detectar múltiples intentos fallidos
         const failedLoginsByUser: Record<string, number> = {}
-        recentLogs?.forEach(log => {
+        recentLogs?.forEach((log: any) => {
           if (log.action === 'login' && log.level === 'error' && log.user_id) {
-            failedLoginsByUser[log.user_id] = (failedLoginsByUser[log.user_id] || 0) + 1
+            failedLoginsByUser[String(log.user_id)] = (failedLoginsByUser[String(log.user_id)] || 0) + 1
           }
         })
 
@@ -216,10 +220,13 @@ export async function POST(request: NextRequest) {
           by_success: {} as Record<string, number>
         }
 
-        reportLogs?.forEach(log => {
-          reportStats.by_category[log.category] = (reportStats.by_category[log.category] || 0) + 1
-          reportStats.by_level[log.level] = (reportStats.by_level[log.level] || 0) + 1
-          const success = log.level === 'error' ? 'failed' : 'success'
+        reportLogs?.forEach((log: any) => {
+          const category = String(log.category || 'unknown')
+          const level = String(log.level || 'info')
+          const success = level === 'error' ? 'failed' : 'success'
+          
+          reportStats.by_category[category] = (reportStats.by_category[category] || 0) + 1
+          reportStats.by_level[level] = (reportStats.by_level[level] || 0) + 1
           reportStats.by_success[success] = (reportStats.by_success[success] || 0) + 1
         })
 

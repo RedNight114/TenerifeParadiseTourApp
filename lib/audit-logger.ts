@@ -1,4 +1,4 @@
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseClient } from "./supabase-optimized"
 
 // Tipos para el sistema de auditoría
 export interface AuditLogEntry {
@@ -64,10 +64,7 @@ export class AuditLogger {
     }
 
     if (this.config.enableDatabase) {
-      this.supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+      this.supabase = getSupabaseClient()
     }
 
     // Iniciar timer para flush automático
