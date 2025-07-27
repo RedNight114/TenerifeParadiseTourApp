@@ -56,19 +56,20 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   // Optimizaciones de webpack
-  webpack: (config, { dev, isServer }) => {
+  webpack: async (config, { dev, isServer }) => {
     // Configurar alias para path mapping (específico para Vercel)
+    const path = await import('path');
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': require('path').resolve(__dirname),
-      '@/components': require('path').resolve(__dirname, 'components'),
-      '@/lib': require('path').resolve(__dirname, 'lib'),
-      '@/hooks': require('path').resolve(__dirname, 'hooks'),
-      '@/app': require('path').resolve(__dirname, 'app'),
-      '@/public': require('path').resolve(__dirname, 'public'),
-      '@/styles': require('path').resolve(__dirname, 'styles'),
-      '@/types': require('path').resolve(__dirname, 'types'),
-      '@/utils': require('path').resolve(__dirname, 'utils'),
+      '@': path.resolve(__dirname),
+      '@/components': path.resolve(__dirname, 'components'),
+      '@/lib': path.resolve(__dirname, 'lib'),
+      '@/hooks': path.resolve(__dirname, 'hooks'),
+      '@/app': path.resolve(__dirname, 'app'),
+      '@/public': path.resolve(__dirname, 'public'),
+      '@/styles': path.resolve(__dirname, 'styles'),
+      '@/types': path.resolve(__dirname, 'types'),
+      '@/utils': path.resolve(__dirname, 'utils'),
     }
 
     // Optimizaciones solo para producción
