@@ -58,19 +58,17 @@ const nextConfig = {
   // Optimizaciones de webpack
   webpack: (config, { dev, isServer }) => {
     // Configurar alias para path mapping (específico para Vercel)
-    const path = require('path');
-    const __dirname = path.dirname(new URL(import.meta.url).pathname);
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(__dirname),
-      '@/components': path.resolve(__dirname, 'components'),
-      '@/lib': path.resolve(__dirname, 'lib'),
-      '@/hooks': path.resolve(__dirname, 'hooks'),
-      '@/app': path.resolve(__dirname, 'app'),
-      '@/public': path.resolve(__dirname, 'public'),
-      '@/styles': path.resolve(__dirname, 'styles'),
-      '@/types': path.resolve(__dirname, 'types'),
-      '@/utils': path.resolve(__dirname, 'utils'),
+      '@': '.',
+      '@/components': './components',
+      '@/lib': './lib',
+      '@/hooks': './hooks',
+      '@/app': './app',
+      '@/public': './public',
+      '@/styles': './styles',
+      '@/types': './types',
+      '@/utils': './utils',
     }
 
     // Optimizaciones solo para producción
