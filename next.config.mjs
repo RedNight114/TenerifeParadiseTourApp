@@ -60,15 +60,15 @@ const nextConfig = {
     // Configurar alias para path mapping (específico para Vercel)
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': '.',
-      '@/components': './components',
-      '@/lib': './lib',
-      '@/hooks': './hooks',
-      '@/app': './app',
-      '@/public': './public',
-      '@/styles': './styles',
-      '@/types': './types',
-      '@/utils': './utils',
+      '@': require('path').resolve(__dirname),
+      '@/components': require('path').resolve(__dirname, 'components'),
+      '@/lib': require('path').resolve(__dirname, 'lib'),
+      '@/hooks': require('path').resolve(__dirname, 'hooks'),
+      '@/app': require('path').resolve(__dirname, 'app'),
+      '@/public': require('path').resolve(__dirname, 'public'),
+      '@/styles': require('path').resolve(__dirname, 'styles'),
+      '@/types': require('path').resolve(__dirname, 'types'),
+      '@/utils': require('path').resolve(__dirname, 'utils'),
     }
 
     // Optimizaciones solo para producción
