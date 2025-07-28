@@ -6,9 +6,45 @@ import { Button } from "@/components/ui/button"
 import { useServicesAdvanced } from "@/hooks/use-services-advanced"
 import { AdvancedLoading, SectionLoading } from "@/components/advanced-loading"
 import { AdvancedError } from "@/components/advanced-error-handling"
+import { AfterHydration, SuppressHydrationWarning } from "@/components/hydration-safe"
 import { Star } from "lucide-react"
 
-export function FeaturedServices() {
+// Componente de fallback para el servidor
+function FeaturedServicesFallback() {
+  return (
+    <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+      <div className="container mx-auto px-4">
+        <div className="text-center mb-12">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="h-8 w-8 bg-yellow-500 rounded-full animate-pulse" />
+            <h2 className="text-3xl md:text-4xl font-bold text-gradient">Servicios Destacados</h2>
+            <div className="h-8 w-8 bg-yellow-500 rounded-full animate-pulse" />
+          </div>
+          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+            Nuestras experiencias más populares seleccionadas especialmente para ti
+          </p>
+        </div>
+        
+        {/* Skeleton loading para servicios */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-lg shadow-md overflow-hidden animate-pulse">
+              <div className="h-48 bg-gray-200" />
+              <div className="p-6 space-y-3">
+                <div className="h-4 bg-gray-200 rounded w-3/4" />
+                <div className="h-3 bg-gray-200 rounded w-1/2" />
+                <div className="h-8 bg-gray-200 rounded w-1/3" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// Componente principal que se renderiza en el cliente
+function FeaturedServicesContent() {
   const {
     services,
     isLoading,
@@ -123,5 +159,16 @@ export function FeaturedServices() {
         </div>
       </div>
     </section>
+  )
+}
+
+// Componente wrapper principal con estructura consistente
+export function FeaturedServices() {
+  return (
+    <SuppressHydrationWarning>
+      <AfterHydration fallback={<FeaturedServicesFallback />}>
+        <FeaturedServicesContent />
+      </AfterHydration>
+    </SuppressHydrationWarning>
   )
 } 

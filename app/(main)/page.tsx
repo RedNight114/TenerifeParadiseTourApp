@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/hero-section"
 import { CategoryShowcase } from "@/components/category-showcase"
 import { FeaturedServices } from "@/components/featured-services"
 import { GallerySection } from "@/components/gallery-section"
+import { SuppressHydrationWarning } from "@/components/hydration-safe"
 
 export default function HomePage() {
   const handleSearch = (filters: { query: string; category: string; date: string }) => {
@@ -18,18 +19,20 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Hero Section con búsqueda */}
-      <HeroSection onSearch={handleSearch} />
+    <SuppressHydrationWarning>
+      <div className="min-h-screen">
+        {/* Hero Section con búsqueda */}
+        <HeroSection onSearch={handleSearch} />
 
-      {/* Category Showcase */}
-      <CategoryShowcase onCategorySelect={handleCategorySelect} />
+        {/* Category Showcase */}
+        <CategoryShowcase onCategorySelect={handleCategorySelect} />
 
-      {/* Servicios Destacados */}
-      <FeaturedServices />
+        {/* Servicios Destacados - Con hidratación segura */}
+        <FeaturedServices />
 
-      {/* Gallery Section */}
-      <GallerySection />
-    </div>
+        {/* Gallery Section */}
+        <GallerySection />
+      </div>
+    </SuppressHydrationWarning>
   )
 } 

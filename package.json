@@ -52,7 +52,11 @@
     "vercel-build": "npm run build",
     "clean:cache": "node scripts/auto-cleanup.js",
     "dev:clean": "npm run clean:cache && npm run dev",
-    "build:clean": "npm run clean:cache && npm run build"
+    "build:clean": "npm run clean:cache && npm run build",
+    "fix:hydration": "node scripts/fix-hydration.js",
+    "fix:hydration:complete": "node scripts/complete-hydration-fix.js",
+    "dev:fix": "npm run fix:hydration && npm run dev",
+    "dev:fix:complete": "npm run fix:hydration:complete && npm run dev"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
