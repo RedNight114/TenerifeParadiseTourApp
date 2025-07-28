@@ -11,6 +11,8 @@ const geistMono = GeistMono
 export const metadata: Metadata = {
   title: "Tenerife Paradise Tours & Excursions",
   description: "Descubre la isla de Tenerife con nuestras excursiones y tours únicos.",
+  keywords: "Tenerife, tours, excursiones, turismo, Canarias, España",
+  metadataBase: new URL('https://www.tenerifeparadisetoursexcursions.com'),
 }
 
 export default function RootLayout({
@@ -19,7 +21,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
+      <head>
+        <link rel="icon" href="/favicon.ico" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
         <ThemeProvider
           attribute="class"

@@ -57,6 +57,10 @@
     "fix:hydration:complete": "node scripts/complete-hydration-fix.js",
     "test:navigation-recovery": "node scripts/test-navigation-recovery.js",
     "restore:components": "node scripts/restore-components.js",
+    "restore:conservative": "node scripts/conservative-restoration.js",
+    "add:cache-cleanup": "node -e \"require('./scripts/conservative-restoration.js').addComponentGradually('CacheCleanup', '@/components/cache-cleanup')\"",
+    "add:navigation-recovery": "node -e \"require('./scripts/conservative-restoration.js').addComponentGradually('NavigationRecovery', '@/components/navigation-recovery')\"",
+    "add:hydration-safe": "node -e \"require('./scripts/conservative-restoration.js').addComponentGradually('SuppressHydrationWarning', '@/components/hydration-safe')\"",
     "dev:fix": "npm run fix:hydration && npm run dev",
     "dev:fix:complete": "npm run fix:hydration:complete && npm run dev"
   },
