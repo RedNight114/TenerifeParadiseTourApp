@@ -55,6 +55,7 @@
     "build:clean": "npm run clean:cache && npm run build",
     "fix:hydration": "node scripts/fix-hydration.js",
     "fix:hydration:complete": "node scripts/complete-hydration-fix.js",
+    "test:navigation-recovery": "node scripts/test-navigation-recovery.js",
     "dev:fix": "npm run fix:hydration && npm run dev",
     "dev:fix:complete": "npm run fix:hydration:complete && npm run dev"
   },

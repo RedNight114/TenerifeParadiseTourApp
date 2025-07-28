@@ -3,18 +3,18 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/components/auth-provider"
-import { CookieBanner } from "@/components/cookie-banner"
 import { CacheCleanup } from "@/components/cache-cleanup"
+import { NavigationRecovery, ProblemDetector } from "@/components/navigation-recovery"
+import { SuppressHydrationWarning } from "@/components/hydration-safe"
+
+const geist = GeistSans
+const geistMono = GeistMono
 
 export const metadata: Metadata = {
-  title: {
-    default: "Tenerife Paradise Tours & Excursions",
-    template: "%s | Tenerife Paradise Tours & Excursions"
-  },
-  description: "Descubre las mejores experiencias en Tenerife. Tours, actividades, alquiler de vehículos y experiencias gastronómicas únicas en la isla.",
-  keywords: ["Tenerife", "tours", "excursiones", "actividades", "alquiler", "gastronomía", "turismo", "Canarias"],
+  title: "Tenerife Paradise Tours & Excursions",
+  description: "Descubre la isla de Tenerife con nuestras excursiones y tours únicos. Desde el corazón de la capital hasta los rincones más salvajes de la isla.",
+  keywords: "Tenerife, tours, excursiones, turismo, Canarias, España",
   authors: [{ name: "Tenerife Paradise Tours" }],
   creator: "Tenerife Paradise Tours",
   publisher: "Tenerife Paradise Tours",
@@ -23,31 +23,31 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://tenerife-paradise-tours.vercel.app'),
+  metadataBase: new URL('https://www.tenerifeparadisetoursexcursions.com'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
-    type: 'website',
-    locale: 'es_ES',
-    url: 'https://tenerife-paradise-tours.vercel.app',
-    title: 'Tenerife Paradise Tours & Excursions',
-    description: 'Descubre las mejores experiencias en Tenerife. Tours, actividades, alquiler de vehículos y experiencias gastronómicas únicas.',
+    title: "Tenerife Paradise Tours & Excursions",
+    description: "Descubre la isla de Tenerife con nuestras excursiones y tours únicos.",
+    url: 'https://www.tenerifeparadisetoursexcursions.com',
     siteName: 'Tenerife Paradise Tours',
     images: [
       {
-        url: '/images/hero-tenerife-sunset.jpg',
+        url: '/images/og-image.jpg',
         width: 1200,
         height: 630,
         alt: 'Tenerife Paradise Tours',
       },
     ],
+    locale: 'es_ES',
+    type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Tenerife Paradise Tours & Excursions',
-    description: 'Descubre las mejores experiencias en Tenerife',
-    images: ['/images/hero-tenerife-sunset.jpg'],
+    title: "Tenerife Paradise Tours & Excursions",
+    description: "Descubre la isla de Tenerife con nuestras excursiones y tours únicos.",
+    images: ['/images/twitter-image.jpg'],
   },
   robots: {
     index: true,
@@ -73,31 +73,51 @@ export default function RootLayout({
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
-        {/* Preload critical resources */}
-        <link rel="preload" href="/images/hero-tenerife-sunset.jpg" as="image" />
+        <link rel="icon" href="/favicon.ico" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0061A8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         
-        {/* DNS prefetch for external domains */}
-        <link rel="dns-prefetch" href="//kykyyqga68e5j72o.public.blob.vercel-storage.com" />
-        <link rel="dns-prefetch" href="//supabase.co" />
+        {/* Preconnect para mejorar rendimiento */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         
-        {/* Preconnect to external domains */}
-        <link rel="preconnect" href="https://kykyyqga68e5j72o.public.blob.vercel-storage.com" />
-        <link rel="preconnect" href="https://supabase.co" />
+        {/* DNS Prefetch para recursos externos */}
+        <link rel="dns-prefetch" href="//fonts.googleapis.com" />
+        <link rel="dns-prefetch" href="//fonts.gstatic.com" />
+        
+        {/* Preload de recursos críticos */}
+        <link rel="preload" href="/fonts/GeistVF.woff" as="font" type="font/woff" crossOrigin="anonymous" />
+        <link rel="preload" href="/fonts/GeistMonoVF.woff" as="font" type="font/woff" crossOrigin="anonymous" />
       </head>
-      <body className={`${GeistSans.variable} ${GeistMono.variable} font-sans antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            {children}
-            <Toaster />
-            <CookieBanner />
-            <CacheCleanup showButton={true} autoCleanup={false} />
-          </AuthProvider>
-        </ThemeProvider>
+      <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
+        <SuppressHydrationWarning>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AuthProvider>
+              {/* Sistema de limpieza de caché */}
+              <CacheCleanup />
+              
+              {/* Sistema de recuperación de navegación */}
+              <NavigationRecovery 
+                showOnError={true}
+                autoHide={false}
+                hideDelay={15000}
+              />
+              
+              {/* Detector de problemas */}
+              <ProblemDetector />
+              
+              {/* Contenido principal */}
+              {children}
+            </AuthProvider>
+          </ThemeProvider>
+        </SuppressHydrationWarning>
       </body>
     </html>
   )
