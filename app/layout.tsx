@@ -4,6 +4,7 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
+import { CacheCleanup } from "@/components/cache-cleanup"
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -34,6 +35,8 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
+            {/* Sistema de limpieza de caché */}
+            <CacheCleanup />
             {children}
           </AuthProvider>
         </ThemeProvider>
