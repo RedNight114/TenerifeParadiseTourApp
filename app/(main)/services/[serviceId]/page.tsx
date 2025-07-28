@@ -325,7 +325,7 @@ export default function ServiceDetailsPage() {
     }))
   }
 
-  if (servicesLoading || authLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 pt-20 flex items-center justify-center">
         <div className="text-center">
