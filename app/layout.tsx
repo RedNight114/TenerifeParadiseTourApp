@@ -5,6 +5,8 @@ import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
 import { CacheCleanup } from "@/components/cache-cleanup"
+import { SuppressHydrationWarning } from "@/components/hydration-safe"
+import { NavigationRecovery, ProblemDetector } from "@/components/navigation-recovery"
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -28,18 +30,25 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <AuthProvider>
-            {/* Sistema de limpieza de caché */}
-            <CacheCleanup />
-            {children}
-          </AuthProvider>
-        </ThemeProvider>
+        <SuppressHydrationWarning>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="light"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AuthProvider>
+              {/* Sistema de limpieza de caché */}
+              <CacheCleanup />
+              {/* Sistema de recuperación de navegación */}
+              <NavigationRecovery showOnError={true} autoHide={false} hideDelay={15000} />
+              {/* Detector de problemas */}
+              <ProblemDetector />
+              {/* Contenido principal */}
+              {children}
+            </AuthProvider>
+          </ThemeProvider>
+        </SuppressHydrationWarning>
       </body>
     </html>
   )
