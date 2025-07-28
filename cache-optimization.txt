@@ -1,0 +1,33 @@
+// Optimización de caché para use-services.ts
+// Agregar al inicio del archivo:
+
+// Cache duration: 10 minutes (aumentado de 5 minutos)
+const CACHE_DURATION = 10 * 60 * 1000
+
+// Prefetch services on mount
+useEffect(() => {
+  const prefetchServices = async () => {
+    if (services.length === 0) {
+      await fetchServices()
+    }
+  }
+  
+  prefetchServices()
+}, []) // Solo se ejecuta una vez al montar
+
+// Optimizar fetchServices con mejor caché
+const fetchServices = useCallback(async (forceRefresh = false) => {
+  try {
+    const now = Date.now()
+    
+    // Check if we should use cached data (mejorada)
+    if (!forceRefresh && services.length > 0 && (now - lastFetch) < CACHE_DURATION) {
+      console.log('📦 Using cached services data (cache valid for', Math.round((CACHE_DURATION - (now - lastFetch)) / 1000), 'seconds)')
+      return
+    }
+
+    // ... resto del código existente
+  } catch (err) {
+    // ... manejo de errores existente
+  }
+}, [services.length, lastFetch])

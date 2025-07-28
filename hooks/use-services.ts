@@ -24,8 +24,8 @@ export function useServices(): UseServicesReturn {
   const [error, setError] = useState<string | null>(null)
   const [lastFetch, setLastFetch] = useState<number>(0)
 
-  // Cache duration: 5 minutes
-  const CACHE_DURATION = 5 * 60 * 1000
+  // Cache duration: 10 minutes (aumentado para mejor rendimiento)
+  const CACHE_DURATION = 10 * 60 * 1000
 
   const fetchServices = useCallback(async (forceRefresh = false) => {
     try {
@@ -329,9 +329,16 @@ export function useServices(): UseServicesReturn {
     return grouped
   }, [services])
 
+  // Prefetch services on mount para mejor rendimiento
   useEffect(() => {
-    fetchServices()
-  }, [fetchServices])
+    const prefetchServices = async () => {
+      if (services.length === 0) {
+        await fetchServices()
+      }
+    }
+    
+    prefetchServices()
+  }, []) // Solo se ejecuta una vez al montar
 
   return {
     services,
