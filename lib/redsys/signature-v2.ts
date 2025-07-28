@@ -131,9 +131,8 @@ export function generateRedsysSignatureV2(
       console.log(`  - Hex: ${secretKey.toString('hex')}`);
     }
 
-    // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES CBC
-    const iv = Buffer.alloc(8, 0); // IV de 8 bytes a cero
-    const cipher = crypto.createCipheriv('des-ede3-cbc', secretKey, iv);
+      // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
+  const cipher = crypto.createCipheriv('des-ede3', secretKey, null);
     cipher.setAutoPadding(true);
 
     let encryptedOrder = cipher.update(orderNumber, 'utf8');
@@ -144,22 +143,21 @@ export function generateRedsysSignatureV2(
     debugInfo.derivedKeyBase64 = encryptedOrder.toString('base64');
 
     if (debug) {
-      console.log('🔍 PASO 3 - Cifrado 3DES CBC:');
+      console.log('🔍 PASO 3 - Cifrado 3DES ECB:');
       console.log(`  - Order original: ${orderNumber}`);
       console.log(`  - Order length: ${orderNumber.length} caracteres`);
-      console.log(`  - IV (hex): ${iv.toString('hex')}`);
       console.log(`  - Cifrado (hex): ${encryptedOrder.toString('hex')}`);
       console.log(`  - Cifrado (base64): ${encryptedOrder.toString('base64')}`);
       console.log(`  - Longitud cifrado: ${encryptedOrder.length} bytes`);
     }
 
-    // 🔍 PASO 4: ORDENAR PARÁMETROS ALFABÉTICAMENTE
+    // 🔍 PASO 4: ORDENAR PARÁMETROS ALFABÉTICAMENTE (ESTÁNDAR REDSYS)
     const orderedParams = Object.fromEntries(
       Object.entries(merchantParams).sort(([a], [b]) => a.localeCompare(b))
     );
 
     if (debug) {
-      console.log('🔍 PASO 4 - Parámetros ordenados:');
+      console.log('🔍 PASO 4 - Parámetros ordenados alfabéticamente:');
       console.log(JSON.stringify(orderedParams, null, 2));
     }
 
@@ -255,4 +253,91 @@ export function verifyRedsysSignature(
   signature: string
 ): boolean {
   return verifyRedsysSignatureV2(secretKeyBase64, orderNumber, merchantParams, signature);
+} 
+
+/**
+ * Verifica la firma de Redsys MANTENIENDO ORDEN ORIGINAL
+ * Para verificar firmas recibidas de Redsys
+ */
+export function verifyRedsysSignatureV2Original(
+  secretKeyBase64: string,
+  orderNumber: string,
+  merchantParams: Record<string, string>,
+  signature: string,
+  options: RedsysSignatureOptions = {}
+): boolean {
+  try {
+    const { debug = false } = options;
+    
+    // 🔍 PASO 1: VALIDAR ENTRADAS
+    if (debug) {
+      validateSecretKey(secretKeyBase64);
+      validateOrderNumber(orderNumber);
+      validateMerchantParams(merchantParams);
+    }
+
+    // 🔍 PASO 2: DECODIFICAR CLAVE SECRETA
+    const secretKey = Buffer.from(secretKeyBase64, 'base64');
+
+    if (debug) {
+      console.log('🔍 PASO 2 - Clave secreta:');
+      console.log(`  - Base64: ${secretKeyBase64}`);
+      console.log(`  - Longitud: ${secretKey.length} bytes`);
+      console.log(`  - Hex: ${secretKey.toString('hex')}`);
+    }
+
+    // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
+    const cipher = crypto.createCipheriv('des-ede3', secretKey, null);
+    cipher.setAutoPadding(true);
+
+    let encryptedOrder = cipher.update(orderNumber, 'utf8');
+    encryptedOrder = Buffer.concat([encryptedOrder, cipher.final()]);
+
+    if (debug) {
+      console.log('🔍 PASO 3 - Cifrado 3DES ECB:');
+      console.log(`  - Order original: ${orderNumber}`);
+      console.log(`  - Order length: ${orderNumber.length} caracteres`);
+      console.log(`  - Cifrado (hex): ${encryptedOrder.toString('hex')}`);
+      console.log(`  - Cifrado (base64): ${encryptedOrder.toString('base64')}`);
+      console.log(`  - Longitud cifrado: ${encryptedOrder.length} bytes`);
+    }
+
+    // 🔍 PASO 4: MANTENER ORDEN ORIGINAL (NO ORDENAR)
+    const orderedParams = merchantParams; // Mantener orden original para verificación
+
+    if (debug) {
+      console.log('🔍 PASO 4 - Parámetros (orden original):');
+      console.log(JSON.stringify(orderedParams, null, 2));
+    }
+
+    // 🔍 PASO 5: SERIALIZAR A JSON Y BASE64 (ORDEN ORIGINAL)
+    const merchantParamsJson = JSON.stringify(orderedParams);
+    const merchantParamsBase64 = Buffer.from(merchantParamsJson, 'utf8').toString('base64');
+
+    if (debug) {
+      console.log('🔍 PASO 5 - Serialización (orden original):');
+      console.log(`  - JSON length: ${merchantParamsJson.length} caracteres`);
+      console.log(`  - JSON: ${merchantParamsJson}`);
+      console.log(`  - Base64: ${merchantParamsBase64}`);
+    }
+
+    // 🔍 PASO 6: CALCULAR HMAC-SHA256
+    const hmac = crypto.createHmac('sha256', encryptedOrder);
+    hmac.update(merchantParamsBase64);
+    const calculatedSignature = hmac.digest('base64');
+
+    if (debug) {
+      console.log('🔍 PASO 6 - Firma HMAC:');
+      console.log(`  - Clave derivada (hex): ${encryptedOrder.toString('hex')}`);
+      console.log(`  - Datos a firmar: ${merchantParamsBase64}`);
+      console.log(`  - Firma calculada: ${calculatedSignature}`);
+      console.log(`  - Firma recibida: ${signature}`);
+    }
+
+    return calculatedSignature === signature;
+  } catch (error) {
+    console.error('❌ ERROR EN VERIFICACIÓN DE FIRMA (ORDEN ORIGINAL):');
+    console.error(error);
+    return false;
+  }
 } 

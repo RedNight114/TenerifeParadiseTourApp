@@ -22,7 +22,7 @@ export function generateRedsysSignature(secretKeyBase64: string, orderNumber: st
   // Paso 3: Usar el resultado cifrado en binario como clave derivada
   const derivedKey = encrypted;
   
-  // Paso 4: Convertir parámetros a JSON y luego a Base64
+  // Paso 4: Convertir parámetros a JSON (mantener orden original) y luego a Base64
   const merchantParametersJson = JSON.stringify(merchantParams);
   const merchantParametersBase64 = Buffer.from(merchantParametersJson, 'utf8').toString('base64');
   

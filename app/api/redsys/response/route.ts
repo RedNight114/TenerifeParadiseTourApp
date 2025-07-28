@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRedsysSignature } from '@/lib/redsys/signature';
+import { verifyRedsysSignatureV2 } from '@/lib/redsys/signature-v2';
 import { createClient } from '@supabase/supabase-js';
 
 const SECRET_KEY = process.env.REDSYS_SECRET_KEY!;
@@ -11,7 +11,7 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 async function handleRedsysResponse(params: any, signature: string) {
   const merchantParams = JSON.parse(Buffer.from(params, 'base64').toString('utf8'));
   const orderNumber = merchantParams.DS_MERCHANT_ORDER || merchantParams.Ds_Merchant_Order;
-  const isValid = verifyRedsysSignature(SECRET_KEY, orderNumber, merchantParams, signature);
+  const isValid = verifyRedsysSignatureV2(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
 
   if (!isValid) {
     await supabase.from('payments').insert({

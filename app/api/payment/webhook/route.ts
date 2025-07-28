@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRedsysSignatureV2 } from '@/lib/redsys/signature-v2';
+import { verifyRedsysSignatureV2Original } from '@/lib/redsys/signature-v2';
 import { createClient } from '@supabase/supabase-js';
 
 const SECRET_KEY = process.env.REDSYS_SECRET_KEY!;
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
     console.log('Order number:', orderNumber);
 
     // Verificar firma con la nueva implementación CBC
-    const isValid = verifyRedsysSignatureV2(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
+    const isValid = verifyRedsysSignatureV2Original(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
     
     console.log('Verificación de firma:', isValid ? '✅ VÁLIDA' : '❌ INVÁLIDA');
 

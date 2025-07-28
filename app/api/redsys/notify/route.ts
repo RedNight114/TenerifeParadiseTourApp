@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyRedsysSignature } from '@/lib/redsys/signature';
+import { verifyRedsysSignatureV2 } from '@/lib/redsys/signature-v2';
 import { createClient } from '@supabase/supabase-js';
 
 const SECRET_KEY = process.env.REDSYS_SECRET_KEY!;
@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
     const merchantParams = JSON.parse(Buffer.from(merchantParametersBase64, 'base64').toString('utf8'));
     const orderNumber = merchantParams.DS_MERCHANT_ORDER || merchantParams.Ds_Merchant_Order;
 
-    // Verificar firma
-    const isValid = verifyRedsysSignature(SECRET_KEY, orderNumber, merchantParams, signature);
+    // Verificar firma con la implementación ECB estándar
+    const isValid = verifyRedsysSignatureV2(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
     if (!isValid) {
       // Registrar error en la base de datos para debug
       await supabase.from('payments').insert({
