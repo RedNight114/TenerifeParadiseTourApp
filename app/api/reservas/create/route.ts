@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { generateRedsysSignature } from '@/lib/redsys/signature';
+import { generateRedsysSignatureV2 } from '@/lib/redsys/signature-v2';
 
 export async function POST(req: NextRequest) {
   try {
@@ -18,18 +18,15 @@ export async function POST(req: NextRequest) {
       contact_phone
     } = body;
 
-    // Validar datos requeridos
     if (!user_id || !service_id || !total_amount) {
       return new NextResponse('Datos de reserva incompletos', { status: 400 });
     }
 
-    // Crear cliente Supabase
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Crear la reserva en Supabase
     const { data: reservation, error: reservationError } = await supabase
       .from('reservations')
       .insert({
@@ -54,21 +51,20 @@ export async function POST(req: NextRequest) {
       return new NextResponse('Error al crear la reserva', { status: 500 });
     }
 
-    // 🔥 CONFIGURACIÓN REDSYS REAL CON CORRECCIONES
-    const MERCHANT_CODE = process.env.REDSYS_MERCHANT_CODE!; // 367529286
-    const TERMINAL = process.env.REDSYS_TERMINAL!; // 1
+    // 🔥 CONFIGURACIÓN REDSYS CORREGIDA PARA EVITAR SIS0042
+    const MERCHANT_CODE = process.env.REDSYS_MERCHANT_CODE!;
+    const TERMINAL = process.env.REDSYS_TERMINAL!;
     const SECRET_KEY = process.env.REDSYS_SECRET_KEY!;
     const CURRENCY = '978'; // EUR
     const TRANSACTION_TYPE = '1'; // Pre-autorización
 
-    // Generar número de orden único (usar ID de reserva)
     // 🔥 CORRECCIÓN CRÍTICA: Exactamente 12 caracteres para Redsys
     const order = reservation.id.replace(/-/g, '').slice(0, 12).padEnd(12, '0');
     
     // Convertir monto a formato Redsys (centavos, 12 dígitos)
     const amountCents = Math.round(Number(total_amount) * 100).toString().padStart(12, '0');
 
-    // Generar parámetros Redsys SOLO con los campos obligatorios
+    // 🔥 CONFIGURACIÓN CORRECTA: Incluir URLs para que coincida con Redsys
     const merchantParams = {
       DS_MERCHANT_AMOUNT: amountCents,
       DS_MERCHANT_ORDER: order,
@@ -76,9 +72,9 @@ export async function POST(req: NextRequest) {
       DS_MERCHANT_CURRENCY: CURRENCY,
       DS_MERCHANT_TRANSACTIONTYPE: TRANSACTION_TYPE,
       DS_MERCHANT_TERMINAL: TERMINAL,
-      DS_MERCHANT_MERCHANTURL: `${process.env.NEXT_PUBLIC_SITE_URL}/api/redsys/notify`, // 🔥 VOLVER A URLs reales
-      DS_MERCHANT_URLOK: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`, // 🔥 VOLVER A URLs reales
-      DS_MERCHANT_URLKO: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado` // 🔥 VOLVER A URLs reales
+      DS_MERCHANT_MERCHANTURL: `${process.env.NEXT_PUBLIC_SITE_URL}/api/redsys/notify`,
+      DS_MERCHANT_URLOK: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`,
+      DS_MERCHANT_URLKO: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`
     };
 
     // 🔥 CORRECCIÓN CRÍTICA: Ordenación alfabética para Redsys
@@ -87,7 +83,8 @@ export async function POST(req: NextRequest) {
     );
 
     // Generar firma con parámetros ordenados
-    const signature = generateRedsysSignature(SECRET_KEY, order, orderedParams);
+    const signatureResult = generateRedsysSignatureV2(SECRET_KEY, order, orderedParams, { debug: true });
+    const signature = signatureResult.signature;
     
     // Generar Base64 con parámetros ordenados
     const merchantParametersJson = JSON.stringify(orderedParams);
@@ -111,7 +108,7 @@ export async function POST(req: NextRequest) {
     console.log('SECRET_KEY (base64):', SECRET_KEY);
     console.log('ENVIRONMENT:', ENVIRONMENT);
 
-    // Generar HTML del formulario Redsys (autoenvío)
+    // 🔥 CORRECCIÓN: Formulario con solo parámetros obligatorios
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
