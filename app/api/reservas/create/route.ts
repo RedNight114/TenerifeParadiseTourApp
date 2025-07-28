@@ -61,18 +61,24 @@ export async function POST(req: NextRequest) {
     // 🔥 CORRECCIÓN CRÍTICA: Exactamente 12 caracteres para Redsys
     const order = reservation.id.replace(/-/g, '').slice(0, 12).padEnd(12, '0');
     
+    // Actualizar la reserva con el order_number
+    await supabase
+      .from('reservations')
+      .update({ order_number: order })
+      .eq('id', reservation.id);
+    
     // Convertir monto a formato Redsys (centavos, 12 dígitos)
     const amountCents = Math.round(Number(total_amount) * 100).toString().padStart(12, '0');
 
-    // 🔥 CONFIGURACIÓN CORRECTA: Incluir URLs para que coincida con Redsys
+    // 🔥 CONFIGURACIÓN CORREGIDA: Orden específico para Redsys
     const merchantParams = {
       DS_MERCHANT_AMOUNT: amountCents,
-      DS_MERCHANT_ORDER: order,
-      DS_MERCHANT_MERCHANTCODE: MERCHANT_CODE,
       DS_MERCHANT_CURRENCY: CURRENCY,
-      DS_MERCHANT_TRANSACTIONTYPE: TRANSACTION_TYPE,
+      DS_MERCHANT_MERCHANTCODE: MERCHANT_CODE,
+      DS_MERCHANT_ORDER: order,
       DS_MERCHANT_TERMINAL: TERMINAL,
-      DS_MERCHANT_MERCHANTURL: `${process.env.NEXT_PUBLIC_SITE_URL}/api/redsys/notify`,
+      DS_MERCHANT_TRANSACTIONTYPE: TRANSACTION_TYPE,
+      DS_MERCHANT_MERCHANTURL: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/webhook`,
       DS_MERCHANT_URLOK: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`,
       DS_MERCHANT_URLKO: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`
     };

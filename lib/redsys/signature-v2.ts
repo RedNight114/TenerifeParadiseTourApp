@@ -5,7 +5,7 @@ import crypto from 'crypto';
  * 
  * Este módulo implementa el algoritmo de firma oficial de Redsys según la documentación:
  * 1. Decodificar clave secreta de Base64 a Buffer (24 bytes para 3DES)
- * 2. Cifrar DS_MERCHANT_ORDER con 3DES ECB (sin IV)
+ * 2. Cifrar DS_MERCHANT_ORDER con 3DES CBC (IV de 8 bytes a cero)
  * 3. Usar resultado como clave derivada para HMAC-SHA256
  * 4. Firmar merchantParameters (JSON → UTF-8 → Base64)
  * 5. Devolver firma en Base64 estándar
@@ -131,8 +131,9 @@ export function generateRedsysSignatureV2(
       console.log(`  - Hex: ${secretKey.toString('hex')}`);
     }
 
-    // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
-    const cipher = crypto.createCipheriv('des-ede3', secretKey, null);
+    // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES CBC
+    const iv = Buffer.alloc(8, 0); // IV de 8 bytes a cero
+    const cipher = crypto.createCipheriv('des-ede3-cbc', secretKey, iv);
     cipher.setAutoPadding(true);
 
     let encryptedOrder = cipher.update(orderNumber, 'utf8');
@@ -143,9 +144,10 @@ export function generateRedsysSignatureV2(
     debugInfo.derivedKeyBase64 = encryptedOrder.toString('base64');
 
     if (debug) {
-      console.log('🔍 PASO 3 - Cifrado 3DES:');
+      console.log('🔍 PASO 3 - Cifrado 3DES CBC:');
       console.log(`  - Order original: ${orderNumber}`);
       console.log(`  - Order length: ${orderNumber.length} caracteres`);
+      console.log(`  - IV (hex): ${iv.toString('hex')}`);
       console.log(`  - Cifrado (hex): ${encryptedOrder.toString('hex')}`);
       console.log(`  - Cifrado (base64): ${encryptedOrder.toString('base64')}`);
       console.log(`  - Longitud cifrado: ${encryptedOrder.length} bytes`);

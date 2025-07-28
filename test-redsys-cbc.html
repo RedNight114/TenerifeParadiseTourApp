@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prueba Redsys - 3DES CBC</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .info {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196f3;
+        }
+        .warning {
+            background-color: #fff3e0;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ff9800;
+        }
+        button {
+            background-color: #4caf50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .signature-info {
+            background-color: #f1f8e9;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            border-left: 4px solid #8bc34a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Prueba Redsys - 3DES CBC</h1>
+        
+        <div class="info">
+            <strong>Información de la prueba:</strong><br>
+            • Algoritmo: HMAC_SHA256_V1<br>
+            • Cifrado: 3DES CBC con IV de 8 bytes a cero<br>
+            • Padding: PKCS5/7 activado<br>
+            • Entorno: Pruebas (sis-t.redsys.es)
+        </div>
+
+        <div class="warning">
+            <strong>⚠️ Nota importante:</strong><br>
+            Esta es una prueba con la nueva implementación de 3DES CBC. 
+            La firma ha sido generada con el IV correcto (0000000000000000).
+        </div>
+
+        <form id="redsysForm" action="https://sis-t.redsys.es:25443/sis/realizarPago" method="POST">
+            <div class="form-group">
+                <label for="Ds_SignatureVersion">Ds_SignatureVersion:</label>
+                <input type="text" id="Ds_SignatureVersion" name="Ds_SignatureVersion" value="HMAC_SHA256_V1" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="Ds_MerchantParameters">Ds_MerchantParameters:</label>
+                <input type="text" id="Ds_MerchantParameters" name="Ds_MerchantParameters" value="eyJEU19NRVJDSEFOVF9BTU9VTlQiOiIwMDAwMDAwMTgwMDAiLCJEU19NRVJDSEFOVF9DVVJSRU5DWSI6Ijk3OCIsIkRTX01FUkNIQU5UX01FUkNIQU5UQ09ERSI6IjM2NzUyOTI4NiIsIkRTX01FUkNIQU5UX09SREVSIjoidGVzdHJlc2VydmF0IiwiRFNfTUVSQ0hBTlRfVEVSTUlOQUwiOiIxIiwiRFNfTUVSQ0hBTlRfVFJBTlNBQ1RJT05UWVBFIjoiMSJ9" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="Ds_Signature">Ds_Signature:</label>
+                <input type="text" id="Ds_Signature" name="Ds_Signature" value="a5bVlu7PeU26MCsB/MSNX2f6GcH3lJ8Dy5M9Hjk/Cts=" readonly>
+            </div>
+
+            <button type="submit">🚀 Enviar a Redsys (3DES CBC)</button>
+        </form>
+
+        <div class="signature-info">
+            <strong>📋 Datos de la firma (3DES CBC):</strong><br>
+            • Order: testreservat<br>
+            • Amount: 000000018000 (180.00 EUR)<br>
+            • Merchant Code: 367529286<br>
+            • Terminal: 1<br>
+            • Transaction Type: 1 (Pre-autorización)<br>
+            • IV: 0000000000000000<br>
+            • Cifrado (hex): 59d47c5db45bc1df94487dcd1d9e647f<br>
+            • Firma: a5bVlu7PeU26MCsB/MSNX2f6GcH3lJ8Dy5M9Hjk/Cts=
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('redsysForm').addEventListener('submit', function(e) {
+            console.log('🚀 Enviando formulario a Redsys con 3DES CBC...');
+        });
+    </script>
+</body>
+</html> 
