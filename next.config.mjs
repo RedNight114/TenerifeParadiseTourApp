@@ -1,29 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Configuración mínima para evitar errores de webpack
+  reactStrictMode: false,
+  swcMinify: false,
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    // Deshabilitar características experimentales
+    turbo: false,
+    optimizePackageImports: [],
   },
+  // Configuración básica de imágenes
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'kykyyqga68e5j72o.public.blob.vercel-storage.com',
-        port: '',
-        pathname: '/uploads/**',
-      },
-    ],
+    unoptimized: true,
     dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
-  reactStrictMode: true,
-  swcMinify: true,
+  // Deshabilitar optimizaciones problemáticas
   eslint: {
     ignoreDuringBuilds: true,
   },
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Configuración mínima de webpack
   webpack: (config, { dev, isServer }) => {
+    // Configuración básica de alias
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': '.',
@@ -32,24 +31,27 @@ const nextConfig = {
       '@/hooks': './hooks',
       '@/app': './app',
     }
+    
+    // Deshabilitar optimizaciones problemáticas
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: false,
+      minimize: false,
+    }
+    
+    // Configuración para evitar errores de react-server-dom
+    config.resolve.fallback = {
+      ...config.resolve.fallback,
+      fs: false,
+      net: false,
+      tls: false,
+    }
+    
     return config
   },
+  // Headers mínimos
   async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-        ],
-      },
-    ]
+    return []
   },
 }
 
