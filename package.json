@@ -62,7 +62,8 @@
     "add:navigation-recovery": "node -e \"require('./scripts/conservative-restoration.js').addComponentGradually('NavigationRecovery', '@/components/navigation-recovery')\"",
     "add:hydration-safe": "node -e \"require('./scripts/conservative-restoration.js').addComponentGradually('SuppressHydrationWarning', '@/components/hydration-safe')\"",
     "dev:fix": "npm run fix:hydration && npm run dev",
-    "dev:fix:complete": "npm run fix:hydration:complete && npm run dev"
+    "dev:fix:complete": "npm run fix:hydration:complete && npm run dev",
+    "dev:turbo": "next dev --turbo"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

@@ -3,7 +3,7 @@ const nextConfig = {
   reactStrictMode: false,
   swcMinify: true,
   experimental: {
-    // Configuración mínima de Turbopack
+    // Configuración de prueba para Turbopack
     turbo: {
       resolveAlias: {
         '@': '.',
@@ -33,8 +33,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  webpack: (config, { dev, isServer }) => {
-    // Configuración de webpack
+  webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': '.',
@@ -45,7 +44,6 @@ const nextConfig = {
     }
     return config
   },
-  // Configuración adicional para estabilidad
   poweredByHeader: false,
   compress: true,
   generateEtags: false,

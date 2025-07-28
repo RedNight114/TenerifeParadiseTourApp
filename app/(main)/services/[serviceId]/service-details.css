@@ -1,0 +1,10 @@
+/* Ocultar Navbar y Footer del layout principal en páginas de detalles de servicios */
+.service-details-page nav:first-of-type,
+.service-details-page footer:first-of-type {
+  display: none !important;
+}
+
+/* Asegurar que el contenido ocupe toda la pantalla */
+.service-details-page {
+  min-height: 100vh;
+} 

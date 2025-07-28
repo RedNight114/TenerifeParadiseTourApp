@@ -97,6 +97,19 @@ export default function ReservationsPage() {
     }
   }
 
+  const getPaymentStatusBadge = (paymentStatus: string) => {
+    switch (paymentStatus) {
+      case "pagado":
+        return <Badge className="bg-green-100 text-green-800 ml-2">Pago realizado</Badge>
+      case "pendiente":
+        return <Badge className="bg-yellow-100 text-yellow-800 ml-2">Pago pendiente</Badge>
+      case "error":
+        return <Badge className="bg-red-100 text-red-800 ml-2">Pago fallido</Badge>
+      default:
+        return <Badge variant="secondary" className="ml-2">{paymentStatus}</Badge>
+    }
+  }
+
   const formatDate = (dateString: string) => {
     try {
       return new Date(dateString).toLocaleDateString("es-ES", {
@@ -159,6 +172,7 @@ export default function ReservationsPage() {
           <div className="flex items-center gap-3">
             {getStatusIcon(reservation.status)}
             {getStatusBadge(reservation.status)}
+            {getPaymentStatusBadge(reservation.payment_status)}
           </div>
         </div>
       </CardHeader>

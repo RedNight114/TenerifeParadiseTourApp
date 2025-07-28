@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Search, Eye, CheckCircle, XCircle, Calendar, Euro, User, MapPin } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
+import { toast } from "sonner";
 
 interface Reservation {
   id: string
@@ -21,6 +22,8 @@ interface Reservation {
   reservation_date: string
   total_amount: number
   status: "pendiente" | "confirmado" | "cancelado"
+  payment_status: "pendiente" | "preautorizado" | "pagado" | "fallido"
+  payment_id?: string
   created_at: string
   updated_at: string
   profiles: {
@@ -56,6 +59,7 @@ export function ReservationsManagement() {
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [updating, setUpdating] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [capturing, setCapturing] = useState<string | null>(null);
 
   useEffect(() => {
     loadReservations()
@@ -79,6 +83,8 @@ export function ReservationsManagement() {
           reservation_date,
           total_amount,
           status,
+          payment_status,
+          payment_id,
           created_at,
           updated_at,
           profiles!reservations_user_id_fkey (
@@ -208,6 +214,21 @@ export function ReservationsManagement() {
     }
   }
 
+  const getPaymentStatusBadge = (status: string) => {
+    switch (status) {
+      case "pagado":
+        return <Badge className="bg-green-100 text-green-800">Pagado</Badge>
+      case "preautorizado":
+        return <Badge className="bg-blue-100 text-blue-800">Preautorizado</Badge>
+      case "pendiente":
+        return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>
+      case "fallido":
+        return <Badge className="bg-red-100 text-red-800">Fallido</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
   const formatDate = (dateString: string) => {
     try {
       return format(new Date(dateString), "dd/MM/yyyy", { locale: es })
@@ -327,6 +348,7 @@ export function ReservationsManagement() {
                   <TableHead>Fecha Reserva</TableHead>
                   <TableHead>Importe</TableHead>
                   <TableHead>Estado</TableHead>
+                  <TableHead>Pago</TableHead>
                   <TableHead>Creada</TableHead>
                   <TableHead>Acciones</TableHead>
                 </TableRow>
@@ -334,7 +356,7 @@ export function ReservationsManagement() {
               <TableBody>
                 {filteredReservations.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    <TableCell colSpan={8} className="text-center py-8 text-gray-500">
                       No se encontraron reservas
                     </TableCell>
                   </TableRow>
@@ -360,6 +382,7 @@ export function ReservationsManagement() {
                         </div>
                       </TableCell>
                       <TableCell>{getStatusBadge(reservation.status)}</TableCell>
+                      <TableCell>{getPaymentStatusBadge(reservation.payment_status)}</TableCell>
                       <TableCell>{formatDateTime(reservation.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
@@ -423,6 +446,13 @@ export function ReservationsManagement() {
                                     <h4 className="font-semibold mb-2">Estado</h4>
                                     {getStatusBadge(selectedReservation.status)}
                                   </div>
+                                  <div>
+                                    <h4 className="font-semibold mb-2">Estado de Pago</h4>
+                                    {getPaymentStatusBadge(selectedReservation.payment_status)}
+                                    {selectedReservation.payment_id && (
+                                      <div className="text-xs text-gray-500 mt-1">ID Redsys: {selectedReservation.payment_id}</div>
+                                    )}
+                                  </div>
                                   <div className="grid grid-cols-2 gap-4 text-sm text-gray-500">
                                     <div>
                                       <strong>ID:</strong> {selectedReservation.id}
@@ -438,6 +468,42 @@ export function ReservationsManagement() {
                               )}
                             </DialogContent>
                           </Dialog>
+
+                          {reservation.status === "pendiente" && reservation.payment_status === "preautorizado" && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-blue-600 hover:text-blue-700"
+                              disabled={updating === reservation.id || capturing === reservation.id}
+                              onClick={async () => {
+                                setCapturing(reservation.id);
+                                try {
+                                  const res = await fetch("/api/redsys/capture", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ reservationId: reservation.id }),
+                                  });
+                                  const data = await res.json();
+                                  if (data.ok) {
+                                    toast.success("Pago capturado correctamente");
+                                  } else {
+                                    toast.error(data.message || "Error al capturar el pago");
+                                  }
+                                  await loadReservations(); // Refrescar la tabla
+                                } catch (err: any) {
+                                  toast.error(err.message || "Error inesperado al capturar el pago");
+                                } finally {
+                                  setCapturing(null);
+                                }
+                              }}
+                            >
+                              {capturing === reservation.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                "Autorizar/Cobrar pago"
+                              )}
+                            </Button>
+                          )}
 
                           {reservation.status === "pendiente" && (
                             <>

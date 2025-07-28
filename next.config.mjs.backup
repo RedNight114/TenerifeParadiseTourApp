@@ -1,18 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: false,
-  swcMinify: true,
   experimental: {
-    // Configuración mínima de Turbopack
-    turbo: {
-      resolveAlias: {
-        '@': '.',
-        '@/components': './components',
-        '@/lib': './lib',
-        '@/hooks': './hooks',
-        '@/app': './app',
-      },
-    },
+    optimizePackageImports: ['lucide-react'],
   },
   images: {
     remotePatterns: [
@@ -25,8 +14,9 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: true,
   },
+  reactStrictMode: true,
+  swcMinify: true,
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -34,7 +24,6 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   webpack: (config, { dev, isServer }) => {
-    // Configuración de webpack
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': '.',
@@ -45,10 +34,23 @@ const nextConfig = {
     }
     return config
   },
-  // Configuración adicional para estabilidad
-  poweredByHeader: false,
-  compress: true,
-  generateEtags: false,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+        ],
+      },
+    ]
+  },
 }
 
 export default nextConfig

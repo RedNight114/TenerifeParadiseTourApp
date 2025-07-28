@@ -46,6 +46,7 @@ export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<any>({})
   const [invalidPriceAlert, setInvalidPriceAlert] = useState(false)
+  const [redsysHtml, setRedsysHtml] = useState<string | null>(null)
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -203,7 +204,9 @@ export default function BookingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Iniciando proceso de reserva...")
+    setErrors({})
+    setIsSubmitting(true)
+    setRedsysHtml(null)
 
     if (!validateForm() || !service || !user) {
       console.log("Validación fallida o datos faltantes")
@@ -223,9 +226,6 @@ export default function BookingPage() {
       alert("Error: El precio del servicio no es válido. Por favor, contacta con soporte.")
       return
     }
-
-    setIsSubmitting(true)
-    console.log("Estado de envío establecido a true")
 
     try {
       // Obtener el token de sesión y verificar que esté activa
@@ -267,7 +267,8 @@ export default function BookingPage() {
       console.log("📤 Enviando datos de reserva a la API...")
       console.log("Datos de reserva a enviar:", JSON.stringify(reservationData, null, 2))
 
-      const response = await fetch("/api/reservations", {
+      // Enviar datos a la nueva API de reservas
+      const response = await fetch("/api/reservas/create", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -276,141 +277,20 @@ export default function BookingPage() {
         body: JSON.stringify(reservationData),
       })
 
-      console.log("📥 Respuesta de reserva recibida, status:", response.status)
-
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}))
-        console.error("❌ Error en respuesta de reserva:", errorData)
-        throw new Error(errorData.error || "Error al crear la reserva")
+        const errorText = await response.text()
+        throw new Error(errorText || "Error al crear la reserva")
       }
 
-      const reservation = await response.json()
-      console.log("✅ Reserva creada exitosamente:", reservation.id)
-
-      // Verificar sesión después de crear reserva
-      const sessionAfterReservation = await supabase.auth.getSession()
-      if (!sessionAfterReservation.data.session?.access_token) {
-        throw new Error("Sesión perdida después de crear reserva")
-      }
-      console.log("🔐 Sesión verificada después de reserva")
-
-      // Redirigir a la pasarela de pago de Redsys
-      console.log("💳 Iniciando proceso de pago...")
-      const paymentResponse = await fetch("/api/payment/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          reservationId: reservation.id,
-          amount: total,
-          description: `Reserva: ${service.title}`,
-        }),
-      })
-
-      console.log("📥 Respuesta de pago recibida, status:", paymentResponse.status)
-
-      if (!paymentResponse.ok) {
-        const errorData = await paymentResponse.json().catch(() => ({}))
-        console.error("❌ Error en respuesta de pago:", errorData)
-        throw new Error(errorData.error || "Error al crear el pago")
-      }
-
-      console.log("✅ Respuesta de pago exitosa, procesando datos...")
-
-      const paymentData = await paymentResponse.json()
-      
-      console.log("✅ Datos de pago recibidos:", paymentData)
-      console.log("🔍 Verificando estructura de datos...")
-
-      // Verificar que paymentData tenga la estructura correcta
-      if (!paymentData.redsysUrl) {
-        throw new Error("URL de Redsys no encontrada en la respuesta")
-      }
-
-      if (!paymentData.formData) {
-        throw new Error("Datos del formulario no encontrados en la respuesta")
-      }
-
-      console.log("✅ Estructura de datos válida")
-
-      // Crear formulario para enviar a Redsys
-      const form = document.createElement("form")
-      form.method = "POST"
-      form.action = paymentData.redsysUrl
-
-      console.log("🌐 URL de Redsys:", paymentData.redsysUrl)
-
-      // Validar que todos los campos requeridos estén presentes
-      const requiredFields = ['Ds_SignatureVersion', 'Ds_MerchantParameters', 'Ds_Signature']
-      const missingFields = requiredFields.filter(field => !paymentData.formData[field])
-      
-      if (missingFields.length > 0) {
-        console.error("❌ Campos faltantes:", missingFields)
-        throw new Error(`Campos de pago faltantes: ${missingFields.join(', ')}`)
-      }
-
-      console.log("✅ Todos los campos requeridos están presentes")
-
-      // Agregar campos al formulario
-      Object.entries(paymentData.formData).forEach(([key, value]) => {
-        const input = document.createElement("input")
-        input.type = "hidden"
-        input.name = key
-        input.value = value as string
-        form.appendChild(input)
-        console.log(`📝 Campo ${key}:`, value)
-      })
-
-      // Agregar campo adicional para debugging
-      const debugInput = document.createElement("input")
-      debugInput.type = "hidden"
-      debugInput.name = "debug_info"
-      debugInput.value = JSON.stringify({
-        orderNumber: paymentData.orderNumber,
-        amount: paymentData.amount,
-        reservationId: paymentData.reservationId,
-        timestamp: new Date().toISOString()
-      })
-      form.appendChild(debugInput)
-
-      console.log("📋 Formulario creado con", form.elements.length, "campos")
-      console.log("🔗 Agregando formulario al DOM...")
-      
-      // Verificación final de sesión antes del envío
-      const finalSessionCheck = await supabase.auth.getSession()
-      if (!finalSessionCheck.data.session?.access_token) {
-        throw new Error("Sesión perdida antes del envío del formulario")
-      }
-      console.log("🔐 Sesión verificada antes del envío")
-      
-      document.body.appendChild(form)
-      
-      console.log("🚀 Enviando formulario a Redsys...")
-      console.log("📍 URL destino:", form.action)
-      console.log("📊 Método:", form.method)
-      
-      // Intentar enviar el formulario
-      try {
-        form.submit()
-        console.log("✅ Formulario enviado exitosamente")
-      } catch (submitError) {
-        console.error("❌ Error al enviar formulario:", submitError)
-        console.log("🔄 Intentando redirección alternativa...")
-        
-        // Redirección alternativa usando window.location
-        const formData = new URLSearchParams()
-        Object.entries(paymentData.formData).forEach(([key, value]) => {
-          formData.append(key, value as string)
-        })
-        
-        console.log("🌐 Redirigiendo a:", paymentData.redsysUrl)
-        window.location.href = `${paymentData.redsysUrl}?${formData.toString()}`
-      }
-    } catch (error) {
-      console.error("Error en el proceso de reserva:", error)
-      alert(`Error al procesar la reserva: ${error instanceof Error ? error.message : "Error desconocido"}`)
+      // Recibir el HTML del formulario Redsys
+      const html = await response.text()
+      // Opción 1: abrir el HTML como blob en una navegación real
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      window.location.href = url;
+      // Si quieres abrir en nueva pestaña: window.open(url, "_blank");
+    } catch (error: any) {
+      setErrors({ submit: error.message })
     } finally {
       setIsSubmitting(false)
     }
@@ -775,6 +655,14 @@ export default function BookingPage() {
           </div>
         </div>
       </div>
+      {redsysHtml && (
+        <div dangerouslySetInnerHTML={{ __html: redsysHtml }} />
+      )}
+      {isSubmitting && !redsysHtml && (
+        <div className="text-center py-8">
+          <p className="text-lg font-semibold text-blue-600">Redirigiendo a Redsys...</p>
+        </div>
+      )}
     </div>
   )
 }

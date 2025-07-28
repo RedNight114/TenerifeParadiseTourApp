@@ -4,9 +4,8 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
-import { CacheCleanup } from "@/components/cache-cleanup"
+
 import { SuppressHydrationWarning } from "@/components/hydration-safe"
-import { NavigationRecovery, ProblemDetector } from "@/components/navigation-recovery"
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -38,12 +37,6 @@ export default function RootLayout({
             disableTransitionOnChange
           >
             <AuthProvider>
-              {/* Sistema de limpieza de caché */}
-              <CacheCleanup />
-              {/* Sistema de recuperación de navegación */}
-              <NavigationRecovery showOnError={true} autoHide={false} hideDelay={15000} />
-              {/* Detector de problemas */}
-              <ProblemDetector />
               {/* Contenido principal */}
               {children}
             </AuthProvider>
