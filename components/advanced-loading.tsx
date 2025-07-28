@@ -19,7 +19,8 @@ interface AdvancedLoadingProps {
   showProgress?: boolean
   className?: string
   size?: 'sm' | 'md' | 'lg'
-  variant?: 'default' | 'minimal' | 'fullscreen'
+  variant?: 'default' | 'minimal' | 'fullscreen' | 'toast'
+  message?: string
 }
 
 export function AdvancedLoading({
@@ -30,7 +31,8 @@ export function AdvancedLoading({
   showProgress = false,
   className,
   size = 'md',
-  variant = 'default'
+  variant = 'default',
+  message
 }: AdvancedLoadingProps) {
   const [state, setState] = useState<LoadingState>({
     type: 'initial',
@@ -84,7 +86,7 @@ export function AdvancedLoading({
       setState(prev => ({
         ...prev,
         type: 'fetching',
-        message: 'Cargando datos...'
+        message: message || 'Cargando datos...'
       }))
     } else {
       setState(prev => ({
@@ -93,7 +95,7 @@ export function AdvancedLoading({
         message: '¡Completado!'
       }))
     }
-  }, [isLoading, error])
+  }, [isLoading, error, message])
 
   const handleRetry = () => {
     setState(prev => ({
@@ -139,6 +141,8 @@ export function AdvancedLoading({
         return 'p-2'
       case 'fullscreen':
         return 'fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50'
+      case 'toast':
+        return 'fixed bottom-4 right-4 z-50 max-w-sm'
       default:
         return 'p-4 rounded-lg border bg-card'
     }

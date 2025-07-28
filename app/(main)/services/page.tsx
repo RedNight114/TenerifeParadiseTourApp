@@ -9,13 +9,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ServicesGrid } from "@/components/services-grid"
-import { useServices } from "@/hooks/use-services"
-import { useCategories } from "@/hooks/use-categories"
+import { useServicesAdvanced } from "@/hooks/use-services-advanced"
+import { AdvancedLoading, SectionLoading, TableLoading } from "@/components/advanced-loading"
+import { AdvancedError } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
 
 export default function ServicesPage() {
-  const { services, loading, fetchServices, refreshServices } = useServices()
-  const { categories, subcategories } = useCategories()
+  const {
+    // Datos
+    services,
+    categories,
+    subcategories,
+    
+    // Estados de loading
+    isLoading,
+    isInitialLoading,
+    isRefreshing,
+    
+    // Estados de error
+    error,
+    hasError,
+    
+    // Acciones
+    refreshServices,
+    clearError,
+    
+    // Utilidades
+    searchServices,
+    
+    // Estadísticas
+    totalServices,
+    servicesByCategory
+  } = useServicesAdvanced()
+
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
@@ -60,13 +86,7 @@ export default function ServicesPage() {
 
     // Filtrar por búsqueda
     if (searchQuery) {
-      filtered = filtered.filter(
-        (service) =>
-          service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          service.subcategory?.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+      filtered = searchServices(searchQuery)
     }
 
     // Ordenar
@@ -134,11 +154,11 @@ export default function ServicesPage() {
   }
 
   const categoryOptions = [
-    { id: "all", name: "Todas las Categorías", count: services.length },
+    { id: "all", name: "Todas las Categorías", count: totalServices },
     ...categories.map((cat) => ({
       id: cat.id,
       name: cat.name,
-      count: services.filter((s) => s.category_id === cat.id).length,
+      count: servicesByCategory[cat.name] || 0,
     })),
   ]
 
@@ -150,6 +170,35 @@ export default function ServicesPage() {
       count: services.filter((s) => s.subcategory_id === sub.id).length,
     })),
   ]
+
+  // Loading inicial
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen">
+        <AdvancedLoading
+          isLoading={true}
+          variant="fullscreen"
+          showProgress={true}
+          size="lg"
+          message="Cargando servicios..."
+        />
+      </div>
+    )
+  }
+
+  // Error crítico
+  if (hasError && error?.type === 'network') {
+    return (
+      <div className="min-h-screen">
+        <AdvancedError
+          error={error}
+          variant="fullscreen"
+          onRetry={refreshServices}
+          showDetails={true}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -171,6 +220,19 @@ export default function ServicesPage() {
           </div>
         </div>
       </section>
+
+      {/* Error no crítico */}
+      {hasError && error && (
+        <div className="container mx-auto px-4 py-4">
+          <AdvancedError
+            error={error}
+            variant="inline"
+            onRetry={refreshServices}
+            onDismiss={clearError}
+            showDetails={false}
+          />
+        </div>
+      )}
 
       {/* Sticky Filters Bar */}
       <div className="sticky top-16 xs:top-18 sm:top-20 md:top-22 lg:top-24 xl:top-26 z-30 bg-white border-b shadow-sm">
@@ -269,11 +331,11 @@ export default function ServicesPage() {
                   variant="outline"
                   size="sm"
                   onClick={refreshServices}
-                  disabled={loading}
+                  disabled={isRefreshing}
                   className="h-9 xs:h-10 sm:h-12 px-3 border-gray-300 hover:bg-gray-50 text-xs xs:text-sm"
                   title="Refrescar datos desde la base de datos"
                 >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
                   <span className="hidden sm:inline">Refrescar</span>
                 </Button>
               </div>
@@ -352,35 +414,6 @@ export default function ServicesPage() {
               </div>
             </div>
           </div>
-
-          {/* Category Pills - Improved */}
-          <div className="mt-6" role="tablist" aria-label="Categorías de servicios">
-            <div className="flex flex-wrap gap-3">
-              {/*{categories.map((category) => (
-                <button
-                  key={category.id}
-                  onClick={() => handleCategoryChange(category.id)}
-                  role="tab"
-                  aria-selected={selectedCategory === category.id}
-                  aria-controls={`services-${category.id}`}
-                  className={`flex items-center px-4 py-3 rounded-full text-sm font-medium transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-[#F4C762] focus:ring-offset-2 ${
-                    selectedCategory === category.id
-                      ? "bg-[#F4C762] text-black shadow-md transform scale-105"
-                      : "bg-white text-gray-600 border border-gray-300 hover:border-[#F4C762] hover:text-[#0061A8] hover:shadow-sm"
-                  }`}
-                >
-                  {getCategoryIcon(category.id)}
-                  <span className="ml-2">{category.name}</span>
-                  <Badge
-                    variant="secondary"
-                    className={`ml-2 ${selectedCategory === category.id ? "bg-black/10" : ""}`}
-                  >
-                    {category.count}
-                  </Badge>
-                </button>
-              ))}*/}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -396,7 +429,7 @@ export default function ServicesPage() {
                   : categories.find((c) => c.id === selectedCategory)?.name}
               </h2>
               <p className="text-gray-600 text-sm xs:text-base" aria-live="polite" aria-atomic="true">
-                {loading ? (
+                {isLoading ? (
                   <span className="flex items-center gap-2">
                     <div className="animate-spin rounded-full h-3 w-3 xs:h-4 xs:w-4 border-b-2 border-[#0061A8]"></div>
                     Cargando servicios...
@@ -439,23 +472,14 @@ export default function ServicesPage() {
             </div>
           </div>
 
-          {/* Services Grid with improved loading and empty states */}
+          {/* Services Grid with advanced loading and empty states */}
           <div role="region" aria-labelledby="results-heading" aria-live="polite">
-            {loading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" aria-label="Cargando servicios">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="animate-pulse">
-                    <div className="bg-gray-200 h-48 rounded-t-lg" />
-                    <CardContent className="p-4 space-y-3">
-                      <div className="bg-gray-200 h-4 rounded" />
-                      <div className="bg-gray-200 h-3 rounded w-3/4" />
-                      <div className="bg-gray-200 h-8 rounded" />
-                    </CardContent>
-                  </Card>
-                ))}
+            {isLoading && !isInitialLoading ? (
+              <div className="space-y-6">
+                <TableLoading columns={3} rows={6} />
               </div>
             ) : filteredServices.length > 0 ? (
-              <ServicesGrid services={filteredServices} loading={loading} />
+              <ServicesGrid services={filteredServices} loading={isLoading} />
             ) : (
               <div className="text-center py-16" role="status" aria-live="polite">
                 <div className="max-w-md mx-auto">
@@ -544,6 +568,18 @@ export default function ServicesPage() {
           </a>
         </div>
       </div>
+
+      {/* Loading de acciones */}
+      {isRefreshing && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <AdvancedLoading
+            isLoading={true}
+            variant="toast"
+            size="sm"
+            message="Actualizando servicios..."
+          />
+        </div>
+      )}
     </div>
   )
 }

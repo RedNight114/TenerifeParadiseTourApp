@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useServices } from "@/hooks/use-services"
+import { useServicesAdvanced } from "@/hooks/use-services-advanced"
 import { useAuth } from "@/hooks/use-auth"
+import { AdvancedLoading, SectionLoading } from "@/components/advanced-loading"
+import { AdvancedError, PageError } from "@/components/advanced-error-handling"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,7 +21,17 @@ import { normalizeImageUrl } from "@/lib/utils"
 export default function ServiceDetailsPage() {
   const { serviceId } = useParams()
   const router = useRouter()
-  const { services, loading: servicesLoading, fetchServices, getFreshService } = useServices()
+  const {
+    services,
+    isLoading,
+    isInitialLoading,
+    error,
+    hasError,
+    getServiceById,
+    fetchServiceById,
+    refreshServices,
+    clearError
+  } = useServicesAdvanced()
   const { user, profile, loading: authLoading } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   
@@ -64,12 +76,6 @@ export default function ServiceDetailsPage() {
   }, [showImageModal, service?.images])
 
   useEffect(() => {
-    if (services.length === 0) {
-      fetchServices()
-    }
-  }, [services, fetchServices])
-
-  useEffect(() => {
     const handleScroll = () => {
       if (typeof window !== 'undefined') {
         setIsScrolled(window.scrollY > 20)
@@ -85,7 +91,7 @@ export default function ServiceDetailsPage() {
   useEffect(() => {
     if (serviceId) {
       // Primero intentar encontrar en los servicios cargados
-      const foundService = services.find((s) => s.id === serviceId)
+      const foundService = getServiceById(serviceId as string)
       
       if (foundService) {
         setService(foundService)
@@ -93,72 +99,95 @@ export default function ServiceDetailsPage() {
       } else if (services.length > 0) {
         // Si no se encuentra en los servicios cargados, obtener datos frescos
         console.log('🔄 Servicio no encontrado en cache, obteniendo datos frescos...')
-        getFreshService(serviceId as string)
+        fetchServiceById(serviceId as string)
           .then((freshData) => {
             if (freshData) {
               const freshService = {
                 id: String(freshData.id),
-                title: String(freshData.title),
-                description: String(freshData.description),
-                category_id: String(freshData.category_id),
-                subcategory_id: freshData.subcategory_id ? String(freshData.subcategory_id) : undefined,
-                price: Number(freshData.price),
-                price_type: (freshData.price_type === 'per_person' || freshData.price_type === 'total') ? freshData.price_type : 'per_person',
-                images: Array.isArray(freshData.images) ? freshData.images.map(String) : [],
-                available: Boolean(freshData.available),
-                featured: Boolean(freshData.featured),
-                duration: freshData.duration !== undefined ? Number(freshData.duration) : undefined,
-                location: freshData.location ? String(freshData.location) : undefined,
-                min_group_size: freshData.min_group_size !== undefined ? Number(freshData.min_group_size) : undefined,
-                max_group_size: freshData.max_group_size !== undefined ? Number(freshData.max_group_size) : undefined,
-                difficulty_level: (freshData.difficulty_level === 'facil' || freshData.difficulty_level === 'moderado' || freshData.difficulty_level === 'dificil') ? freshData.difficulty_level : undefined,
-                vehicle_type: freshData.vehicle_type ? String(freshData.vehicle_type) : undefined,
-                characteristics: freshData.characteristics ? String(freshData.characteristics) : undefined,
-                insurance_included: freshData.insurance_included !== undefined ? Boolean(freshData.insurance_included) : undefined,
-                fuel_included: freshData.fuel_included !== undefined ? Boolean(freshData.fuel_included) : undefined,
-                menu: freshData.menu ? String(freshData.menu) : undefined,
-                schedule: Array.isArray(freshData.schedule) ? freshData.schedule.map(String) : undefined,
-                capacity: freshData.capacity !== undefined ? Number(freshData.capacity) : undefined,
-                dietary_options: Array.isArray(freshData.dietary_options) ? freshData.dietary_options.map(String) : undefined,
-                min_age: freshData.min_age !== undefined ? Number(freshData.min_age) : undefined,
-                license_required: freshData.license_required !== undefined ? Boolean(freshData.license_required) : undefined,
-                permit_required: freshData.permit_required !== undefined ? Boolean(freshData.permit_required) : undefined,
-                what_to_bring: Array.isArray(freshData.what_to_bring) ? freshData.what_to_bring.map(String) : undefined,
-                included_services: Array.isArray(freshData.included_services) ? freshData.included_services.map(String) : undefined,
-                not_included_services: Array.isArray(freshData.not_included_services) ? freshData.not_included_services.map(String) : undefined,
-                meeting_point_details: freshData.meeting_point_details ? String(freshData.meeting_point_details) : undefined,
-                transmission: (freshData.transmission === 'manual' || freshData.transmission === 'automatic') ? freshData.transmission : undefined,
-                seats: freshData.seats !== undefined ? Number(freshData.seats) : undefined,
-                doors: freshData.doors !== undefined ? Number(freshData.doors) : undefined,
-                fuel_policy: freshData.fuel_policy ? String(freshData.fuel_policy) : undefined,
-                pickup_locations: Array.isArray(freshData.pickup_locations) ? freshData.pickup_locations.map(String) : undefined,
-                deposit_required: freshData.deposit_required !== undefined ? Boolean(freshData.deposit_required) : undefined,
-                deposit_amount: freshData.deposit_amount !== undefined ? Number(freshData.deposit_amount) : undefined,
-                experience_type: freshData.experience_type ? String(freshData.experience_type) : undefined,
-                chef_name: freshData.chef_name ? String(freshData.chef_name) : undefined,
-                drink_options: freshData.drink_options ? String(freshData.drink_options) : undefined,
-                ambience: freshData.ambience ? String(freshData.ambience) : undefined,
-                activity_type: freshData.activity_type ? String(freshData.activity_type) : undefined,
-                fitness_level_required: (freshData.fitness_level_required === 'bajo' || freshData.fitness_level_required === 'medio' || freshData.fitness_level_required === 'alto') ? freshData.fitness_level_required : undefined,
-                equipment_provided: Array.isArray(freshData.equipment_provided) ? freshData.equipment_provided.map(String) : undefined,
-                cancellation_policy: freshData.cancellation_policy ? String(freshData.cancellation_policy) : undefined,
-                itinerary: freshData.itinerary ? String(freshData.itinerary) : undefined,
-                guide_languages: Array.isArray(freshData.guide_languages) ? freshData.guide_languages.map(String) : undefined,
-                created_at: String(freshData.created_at),
-                updated_at: String(freshData.updated_at),
-                category: (typeof freshData.category === 'object' && freshData.category !== null) ? freshData.category as any : undefined,
-                subcategory: (typeof freshData.subcategory === 'object' && freshData.subcategory !== null) ? freshData.subcategory as any : undefined
+                title: freshData.title,
+                description: freshData.description,
+                price: freshData.price,
+                price_type: freshData.price_type,
+                duration: freshData.duration,
+                max_guests: freshData.max_guests,
+                location: freshData.location,
+                category_id: freshData.category_id,
+                subcategory_id: freshData.subcategory_id,
+                images: freshData.images,
+                included: freshData.included,
+                not_included: freshData.not_included,
+                policies: freshData.policies,
+                difficulty: freshData.difficulty,
+                created_at: freshData.created_at,
+                updated_at: freshData.updated_at,
+                category: freshData.category,
+                subcategory: freshData.subcategory
               }
               setService(freshService)
               document.title = `${freshService.title} - Tenerife Paradise Tours & Excursions`
             }
           })
           .catch((error) => {
-            console.error('❌ Error al obtener servicio fresco:', error)
+            console.error('Error obteniendo servicio:', error)
+            toast.error('Error al cargar los detalles del servicio')
           })
       }
     }
-  }, [services, serviceId, getFreshService])
+  }, [serviceId, services, getServiceById, fetchServiceById])
+
+  // Loading inicial
+  if (isInitialLoading) {
+    return (
+      <div className="min-h-screen">
+        <AdvancedLoading
+          isLoading={true}
+          variant="fullscreen"
+          showProgress={true}
+          size="lg"
+          message="Cargando detalles del servicio..."
+        />
+      </div>
+    )
+  }
+
+  // Error crítico
+  if (hasError && error?.type === 'network') {
+    return (
+      <div className="min-h-screen">
+        <AdvancedError
+          error={error}
+          variant="fullscreen"
+          onRetry={refreshServices}
+          showDetails={true}
+        />
+      </div>
+    )
+  }
+
+  // Servicio no encontrado
+  if (!service && !isLoading) {
+    return (
+      <PageError
+        error={{
+          code: 'SERVICE_NOT_FOUND',
+          message: 'El servicio que buscas no existe o ha sido eliminado',
+          type: 'unknown',
+          timestamp: new Date(),
+          retryCount: 0
+        }}
+        onRetry={() => fetchServiceById(serviceId as string)}
+      />
+    )
+  }
+
+  // Loading de servicio específico
+  if (!service && isLoading) {
+    return (
+      <div className="min-h-screen">
+        <SectionLoading message="Cargando detalles del servicio..." />
+      </div>
+    )
+  }
 
   const formatPrice = (price: number, priceType: string) => {
     const formatted = new Intl.NumberFormat("es-ES", {
