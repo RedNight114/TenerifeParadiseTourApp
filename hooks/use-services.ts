@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback, useMemo } from "react"
-import { supabase } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 import type { Service } from "@/lib/supabase"
 
 interface UseServicesReturn {
@@ -42,7 +42,8 @@ export function useServices(): UseServicesReturn {
 
       console.log('🔄 Fetching services from database...')
 
-      const { data, error: fetchError } = await supabase
+      const client = getSupabaseClient()
+      const { data, error: fetchError } = await client
         .from("services")
         .select(`
           *,
@@ -137,7 +138,8 @@ export function useServices(): UseServicesReturn {
 
       console.log('🔄 Obteniendo servicio fresco desde la base de datos:', id)
 
-      const { data, error: fetchError } = await supabase
+      const client = getSupabaseClient()
+      const { data, error: fetchError } = await client
         .from("services")
         .select('*')
         .eq("id", id)
@@ -220,7 +222,8 @@ export function useServices(): UseServicesReturn {
   const createService = useCallback(async (serviceData: Partial<Service>) => {
     try {
       setError(null)
-      const { error } = await supabase.from("services").insert([serviceData])
+      const client = getSupabaseClient()
+      const { error } = await client.from("services").insert([serviceData])
       if (error) throw error
       await fetchServices(true) // Refresh after creation
     } catch (err) {
@@ -233,7 +236,8 @@ export function useServices(): UseServicesReturn {
   const updateService = useCallback(async (id: string, serviceData: Partial<Service>) => {
     try {
       setError(null)
-      const { error } = await supabase.from("services").update(serviceData).eq("id", id)
+      const client = getSupabaseClient()
+      const { error } = await client.from("services").update(serviceData).eq("id", id)
       if (error) throw error
       await fetchServices(true) // Refresh after update
     } catch (err) {
@@ -249,7 +253,8 @@ export function useServices(): UseServicesReturn {
       console.log('🗑️ Intentando eliminar servicio:', id)
       
       // Primero verificar si el servicio existe
-      const { data: existingService, error: fetchError } = await supabase
+      const client = getSupabaseClient()
+      const { data: existingService, error: fetchError } = await client
         .from("services")
         .select("id, title")
         .eq("id", id)
@@ -266,14 +271,14 @@ export function useServices(): UseServicesReturn {
       console.log('✅ Servicio encontrado:', existingService.title)
 
       // Intentar usar la función SQL personalizada primero
-      const { data: result, error: functionError } = await supabase
+      const { data: result, error: functionError } = await client
         .rpc('delete_service_with_reservations', { service_id: id })
 
       if (functionError) {
         console.log('⚠️ Función SQL no disponible, intentando eliminación directa...')
         
         // Fallback: intentar eliminar directamente
-        const { error: deleteError } = await supabase
+        const { error: deleteError } = await client
           .from("services")
           .delete()
           .eq("id", id)
