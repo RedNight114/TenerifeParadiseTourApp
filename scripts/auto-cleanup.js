@@ -11,8 +11,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 console.log('🧹 LIMPIEZA AUTOMÁTICA DE CACHÉ');
-console.log('===============================
-');
+console.log('===============================\n');
 
 // 1. Limpiar caché de Next.js
 console.log('📦 Limpiando caché de Next.js...');
