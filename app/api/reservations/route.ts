@@ -8,6 +8,10 @@ import {
 import { sanitizeObject } from "@/lib/api-validation"
 import { createValidationErrorResponse } from "@/lib/api-validation"
 
+// Forzar renderizado dinámico para evitar errores de build
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 // Cliente base de Supabase
 const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
