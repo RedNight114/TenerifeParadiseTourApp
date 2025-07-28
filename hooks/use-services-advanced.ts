@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback, useMemo, useRef } from "react"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { useErrorHandler } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
@@ -62,13 +62,41 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
   const [lastFetch, setLastFetch] = useState<number>(0)
   const [cacheKey, setCacheKey] = useState<string>('')
   
+  // Control de operaciones en curso
+  const isFetchingRef = useRef(false)
+  const errorTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  
   // Manejo de errores
-  const { currentError, addError, dismissError } = useErrorHandler()
+  const { currentError, addError, dismissError, clearErrors } = useErrorHandler()
   
   // Configuración
   const CACHE_DURATION = 10 * 60 * 1000 // 10 minutos
   const MAX_RETRIES = 3
   const RETRY_DELAY = 2000 // 2 segundos
+  const ERROR_TIMEOUT = 30 * 1000 // 30 segundos para limpiar errores automáticamente
+
+  // Limpiar timeout de error
+  const clearErrorTimeout = useCallback(() => {
+    if (errorTimeoutRef.current) {
+      clearTimeout(errorTimeoutRef.current)
+      errorTimeoutRef.current = null
+    }
+  }, [])
+
+  // Configurar timeout para limpiar error automáticamente
+  const setErrorTimeout = useCallback(() => {
+    clearErrorTimeout()
+    errorTimeoutRef.current = setTimeout(() => {
+      console.log('⏰ Limpiando error automáticamente por timeout')
+      dismissError()
+    }, ERROR_TIMEOUT)
+  }, [clearErrorTimeout, dismissError])
+
+  // Limpiar error y timeout
+  const clearErrorWithTimeout = useCallback(() => {
+    clearErrorTimeout()
+    dismissError()
+  }, [clearErrorTimeout, dismissError])
 
   // Función de retry con delay exponencial
   const retryWithDelay = useCallback(async <T>(
@@ -76,9 +104,11 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
     retryCount = 0
   ): Promise<T> => {
     try {
-      return await operation()
+      const result = await operation()
+      return result
     } catch (error) {
       if (retryCount < MAX_RETRIES) {
+        console.log(`🔄 Reintento ${retryCount + 1}/${MAX_RETRIES} en ${RETRY_DELAY * Math.pow(2, retryCount)}ms`)
         await new Promise(resolve => 
           setTimeout(resolve, RETRY_DELAY * Math.pow(2, retryCount))
         )
@@ -90,6 +120,12 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
 
   // Función principal para obtener servicios
   const fetchServices = useCallback(async (forceRefresh = false) => {
+    // Evitar múltiples llamadas simultáneas
+    if (isFetchingRef.current && !forceRefresh) {
+      console.log('⚠️ Operación de fetch ya en curso, saltando...')
+      return
+    }
+
     try {
       const now = Date.now()
       
@@ -99,6 +135,13 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
         return
       }
 
+      // Limpiar error existente al iniciar nueva operación
+      if (currentError) {
+        console.log('🧹 Limpiando error anterior para nueva operación')
+        clearErrorWithTimeout()
+      }
+
+      isFetchingRef.current = true
       setIsLoading(true)
       setLastFetch(now)
       
@@ -108,7 +151,7 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
       
       // Obtener servicios con relaciones
       const servicesResult = await retryWithDelay(async () => {
-        return await client
+        const result = await client
           .from("services")
           .select(`
             *,
@@ -116,6 +159,7 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
             subcategory:subcategories(name, description)
           `)
           .order('created_at', { ascending: false })
+        return result
       })
 
       if (servicesResult.error) {
@@ -124,10 +168,11 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
 
       // Obtener categorías
       const categoriesResult = await retryWithDelay(async () => {
-        return await client
+        const result = await client
           .from("categories")
           .select("*")
           .order('name')
+        return result
       })
 
       if (categoriesResult.error) {
@@ -136,10 +181,11 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
 
       // Obtener subcategorías
       const subcategoriesResult = await retryWithDelay(async () => {
-        return await client
+        const result = await client
           .from("subcategories")
           .select("*")
           .order('name')
+        return result
       })
 
       if (subcategoriesResult.error) {
@@ -153,7 +199,7 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
       
       // Limpiar errores si todo fue exitoso
       if (currentError) {
-        dismissError()
+        clearErrorWithTimeout()
       }
       
       console.log(`✅ ${servicesResult.data?.length || 0} servicios cargados exitosamente`)
@@ -180,12 +226,16 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
         type: errorType,
         userAction: 'fetchServices'
       })
+
+      // Configurar timeout para limpiar error automáticamente
+      setErrorTimeout()
       
     } finally {
       setIsLoading(false)
       setIsInitialLoading(false)
+      isFetchingRef.current = false
     }
-  }, [lastFetch, services.length, currentError, dismissError, addError, retryWithDelay])
+  }, [lastFetch, services.length, currentError, clearErrorWithTimeout, setErrorTimeout, addError, retryWithDelay])
 
   // Obtener servicio por ID
   const fetchServiceById = useCallback(async (id: string): Promise<Service | null> => {
@@ -201,7 +251,7 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
             category:categories(name, description),
             subcategory:subcategories(name, description)
           `)
-          .eq("id", id)
+          .eq('id', id)
           .single()
       )
 
@@ -211,143 +261,132 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
 
       return data
     } catch (error: any) {
-      console.error('❌ Error obteniendo servicio:', error)
+      console.error('❌ Error obteniendo servicio específico:', error)
+      
       addError({
         code: 'SERVICE_FETCH_ERROR',
-        message: error.message || 'Error al obtener el servicio',
+        message: error.message || 'Error al cargar el servicio',
         type: 'server',
         userAction: 'fetchServiceById'
       })
+
+      setErrorTimeout()
       return null
     }
-  }, [addError, retryWithDelay])
+  }, [addError, setErrorTimeout, retryWithDelay])
 
   // Crear servicio
   const createService = useCallback(async (serviceData: Partial<Service>): Promise<boolean> => {
     try {
       setIsCreating(true)
-      console.log('🔄 Creando nuevo servicio...')
+      clearErrorWithTimeout()
       
       const client = getSupabaseClient()
-      const { error } = await retryWithDelay(() =>
-        client.from("services").insert([serviceData])
+      const { data, error } = await retryWithDelay(() =>
+        client.from("services").insert(serviceData).select().single()
       )
 
       if (error) {
         throw new Error(`Error creando servicio: ${error.message}`)
       }
 
-      // Recargar servicios
-      await fetchServices(true)
+      // Actualizar lista de servicios
+      setServices(prev => [data, ...prev])
       
       console.log('✅ Servicio creado exitosamente')
       return true
-      
     } catch (error: any) {
       console.error('❌ Error creando servicio:', error)
+      
       addError({
         code: 'SERVICE_CREATE_ERROR',
         message: error.message || 'Error al crear el servicio',
         type: 'validation',
         userAction: 'createService'
       })
+
+      setErrorTimeout()
       return false
     } finally {
       setIsCreating(false)
     }
-  }, [fetchServices, addError, retryWithDelay])
+  }, [clearErrorWithTimeout, addError, setErrorTimeout, retryWithDelay])
 
   // Actualizar servicio
   const updateService = useCallback(async (id: string, serviceData: Partial<Service>): Promise<boolean> => {
     try {
       setIsUpdating(true)
-      console.log('🔄 Actualizando servicio:', id)
+      clearErrorWithTimeout()
       
       const client = getSupabaseClient()
-      const { error } = await retryWithDelay(() =>
-        client.from("services").update(serviceData).eq("id", id)
+      const { data, error } = await retryWithDelay(() =>
+        client.from("services").update(serviceData).eq('id', id).select().single()
       )
 
       if (error) {
         throw new Error(`Error actualizando servicio: ${error.message}`)
       }
 
-      // Recargar servicios
-      await fetchServices(true)
+      // Actualizar servicio en la lista
+      setServices(prev => prev.map(service => 
+        service.id === id ? { ...service, ...data } : service
+      ))
       
       console.log('✅ Servicio actualizado exitosamente')
       return true
-      
     } catch (error: any) {
       console.error('❌ Error actualizando servicio:', error)
+      
       addError({
         code: 'SERVICE_UPDATE_ERROR',
         message: error.message || 'Error al actualizar el servicio',
         type: 'validation',
         userAction: 'updateService'
       })
+
+      setErrorTimeout()
       return false
     } finally {
       setIsUpdating(false)
     }
-  }, [fetchServices, addError, retryWithDelay])
+  }, [clearErrorWithTimeout, addError, setErrorTimeout, retryWithDelay])
 
   // Eliminar servicio
   const deleteService = useCallback(async (id: string): Promise<boolean> => {
     try {
       setIsDeleting(true)
-      console.log('🗑️ Eliminando servicio:', id)
+      clearErrorWithTimeout()
       
       const client = getSupabaseClient()
-      
-      // Verificar si el servicio existe
-      const { data: existingService, error: fetchError } = await client
-        .from("services")
-        .select("id, title")
-        .eq("id", id)
-        .single()
-
-      if (fetchError || !existingService) {
-        throw new Error('Servicio no encontrado')
-      }
-
-      // Intentar usar la función SQL personalizada
-      const { data: result, error: functionError } = await retryWithDelay(() =>
-        client.rpc('delete_service_with_reservations', { service_id: id })
+      const { error } = await retryWithDelay(() =>
+        client.from("services").delete().eq('id', id)
       )
 
-      if (functionError) {
-        console.log('⚠️ Error con función personalizada, intentando eliminación directa')
-        
-        // Fallback: intentar eliminar directamente
-        const { error: deleteError } = await retryWithDelay(() =>
-          client.from("services").delete().eq("id", id)
-        )
-
-        if (deleteError) {
-          throw new Error(`Error eliminando servicio: ${deleteError.message}`)
-        }
+      if (error) {
+        throw new Error(`Error eliminando servicio: ${error.message}`)
       }
 
-      // Recargar servicios
-      await fetchServices(true)
+      // Remover servicio de la lista
+      setServices(prev => prev.filter(service => service.id !== id))
       
       console.log('✅ Servicio eliminado exitosamente')
       return true
-      
     } catch (error: any) {
       console.error('❌ Error eliminando servicio:', error)
+      
       addError({
         code: 'SERVICE_DELETE_ERROR',
         message: error.message || 'Error al eliminar el servicio',
         type: 'server',
         userAction: 'deleteService'
       })
+
+      setErrorTimeout()
       return false
     } finally {
       setIsDeleting(false)
     }
-  }, [fetchServices, addError, retryWithDelay])
+  }, [clearErrorWithTimeout, addError, setErrorTimeout, retryWithDelay])
 
   // Refrescar servicios
   const refreshServices = useCallback(async () => {
@@ -358,8 +397,8 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
 
   // Limpiar error
   const clearError = useCallback(() => {
-    dismissError()
-  }, [dismissError])
+    clearErrorWithTimeout()
+  }, [clearErrorWithTimeout])
 
   // Utilidades
   const getServiceById = useCallback((id: string) => {
@@ -407,6 +446,13 @@ export function useServicesAdvanced(): UseServicesAdvancedReturn {
   useEffect(() => {
     fetchServices()
   }, [fetchServices])
+
+  // Limpiar timeout al desmontar
+  useEffect(() => {
+    return () => {
+      clearErrorTimeout()
+    }
+  }, [clearErrorTimeout])
 
   return {
     // Datos
