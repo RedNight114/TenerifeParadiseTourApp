@@ -49,7 +49,10 @@
     "unicode-check": "node scripts/simple-prevention.js",
     "unicode-clean": "node scripts/definitive-clean.js",
     "postinstall": "next telemetry disable",
-    "vercel-build": "npm run build"
+    "vercel-build": "npm run build",
+    "clean:cache": "node scripts/auto-cleanup.js",
+    "dev:clean": "npm run clean:cache && npm run dev",
+    "build:clean": "npm run clean:cache && npm run build"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",

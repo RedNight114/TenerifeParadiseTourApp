@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 import { AuthProvider } from "@/components/auth-provider"
 import { CookieBanner } from "@/components/cookie-banner"
+import { CacheCleanup } from "@/components/cache-cleanup"
 
 export const metadata: Metadata = {
   title: {
@@ -94,6 +95,7 @@ export default function RootLayout({
             {children}
             <Toaster />
             <CookieBanner />
+            <CacheCleanup showButton={true} autoCleanup={false} />
           </AuthProvider>
         </ThemeProvider>
       </body>
