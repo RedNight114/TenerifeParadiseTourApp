@@ -131,8 +131,9 @@ export function generateRedsysSignatureV2(
       console.log(`  - Hex: ${secretKey.toString('hex')}`);
     }
 
-      // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
-  const cipher = crypto.createCipheriv('des-ede3', secretKey, null);
+    // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
+    // Para 3DES ECB, no necesitamos IV (modo ECB)
+    const cipher = crypto.createCipheriv('des-ede3', secretKey, '');
     cipher.setAutoPadding(true);
 
     let encryptedOrder = cipher.update(orderNumber, 'utf8');

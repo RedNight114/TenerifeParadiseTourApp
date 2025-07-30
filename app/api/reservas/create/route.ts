@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
 
     // 🔥 CONFIGURACIÓN REDSYS CORREGIDA PARA EVITAR SIS0042
     const MERCHANT_CODE = process.env.REDSYS_MERCHANT_CODE!;
-    const TERMINAL = process.env.REDSYS_TERMINAL!;
+    const TERMINAL = process.env.REDSYS_TERMINAL!.padStart(3, '0'); // 🔥 CORRECCIÓN: Terminal debe ser 3 dígitos
     const SECRET_KEY = process.env.REDSYS_SECRET_KEY!;
     const CURRENCY = '978'; // EUR
     const TRANSACTION_TYPE = '1'; // Pre-autorización
@@ -71,6 +71,11 @@ export async function POST(req: NextRequest) {
     const amountCents = Math.round(Number(total_amount) * 100).toString().padStart(12, '0');
 
     // 🔥 CONFIGURACIÓN CORREGIDA: Orden específico para Redsys
+    // Para pruebas, usar URLs de localhost
+    const baseUrl = process.env.NODE_ENV === 'development' 
+      ? 'http://localhost:3000' 
+      : process.env.NEXT_PUBLIC_SITE_URL;
+    
     const merchantParams = {
       DS_MERCHANT_AMOUNT: amountCents,
       DS_MERCHANT_CURRENCY: CURRENCY,
@@ -78,9 +83,9 @@ export async function POST(req: NextRequest) {
       DS_MERCHANT_ORDER: order,
       DS_MERCHANT_TERMINAL: TERMINAL,
       DS_MERCHANT_TRANSACTIONTYPE: TRANSACTION_TYPE,
-      DS_MERCHANT_MERCHANTURL: `${process.env.NEXT_PUBLIC_SITE_URL}/api/payment/webhook`,
-      DS_MERCHANT_URLOK: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`,
-      DS_MERCHANT_URLKO: `${process.env.NEXT_PUBLIC_SITE_URL}/reserva/estado`
+      DS_MERCHANT_MERCHANTURL: `${baseUrl}/api/payment/webhook`,
+      DS_MERCHANT_URLOK: `${baseUrl}/reserva/estado`,
+      DS_MERCHANT_URLKO: `${baseUrl}/reserva/estado`
     };
 
     // 🔥 CORRECCIÓN CRÍTICA: Ordenación alfabética para Redsys

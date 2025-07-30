@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 
 import { supabase } from "@/lib/supabase"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, Euro, Users, TrendingUp, Shield, LogOut, Loader2, Activity, Search, Filter, RefreshCw, AlertCircle, Clock, CheckCircle, X, MessageSquare } from "lucide-react"
+import { Calendar, Euro, Users, TrendingUp, Shield, LogOut, Loader2, Activity, Search, Filter, RefreshCw, AlertCircle, Clock, CheckCircle, X, MessageSquare, Database } from "lucide-react"
 import { ReservationsManagement } from "@/components/admin/reservations-management"
 import { ServicesManagement } from "@/components/admin/services-management"
 import { AuditDashboard } from "@/components/admin/audit-dashboard"
@@ -460,7 +460,7 @@ export default function AdminDashboard() {
 
                   {/* Tabs de Gestión - Simples */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
-          <TabsList className="admin-tab-list grid w-full grid-cols-3 p-2">
+          <TabsList className="admin-tab-list grid w-full grid-cols-4 p-2">
             <TabsTrigger 
               value="reservations" 
               className="admin-tab-trigger data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg"
@@ -492,77 +492,6 @@ export default function AdminDashboard() {
           </TabsList>
 
           <TabsContent value="reservations" className="space-y-8">
-            {/* Estadísticas de Reservas - Optimizadas */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                          <Card className="admin-stat-card">
-              <CardContent className="p-6 text-center">
-                <div className="p-2 bg-blue-100 rounded-lg w-14 h-14 mx-auto mb-4 flex items-center justify-center">
-                  <Calendar className="h-7 w-7 text-blue-600" />
-                </div>
-                <p className="text-2xl font-bold text-blue-600 mb-1">{stats.totalReservations}</p>
-                <p className="text-sm font-semibold text-gray-700">Total</p>
-              </CardContent>
-            </Card>
-                          <Card className="admin-stat-card">
-              <CardContent className="p-6 text-center">
-                <div className="p-2 bg-orange-100 rounded-lg w-14 h-14 mx-auto mb-4 flex items-center justify-center">
-                  <Clock className="h-7 w-7 text-orange-600" />
-                </div>
-                <p className="text-2xl font-bold text-orange-600 mb-1">{stats.pendingReservations}</p>
-                <p className="text-sm font-semibold text-gray-700">Pendientes</p>
-              </CardContent>
-            </Card>
-                          <Card className="admin-stat-card">
-              <CardContent className="p-6 text-center">
-                <div className="p-2 bg-green-100 rounded-lg w-14 h-14 mx-auto mb-4 flex items-center justify-center">
-                  <CheckCircle className="h-7 w-7 text-green-600" />
-                </div>
-                <p className="text-2xl font-bold text-green-600 mb-1">{stats.confirmedReservations}</p>
-                <p className="text-sm font-semibold text-gray-700">Confirmadas</p>
-              </CardContent>
-            </Card>
-                          <Card className="admin-stat-card">
-              <CardContent className="p-6 text-center">
-                <div className="p-2 bg-red-100 rounded-lg w-14 h-14 mx-auto mb-4 flex items-center justify-center">
-                  <X className="h-7 w-7 text-red-600" />
-                </div>
-                <p className="text-2xl font-bold text-red-600 mb-1">{stats.cancelledReservations}</p>
-                <p className="text-sm font-semibold text-gray-700">Canceladas</p>
-              </CardContent>
-            </Card>
-            </div>
-
-            {/* Filtros - Optimizados */}
-            <Card className="admin-card">
-              <CardContent className="p-5">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                  <Search className="h-4 w-4 mr-2 text-gray-500" />
-                  Filtros de Búsqueda
-                </h3>
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1">
-                                          <input
-                        type="text"
-                        placeholder="Buscar por cliente, email, servicio o ID..."
-                        className="admin-input w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
-                      />
-                    </div>
-                    <div className="flex gap-2">
-                      <select className="admin-input px-4 py-2.5 bg-white border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900">
-                        <option>Todos los estados</option>
-                        <option>Pendientes</option>
-                        <option>Confirmadas</option>
-                        <option>Canceladas</option>
-                      </select>
-                      <Button className="admin-button">
-                        <Filter className="h-4 w-4" />
-                        Filtrar
-                      </Button>
-                    </div>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Gestión de Reservas */}
             <ReservationsManagement />
           </TabsContent>

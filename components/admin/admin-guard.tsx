@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { Loader2, Shield, AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -26,20 +26,11 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
 
       // Esperar a que termine la carga de autenticación
       if (authLoading) {
-        console.log('⏳ AdminGuard: Esperando carga de autenticación...')
         return
       }
 
-      console.log('🔍 AdminGuard: Verificando autenticación...', {
-        hasUser: !!user,
-        hasProfile: !!profile,
-        role: profile?.role,
-        attempts: checkAttempts
-      })
-
       // Si no hay usuario, redirigir al login
       if (!user) {
-        console.log('❌ AdminGuard: No hay usuario, redirigiendo a login...')
         setRedirecting(true)
         router.push("/admin/login")
         return
@@ -48,12 +39,10 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
       // Si hay usuario pero no hay perfil, esperar con límite de intentos
       if (!profile) {
         if (checkAttempts < 5) {
-          console.log(`⏳ AdminGuard: Usuario existe pero perfil no cargado... (intento ${checkAttempts + 1}/5)`)
           setCheckAttempts(prev => prev + 1)
           setTimeout(checkAuth, 1000)
           return
         } else {
-          console.log('❌ AdminGuard: Perfil no se cargó después de 5 intentos, redirigiendo...')
           setRedirecting(true)
           router.push("/admin/login")
           return
@@ -62,14 +51,12 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
 
       // Verificar si es admin
       if (profile.role !== "admin") {
-        console.log('❌ AdminGuard: Usuario no es admin, redirigiendo...')
         setRedirecting(true)
         router.push("/")
         return
       }
 
       // Usuario autorizado
-      console.log('✅ AdminGuard: Usuario autorizado como admin')
       setIsAuthorized(true)
       setIsChecking(false)
     }

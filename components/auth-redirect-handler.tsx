@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { Loader2, CheckCircle, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 
@@ -27,19 +27,16 @@ export function AuthRedirectHandler({
   useEffect(() => {
     // Si aún está cargando, esperar
     if (loading) {
-      console.log('⏳ Aún cargando autenticación...')
       return
     }
 
     // Si no requiere autenticación, mostrar contenido
     if (!requireAuth) {
-      console.log('✅ No requiere autenticación')
       return
     }
 
     // Si no está autenticado, redirigir al login
     if (!isAuthenticated) {
-      console.log('🔒 No autenticado, redirigiendo al login')
       setIsRedirecting(true)
       const redirectTo = searchParams.get("redirect") || window.location.pathname
       router.push(`/auth/login?redirect=${encodeURIComponent(redirectTo)}`)
@@ -48,7 +45,6 @@ export function AuthRedirectHandler({
 
     // Si requiere admin y el usuario no es admin
     if (requireAdmin && profile && profile.role !== 'admin') {
-      console.log('❌ Usuario no es admin, redirigiendo')
       setIsRedirecting(true)
       toast.error("No tienes permisos de administrador")
       router.push(fallbackPath)
@@ -56,7 +52,6 @@ export function AuthRedirectHandler({
     }
 
     // Si todo está bien, mostrar contenido
-    console.log('✅ Autenticación y permisos verificados')
     setIsRedirecting(false)
   }, [loading, isAuthenticated, requireAuth, requireAdmin, profile, router, searchParams, fallbackPath])
 
@@ -96,7 +91,7 @@ export function useAuthRedirect() {
   const searchParams = useSearchParams()
 
   const handleSuccessfulLogin = (isAdmin = false) => {
-    console.log('🎉 Login exitoso, manejando redirección...')
+    // Login exitoso, manejando redirección
     
     // Determinar la ruta de redirección
     let redirectPath = searchParams.get("redirect")
@@ -109,14 +104,12 @@ export function useAuthRedirect() {
       }
     }
 
-    console.log('📍 Redirigiendo a:', redirectPath)
-    
     // Redirección inmediata
     router.replace(redirectPath)
   }
 
   const handleLoginError = (error: any) => {
-    console.error('❌ Error en login:', error)
+    // Error en login
     
     let errorMessage = "Error al iniciar sesión"
     

@@ -11,7 +11,14 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 async function handleRedsysResponse(params: any, signature: string) {
   const merchantParams = JSON.parse(Buffer.from(params, 'base64').toString('utf8'));
   const orderNumber = merchantParams.DS_MERCHANT_ORDER || merchantParams.Ds_Merchant_Order;
-  const isValid = verifyRedsysSignatureV2(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
+  
+  // 🔥 CORRECCIÓN CRÍTICA: Agregar Ds_Order a los parámetros para validación
+  const paramsForValidation = {
+    ...merchantParams,
+    Ds_Order: orderNumber // Campo requerido para validación de firma
+  };
+  
+  const isValid = verifyRedsysSignatureV2(SECRET_KEY, orderNumber, paramsForValidation, signature, { debug: true });
 
   if (!isValid) {
     await supabase.from('payments').insert({

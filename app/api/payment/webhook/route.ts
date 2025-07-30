@@ -33,8 +33,16 @@ export async function POST(req: NextRequest) {
     console.log('Parámetros decodificados:', merchantParams);
     console.log('Order number:', orderNumber);
 
+    // 🔥 CORRECCIÓN CRÍTICA: Agregar Ds_Order a los parámetros para validación
+    const paramsForValidation = {
+      ...merchantParams,
+      Ds_Order: orderNumber // Campo requerido para validación de firma
+    };
+
+    console.log('Parámetros para validación (con Ds_Order):', paramsForValidation);
+
     // Verificar firma con la nueva implementación CBC
-    const isValid = verifyRedsysSignatureV2Original(SECRET_KEY, orderNumber, merchantParams, signature, { debug: true });
+    const isValid = verifyRedsysSignatureV2Original(SECRET_KEY, orderNumber, paramsForValidation, signature, { debug: true });
     
     console.log('Verificación de firma:', isValid ? '✅ VÁLIDA' : '❌ INVÁLIDA');
 

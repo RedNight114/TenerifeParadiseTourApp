@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from './use-auth'
+import { useAuth } from '@/components/auth-provider-ultra-simple'
 import { supabase } from '@/lib/supabase'
 
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
@@ -49,7 +49,7 @@ export function useAuthorization(): AuthorizationState {
         .single()
 
       if (profileError) {
-        console.error('Error obteniendo perfil para autorización:', profileError)
+        // Error obteniendo perfil para autorización
         setUserRole(null)
         setPermissions([])
         return
@@ -70,7 +70,7 @@ export function useAuthorization(): AuthorizationState {
         .eq('user_id', user.id)
 
       if (permissionsError) {
-        console.error('Error obteniendo permisos:', permissionsError)
+        // Error obteniendo permisos
         setPermissions([])
       } else {
         setPermissions((userPermissions || []).map((perm: any) => ({
@@ -81,13 +81,9 @@ export function useAuthorization(): AuthorizationState {
         })))
       }
 
-      console.log('Autorización cargada:', {
-        userId: user.id,
-        role,
-        permissionsCount: userPermissions?.length || 0
-      })
+      // Autorización cargada
     } catch (error) {
-      console.error('Error cargando autorización:', error)
+      // Error cargando autorización
       setUserRole(null)
       setPermissions([])
     } finally {
@@ -204,7 +200,6 @@ export function useProtectedRoute(requiredRole?: UserRole, requiredPermission?: 
   useEffect(() => {
     if (!authResult.isLoading && !authResult.authorized) {
       // Redirigir a login o mostrar error
-      console.error('Acceso denegado:', authResult.error)
       // Aquí podrías redirigir a login o mostrar un modal de error
     }
   }, [authResult])

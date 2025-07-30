@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,7 +14,7 @@ import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { AvatarUpload } from "@/components/avatar-upload"
 
 export default function ProfilePage() {
-  const { user, loading, isAuthenticated } = useAuth()
+  const { user, loading } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const [formData, setFormData] = useState({
     full_name: "",
@@ -27,10 +27,10 @@ export default function ProfilePage() {
 
   // Redirigir si no está autenticado
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !user) {
       router.push('/auth/login')
     }
-  }, [loading, isAuthenticated, router])
+  }, [loading, user, router])
 
   // Cargar perfil cuando el usuario esté disponible
   useEffect(() => {
@@ -139,7 +139,7 @@ export default function ProfilePage() {
   }
 
   // Si no está autenticado, no mostrar nada (ya se redirigió)
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return null
   }
 

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { useReservations } from "@/hooks/use-reservations"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { Button } from "@/components/ui/button"
@@ -15,18 +15,18 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function ReservationsPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const { reservations, loading: reservationsLoading, error: reservationsError, cancelReservation } = useReservations()
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
 
   // Redirigir si no está autenticado
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && !user) {
       console.log('🔒 Usuario no autenticado, redirigiendo al login')
       router.push('/auth/login')
     }
-  }, [authLoading, isAuthenticated, router])
+  }, [authLoading, user, router])
 
   // Cargar perfil cuando el usuario esté disponible
   useEffect(() => {
@@ -221,7 +221,7 @@ export default function ReservationsPage() {
   }
 
   // Si no está autenticado, no mostrar nada (ya se redirigió)
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return null
   }
 

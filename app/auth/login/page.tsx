@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/hooks/use-auth-final"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { useAuthRedirect } from "@/components/auth-redirect-handler"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [logoError, setLogoError] = useState(false)
 
-  const { signIn, signInWithProvider, authError, user, profile, loading } = useAuth()
+  const { signIn, user, profile, loading, error } = useAuth()
   const { handleSuccessfulLogin, handleLoginError } = useAuthRedirect()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -81,26 +81,8 @@ export default function LoginPage() {
     }
   }
 
-  const handleSocialLogin = async (provider: "google" | "facebook") => {
-    try {
-      console.log(`Iniciando login con ${provider}...`)
-      toast.info(`Iniciando sesión con ${provider}...`)
-      
-      const { error } = await signInWithProvider(provider)
-      
-      if (error) {
-        toast.error(`Error al iniciar sesión con ${provider}: ${error}`)
-      } else {
-        toast.success(`Redirigiendo a ${provider}...`)
-      }
-    } catch (error) {
-      console.error(`Error en login con ${provider}:`, error)
-      toast.error(`Error al iniciar sesión con ${provider}`)
-    }
-  }
-
   // Mostrar error de conexión
-  if (authError) {
+  if (error) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#0061A8] via-[#1E40AF] to-[#F4C762] flex items-center justify-center p-4">
         <div className="text-center max-w-xs mx-auto">
@@ -109,7 +91,7 @@ export default function LoginPage() {
             <h2 className="text-lg font-bold text-gray-900 mb-3">Error de Conexión</h2>
             <Alert className="mb-3 bg-red-50 border-red-200">
               <AlertDescription className="text-red-800">
-                {authError || 'Error de conexión con el servidor. Por favor, verifica tu conexión a internet.'}
+                {error || 'Error de conexión con el servidor. Por favor, verifica tu conexión a internet.'}
               </AlertDescription>
             </Alert>
             <div className="space-y-3">
@@ -145,12 +127,12 @@ export default function LoginPage() {
       <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg animate-pulse delay-500"></div>
       <div className="absolute top-1/3 right-1/4 w-10 h-10 bg-[#F4C762]/15 rounded-full blur-md animate-pulse delay-1500"></div>
 
-      <div className="w-full max-w-4xl relative z-10">
+      <div className="w-full max-w-6xl relative z-10">
         {/* Sección de bienvenida - Siempre visible, encima del formulario en móviles/tablets */}
-        <div className="xl:hidden text-white text-center mb-6 sm:mb-8 lg:mb-10 px-3 sm:px-4 md:px-6">
-          <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+        <div className="lg:hidden text-white text-center mb-6 sm:mb-8 px-3 sm:px-4">
+          <div className="space-y-4 sm:space-y-6">
             <div className="flex items-center justify-center space-x-3 sm:space-x-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 relative flex-shrink-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 relative flex-shrink-0">
                 {!logoError ? (
                   <Image
                     src="/images/logo-tenerife.png"
@@ -161,35 +143,35 @@ export default function LoginPage() {
                   />
                 ) : (
                   <div className="w-full h-full bg-gradient-to-r from-[#0061A8] to-[#F4C762] rounded-lg flex items-center justify-center shadow-2xl relative">
-                    <span className="text-white font-bold text-base sm:text-lg lg:text-xl">TP</span>
+                    <span className="text-white font-bold text-base sm:text-lg">TP</span>
                     <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-[#F4C762] animate-pulse" />
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-base sm:text-lg lg:text-xl xl:text-2xl font-bold leading-tight">Tenerife Paradise</h2>
-                <p className="text-[#F4C762] font-medium text-sm sm:text-base lg:text-lg xl:text-xl">Tours & Excursions</p>
+              <div className="min-w-0 flex-1 text-center">
+                <h2 className="text-base sm:text-lg font-bold leading-tight">Tenerife Paradise</h2>
+                <p className="text-[#F4C762] font-medium text-sm sm:text-base">Tours & Excursions</p>
               </div>
             </div>
             
-            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold leading-tight tracking-tight">
+            <div className="space-y-3 sm:space-y-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight tracking-tight">
                 ¡Bienvenido de vuelta!
               </h1>
-              <p className="text-base sm:text-lg lg:text-xl xl:text-2xl leading-relaxed text-white/90 max-w-lg lg:max-w-xl mx-auto">
+              <p className="text-base sm:text-lg leading-relaxed text-white/90 max-w-lg mx-auto">
                 Inicia sesión para continuar tu aventura en Tenerife y descubrir experiencias únicas
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8 xl:gap-10 items-center min-h-[400px] xl:min-h-[500px]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 items-center">
           {/* Lado izquierdo - Información (solo en desktop) */}
-          <div className="hidden xl:block text-white space-y-4 sm:space-y-6 lg:space-y-8 order-2 xl:order-1 px-3 sm:px-4 md:px-6">
+          <div className="hidden lg:block text-white space-y-6 lg:space-y-8 order-2 lg:order-1 px-3 sm:px-4">
             {/* Logo y título - Solo en desktop */}
-            <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+            <div className="space-y-6 lg:space-y-8">
               <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 relative flex-shrink-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 relative flex-shrink-0">
                   {!logoError ? (
                     <Image
                       src="/images/logo-tenerife.png"
@@ -262,17 +244,21 @@ export default function LoginPage() {
             <div className="space-y-3 sm:space-y-4">
               <div className="flex items-center space-x-3">
                 <Phone className="w-4 h-4 text-[#F4C762]" />
-                <span className="text-sm sm:text-base">+34 922 123 456</span>
+                <span className="text-sm sm:text-base">+34 617 30 39 29</span>
               </div>
               <div className="flex items-center space-x-3">
                 <Mail className="w-4 h-4 text-[#F4C762]" />
-                <span className="text-sm sm:text-base">info@tenerifeparadise.com</span>
+                <span className="text-sm sm:text-base break-all">Tenerifeparadisetoursandexcursions@hotmail.com</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-4 h-4 text-[#F4C762]" />
+                <span className="text-sm sm:text-base">Santa Cruz de Tenerife, Islas Canarias</span>
               </div>
             </div>
           </div>
 
           {/* Lado derecho - Formulario de login */}
-          <div className="order-1 xl:order-2">
+          <div className="order-1 lg:order-2">
             <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
               <CardHeader className="text-center pb-4">
                 <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">
@@ -381,23 +367,8 @@ export default function LoginPage() {
                   </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialLogin("google")}
-                    className="bg-white border-gray-300 hover:bg-gray-50 text-gray-700"
-                  >
-                    <Chrome className="mr-2 h-4 w-4" />
-                    Google
-                  </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => handleSocialLogin("facebook")}
-                    className="bg-white border-gray-300 hover:bg-gray-50 text-gray-700"
-                  >
-                    <Facebook className="mr-2 h-4 w-4" />
-                    Facebook
-                  </Button>
+                <div className="text-center text-sm text-gray-500 py-2">
+                  Los inicios de sesión social estarán disponibles próximamente
                 </div>
               </CardContent>
               

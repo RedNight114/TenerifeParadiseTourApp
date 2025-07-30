@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/hooks/use-auth-final"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import {
@@ -266,11 +266,14 @@ export function Navbar() {
                         <span className="font-medium">Mis Reservas</span>
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem asChild className="rounded-lg p-3 hover:bg-gray-100 transition-colors">
-                      <Link href="/settings" className="flex items-center w-full">
-                        <Settings className="mr-3 h-4 w-4 text-gray-600" />
-                        <span className="font-medium">Configuración</span>
-                      </Link>
+                    <DropdownMenuItem className="rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-not-allowed opacity-60">
+                      <div className="flex items-center w-full">
+                        <Settings className="mr-3 h-4 w-4 text-gray-400" />
+                        <span className="font-medium text-gray-500">Configuración</span>
+                        <span className="ml-auto text-xs text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">
+                          Próximamente
+                        </span>
+                      </div>
                     </DropdownMenuItem>
                     {profile?.role === 'admin' && (
                       <DropdownMenuItem asChild className="rounded-lg p-3 hover:bg-purple-50 transition-colors">

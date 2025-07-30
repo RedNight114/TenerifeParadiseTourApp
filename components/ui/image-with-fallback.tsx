@@ -37,7 +37,7 @@ export default function ImageWithFallback({
 
   const handleError = () => {
     if (imgSrc !== fallbackSrc) {
-      console.log(`🖼️ Imagen no encontrada: ${src}, usando fallback`)
+              // Imagen no encontrada, usando fallback
       setImgSrc(fallbackSrc)
       setHasError(true)
     } else {

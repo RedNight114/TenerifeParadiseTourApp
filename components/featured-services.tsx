@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import { ServiceCard } from "@/components/service-card"
 import { Button } from "@/components/ui/button"
-import { useServicesAdvanced } from "@/hooks/use-services-advanced"
+import { useServicesSimple } from "@/hooks/use-services-simple"
 import { AdvancedLoading, SectionLoading } from "@/components/advanced-loading"
 import { AdvancedError } from "@/components/advanced-error-handling"
 import { AfterHydration, SuppressHydrationWarning } from "@/components/hydration-safe"
@@ -48,12 +48,9 @@ function FeaturedServicesContent() {
   const {
     services,
     isLoading,
-    isInitialLoading,
     error,
-    hasError,
-    refreshServices,
-    clearError
-  } = useServicesAdvanced()
+    refreshServices
+  } = useServicesSimple()
 
   // Memoize featured services to avoid unnecessary re-renders
   const displayServices = useMemo(() => {
@@ -62,53 +59,43 @@ function FeaturedServicesContent() {
   }, [services])
 
   // Loading inicial
-  if (isInitialLoading) {
+  if (isLoading) {
     return (
       <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
-          <SectionLoading message="Cargando servicios destacados..." />
-        </div>
-      </section>
-    )
-  }
-
-  // Error no crítico
-  if (hasError && error) {
-    return (
-      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
-        <div className="container mx-auto px-4">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl md:text-4xl font-bold text-gradient mb-4">Servicios Destacados</h2>
-            <AdvancedError
-              error={error}
-              variant="inline"
-              onRetry={refreshServices}
-              onDismiss={clearError}
-              showDetails={false}
-            />
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Star className="h-8 w-8 text-yellow-500" />
+              <h2 className="text-3xl md:text-4xl font-bold text-gradient">Servicios Destacados</h2>
+              <Star className="h-8 w-8 text-yellow-500" />
+            </div>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando servicios destacados...</p>
           </div>
         </div>
       </section>
     )
   }
 
-  // Loading de actualización
-  if (isLoading && !isInitialLoading) {
+  // Error
+  if (error) {
     return (
       <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <div className="flex items-center justify-center gap-2 mb-4">
               <Star className="h-8 w-8 text-yellow-500" />
               <h2 className="text-3xl md:text-4xl font-bold text-gradient">Servicios Destacados</h2>
               <Star className="h-8 w-8 text-yellow-500" />
             </div>
-            <AdvancedLoading
-              isLoading={true}
-              variant="minimal"
-              size="sm"
-              message="Actualizando servicios..."
-            />
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 max-w-md mx-auto">
+              <p className="text-red-800 mb-3">Error al cargar servicios: {error}</p>
+              <div className="flex gap-2 justify-center">
+                <Button onClick={refreshServices} size="sm">
+                  Reintentar
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

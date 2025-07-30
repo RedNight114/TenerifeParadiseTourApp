@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -15,63 +15,29 @@ interface AuthGuardProps {
 
 // Memoizar el componente para evitar re-renders innecesarios
 export const AuthGuard = React.memo(({ children, fallback, requireAuth = true }: AuthGuardProps) => {
-  const { user, profile, loading, error: authError, isAuthenticated } = useAuth()
+  const { user, profile, loading, authError, isAuthenticated } = useAuth()
   const [isChecking, setIsChecking] = useState(true)
   const router = useRouter()
 
-  // Memoizar la lógica de verificación
-  const shouldAllowAccess = useMemo(() => {
-    if (loading) return null // Aún cargando
-    if (!requireAuth) return true // No requiere autenticación
-    if (isAuthenticated && user) return true // Usuario autenticado
-    return false // No autenticado
-  }, [loading, requireAuth, isAuthenticated, user])
-
-  // Memoizar la función de redirección
-  const handleRedirect = useCallback(() => {
-    if (!isAuthenticated && !loading) {
-      console.log('🔒 AuthGuard - Usuario no autenticado, redirigiendo')
-      router.push("/auth/login")
-    }
-  }, [isAuthenticated, loading, router])
-
   useEffect(() => {
-    console.log('🔍 AuthGuard - Estado actual:', { 
-      loading, 
-      isAuthenticated,
-      user: !!user, 
-      profile: !!profile, 
-      authError
-    })
-
     // Si aún está cargando, esperar
     if (loading) {
-      console.log('⏳ AuthGuard - Aún cargando, esperando...')
       return
     }
 
-    // Si no requiere autenticación, permitir acceso
+    // Si no requiere autenticación, mostrar contenido
     if (!requireAuth) {
-      console.log('✅ AuthGuard - No requiere autenticación')
-      setIsChecking(false)
       return
     }
 
-    // Si está autenticado, permitir acceso
-    if (isAuthenticated && user) {
-      console.log('✅ AuthGuard - Usuario autenticado')
-      setIsChecking(false)
+    // Si está autenticado, mostrar contenido
+    if (isAuthenticated) {
       return
     }
 
     // Si no está autenticado, redirigir al login
-    if (!isAuthenticated && !loading) {
-      console.log('🔒 AuthGuard - Usuario no autenticado, redirigiendo')
-      router.push("/auth/login")
-      return
-    }
-
-  }, [loading, isAuthenticated, user, requireAuth, router])
+    router.push("/auth/login")
+  }, [loading, isAuthenticated, requireAuth, router])
 
   // Memoizar el loading component
   const loadingComponent = useMemo(() => (
@@ -133,7 +99,7 @@ export const AuthGuard = React.memo(({ children, fallback, requireAuth = true }:
   }
 
   // Si no hay usuario después de la verificación
-  if (!isAuthenticated || !user) {
+  if (!user) {
     if (fallback) {
       return <>{fallback}</>
     }

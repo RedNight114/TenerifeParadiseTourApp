@@ -3,8 +3,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth-provider"
-
+import { AuthProviderUltraSimple } from "@/components/auth-provider-ultra-simple"
 import { SuppressHydrationWarning } from "@/components/hydration-safe"
 
 const geist = GeistSans
@@ -36,10 +35,10 @@ export default function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <AuthProvider>
+            <AuthProviderUltraSimple>
               {/* Contenido principal */}
               {children}
-            </AuthProvider>
+            </AuthProviderUltraSimple>
           </ThemeProvider>
         </SuppressHydrationWarning>
       </body>

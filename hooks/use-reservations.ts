@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
-import { useAuth } from "./use-auth"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 
 interface Reservation {
   id: string

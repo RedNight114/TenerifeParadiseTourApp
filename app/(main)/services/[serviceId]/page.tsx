@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { useServicesAdvanced } from "@/hooks/use-services-advanced"
-import { useAuth } from "@/hooks/use-auth"
+import { useServicesSimple } from "@/hooks/use-services-simple"
+import { useAuth } from "@/components/auth-provider-ultra-simple"
 import { AdvancedLoading, SectionLoading } from "@/components/advanced-loading"
 import { AdvancedError, PageError } from "@/components/advanced-error-handling"
 
@@ -31,7 +31,7 @@ export default function ServiceDetailsPage() {
     fetchServiceById,
     refreshServices,
     clearError
-  } = useServicesAdvanced()
+  } = useServicesSimple()
   const { user, profile, loading: authLoading } = useAuth()
   const [isScrolled, setIsScrolled] = useState(false)
   
