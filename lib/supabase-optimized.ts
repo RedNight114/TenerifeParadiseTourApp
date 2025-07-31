@@ -193,8 +193,8 @@ export const getSupabaseClient = (): SupabaseClient => {
           setItem: (key: string, value: string) => {
             if (typeof window !== 'undefined') {
               localStorage.setItem(key, value)
-              // También guardar en cookie para middleware
-              document.cookie = `${key}=${value}; path=/; max-age=3600; SameSite=Lax`
+              // También guardar en cookie para middleware con tiempo extendido
+              document.cookie = `${key}=${value}; path=/; max-age=28800; SameSite=Lax`
             }
           },
           removeItem: (key: string) => {

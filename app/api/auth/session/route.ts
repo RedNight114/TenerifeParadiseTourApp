@@ -79,11 +79,11 @@ export async function GET(request: NextRequest) {
       email: user.email
     })
     
-    // Crear objeto de sesión
+    // Crear objeto de sesión con tiempo extendido
     const session = {
       user,
       access_token: accessToken,
-      expires_at: Math.floor(Date.now() / 1000) + 3600 // 1 hora
+      expires_at: Math.floor(Date.now() / 1000) + 28800 // 8 horas
     }
     
     return NextResponse.json({ 
