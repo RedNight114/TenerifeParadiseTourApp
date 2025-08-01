@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
+import { useAuth } from "@/components/auth-provider-simple"
 import { useServices } from "@/hooks/use-services"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,20 +15,33 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Separator } from "@/components/ui/separator"
-import { CalendarIcon, Clock, Users, MapPin, CreditCard, Shield, AlertTriangle } from "lucide-react"
-import { format } from "date-fns"
+import { Badge } from "@/components/ui/badge"
+import { 
+  CalendarIcon, Clock, Users, MapPin, CreditCard, Shield, AlertTriangle, 
+  ArrowLeft, CheckCircle, Info, Star, Euro, Phone, Mail, User, 
+  Loader2, AlertCircle, Check, X, LogOut, Settings, Calendar as CalendarIcon2, MonitorSmartphone, LogIn, ChevronLeft, ChevronRight
+} from "lucide-react"
+import { format, addDays, isBefore, startOfDay } from "date-fns"
 import { es } from "date-fns/locale"
 import Image from "next/image"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ServiceGallery } from "@/components/service-gallery"
-
-
+import { toast } from "sonner"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 
 export default function BookingPage() {
   const { serviceId } = useParams()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, loading: authLoading, signOut } = useAuth()
   const { services, loading: servicesLoading, fetchServices } = useServices()
   const router = useRouter()
 
@@ -47,27 +60,90 @@ export default function BookingPage() {
   const [errors, setErrors] = useState<any>({})
   const [invalidPriceAlert, setInvalidPriceAlert] = useState(false)
   const [redsysHtml, setRedsysHtml] = useState<string | null>(null)
+  const [formProgress, setFormProgress] = useState(0)
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
+  const [userProfile, setUserProfile] = useState<any>(null)
+  const [priceType, setPriceType] = useState<'per_person' | 'total'>('per_person')
 
+  // Validar acceso del usuario
   useEffect(() => {
     if (!authLoading && !user) {
+      toast.error("Necesitas iniciar sesión para hacer una reserva")
       router.push("/auth/login")
     }
   }, [user, authLoading, router])
 
+  // Cargar servicios
   useEffect(() => {
-    console.log("🔄 useEffect - Verificando servicios:", {
-      servicesLength: services.length,
-      serviceId: serviceId,
-      authLoading: authLoading,
-      user: !!user
-    })
-    
     if (services.length === 0) {
-      console.log("📡 Llamando fetchServices...")
       fetchServices()
     }
-  }, [services, fetchServices, serviceId, authLoading, user])
+  }, [services, fetchServices])
 
+  // Cargar perfil cuando el usuario esté disponible
+  useEffect(() => {
+    if (user?.id) {
+      loadProfile()
+    }
+  }, [user?.id])
+
+  const loadProfile = async () => {
+    if (!user?.id) return
+
+    try {
+      const client = getSupabaseClient()
+      const { data, error } = await client
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .maybeSingle()
+
+      if (error) {
+        console.error("Error cargando perfil:", error)
+        return
+      }
+
+      if (data) {
+        setUserProfile(data)
+      }
+    } catch (error) {
+      console.error("Error cargando perfil:", error)
+    }
+  }
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+      router.push("/")
+    } catch (error) {
+      console.error("Error al cerrar sesión:", error)
+      toast.error("Error al cerrar sesión")
+    }
+  }
+
+  const getUserInitials = (rawName?: unknown) => {
+    const name = typeof rawName === "string" && rawName.trim().length > 0 ? rawName : "Usuario"
+
+    return name
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
+
+  const getUserAvatar = () => {
+    return userProfile?.avatar_url || "/placeholder.svg"
+  }
+
+  const getUserName = () => {
+    const rawName = userProfile?.full_name ?? user?.email ?? ""
+    return typeof rawName === "string" && rawName.trim().length > 0 ? rawName : "Usuario"
+  }
+
+  // Configurar servicio y datos del usuario
   useEffect(() => {
     if (services.length > 0 && serviceId) {
       const foundService = services.find((s) => s.id === serviceId)
@@ -76,37 +152,61 @@ export default function BookingPage() {
       if (foundService && user) {
         setFormData((prev) => ({
           ...prev,
-          contact_name: profile?.full_name || user.user_metadata?.full_name || "",
+          contact_name: userProfile?.full_name || user.user_metadata?.full_name || "",
           contact_email: user.email || "",
         }))
       }
 
-      // Verificar si el precio del servicio es inválido
+      // Verificar precio del servicio
       if (foundService && (!foundService.price || foundService.price <= 0)) {
         setInvalidPriceAlert(true)
-        console.error("⚠️ Servicio con precio inválido detectado:", {
-          serviceId: foundService.id,
-          title: foundService.title,
-          price: foundService.price
-        })
+        toast.error("Este servicio no tiene un precio válido configurado")
       } else {
         setInvalidPriceAlert(false)
       }
 
-      // Debug: Mostrar información del servicio
+      // Detectar automáticamente el tipo de precio basado en el servicio
       if (foundService) {
-        console.log("🔍 SERVICIO SELECCIONADO:", {
-          id: foundService.id,
-          title: foundService.title,
-          price: foundService.price,
-          priceType: typeof foundService.price,
-          max_group_size: foundService.max_group_size
-        })
+        // Usar el tipo de precio del servicio desde la base de datos
+        if (foundService.price_type) {
+          setPriceType(foundService.price_type)
+        } else {
+          // Fallback: asumir precio por persona si no está especificado
+          setPriceType('per_person')
+        }
       }
     }
-  }, [services, serviceId, user, profile])
+  }, [services, serviceId, user, userProfile])
 
+  // Calcular progreso del formulario
+  useEffect(() => {
+    const requiredFields = ['contact_name', 'contact_email', 'contact_phone', 'reservation_date']
+    const completedFields = requiredFields.filter(field => 
+      formData[field as keyof typeof formData] && 
+      formData[field as keyof typeof formData].toString().trim() !== ''
+    ).length
+    setFormProgress((completedFields / requiredFields.length) * 100)
+  }, [formData])
 
+  // Mostrar información sobre el tipo de precio cuando se detecte
+  useEffect(() => {
+    if (service && priceType) {
+      const priceInfo = priceType === 'per_person' 
+        ? `Este servicio tiene precio por persona (€${service.price} por persona)`
+        : `Este servicio tiene precio total fijo (€${service.price} total)`
+      
+      // Solo mostrar el toast si el usuario está viendo la página por primera vez
+      if (service.id && !localStorage.getItem(`price_info_${service.id}`)) {
+        toast.info(priceInfo, {
+          duration: 4000,
+          description: priceType === 'per_person' 
+            ? "El precio se calculará multiplicando por el número de personas"
+            : "El precio es fijo independientemente del número de personas"
+        })
+        localStorage.setItem(`price_info_${service.id}`, 'shown')
+      }
+    }
+  }, [service, priceType])
 
   const handleDateSelect = (date: Date | undefined) => {
     if (date) {
@@ -115,6 +215,10 @@ export default function BookingPage() {
         ...prev,
         reservation_date: format(date, "yyyy-MM-dd"),
       }))
+      // Limpiar error de fecha
+      if (errors.reservation_date) {
+        setErrors((prev: any) => ({ ...prev, reservation_date: "" }))
+      }
     }
   }
 
@@ -124,7 +228,7 @@ export default function BookingPage() {
       [field]: value,
     }))
 
-    // Clear error when user starts typing
+    // Limpiar error cuando el usuario empieza a escribir
     if (errors[field]) {
       setErrors((prev: any) => ({
         ...prev,
@@ -136,30 +240,51 @@ export default function BookingPage() {
   const validateForm = () => {
     const newErrors: any = {}
 
+    // Validar fecha
     if (!formData.reservation_date) {
       newErrors.reservation_date = "La fecha es obligatoria"
+    } else if (selectedDate && isBefore(startOfDay(selectedDate), startOfDay(new Date()))) {
+      newErrors.reservation_date = "La fecha no puede ser anterior a hoy"
     }
 
+    // Validar nombre
     if (!formData.contact_name.trim()) {
       newErrors.contact_name = "El nombre es obligatorio"
+    } else if (formData.contact_name.trim().length < 2) {
+      newErrors.contact_name = "El nombre debe tener al menos 2 caracteres"
     }
 
+    // Validar email
     if (!formData.contact_email.trim()) {
       newErrors.contact_email = "El email es obligatorio"
-    } else if (!/\S+@\S+\.\S+/.test(formData.contact_email)) {
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.contact_email)) {
       newErrors.contact_email = "Email inválido"
     }
 
+    // Validar teléfono
     if (!formData.contact_phone.trim()) {
       newErrors.contact_phone = "El teléfono es obligatorio"
+    } else if (!/^[\+]?[0-9\s\-\(\)]{9,}$/.test(formData.contact_phone.replace(/\s/g, ''))) {
+      newErrors.contact_phone = "Teléfono inválido"
     }
 
+    // Validar huéspedes según el tipo de precio
+    if (priceType === 'per_person') {
+      // Para precio por persona, validar número de huéspedes
     if (formData.guests < 1) {
       newErrors.guests = "Debe haber al menos 1 huésped"
-    }
-
-    if (service?.max_group_size && formData.guests > service.max_group_size) {
+      } else if (service?.max_group_size && formData.guests > service.max_group_size) {
+        newErrors.guests = `Máximo ${service.max_group_size} huéspedes`
+      } else if (service?.min_group_size && formData.guests < service.min_group_size) {
+        newErrors.guests = `Mínimo ${service.min_group_size} huéspedes`
+      }
+    } else {
+      // Para precio total, el número de huéspedes es informativo pero no afecta el precio
+      if (formData.guests < 1) {
+        newErrors.guests = "Debe haber al menos 1 huésped"
+      } else if (service?.max_group_size && formData.guests > service.max_group_size) {
       newErrors.guests = `Máximo ${service.max_group_size} huéspedes`
+      }
     }
 
     setErrors(newErrors)
@@ -167,86 +292,73 @@ export default function BookingPage() {
   }
 
   const calculateTotal = () => {
-    if (!service) {
-      console.error("❌ No hay servicio seleccionado")
+    if (!service || !service.price || service.price <= 0) {
       return 0
     }
     
-    console.log("🔍 CALCULANDO TOTAL - Datos del servicio:", {
-      serviceId: service.id,
-      serviceTitle: service.title,
-      price: service.price,
-      priceType: typeof service.price,
-      guests: formData.guests
-    })
-    
-    // Validar que el precio del servicio sea válido
-    if (!service.price || service.price <= 0) {
-      console.error("❌ Precio del servicio inválido:", {
-        serviceId: service.id,
-        serviceTitle: service.title,
-        price: service.price,
-        priceType: typeof service.price
-      })
-      return 0
+    // Si el precio es por persona, multiplicar por el número de huéspedes
+    if (priceType === 'per_person') {
+      return service.price * formData.guests
     }
     
-    const total = service.price * formData.guests
-    console.log("✅ Cálculo de total exitoso:", {
-      servicePrice: service.price,
-      guests: formData.guests,
-      total: total,
-      calculation: `${service.price} * ${formData.guests} = ${total}`
-    })
+    // Si el precio es total, devolver el precio directamente
+    return service.price
+  }
+
+  const getPriceDisplay = () => {
+    if (!service || !service.price || service.price <= 0) {
+      return { amount: 0, label: "Precio no disponible" }
+    }
     
-    return total
+    if (priceType === 'per_person') {
+      return { 
+        amount: service.price, 
+        label: "por persona" 
+      }
+    }
+    
+    return { 
+      amount: service.price, 
+      label: "precio total del servicio" 
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setErrors({})
+
+    if (!validateForm()) {
+      toast.error("Por favor, corrige los errores en el formulario")
+      return
+    }
+
+    if (!service || !user) {
+      toast.error("Error: Datos del servicio o usuario no disponibles")
+      return
+    }
+
+    const total = calculateTotal()
+    if (!total || total <= 0) {
+      toast.error("Error: El precio del servicio no es válido")
+      return
+    }
+
     setIsSubmitting(true)
     setRedsysHtml(null)
 
-    if (!validateForm() || !service || !user) {
-      console.log("Validación fallida o datos faltantes")
-      return
-    }
-
-    // Validar que el total sea válido antes de proceder
-    const total = calculateTotal()
-    if (!total || total <= 0) {
-      console.error("❌ Total inválido para la reserva:", {
-        serviceId: service.id,
-        serviceTitle: service.title,
-        servicePrice: service.price,
-        guests: formData.guests,
-        calculatedTotal: total
-      })
-      alert("Error: El precio del servicio no es válido. Por favor, contacta con soporte.")
-      return
-    }
-
     try {
-      // Obtener el token de sesión y verificar que esté activa
+      // Verificar sesión
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {
         throw new Error("No hay sesión activa")
       }
 
-      console.log("🔐 Sesión verificada:", {
-        userId: session.user?.id,
-        hasToken: !!session.access_token,
-        tokenLength: session.access_token?.length || 0
-      })
-
-      // Crear la reserva en estado "pendiente"
+      // Crear datos de reserva
       const reservationData = {
         user_id: user.id,
         service_id: service.id,
         reservation_date: formData.reservation_date,
-        reservation_time: formData.reservation_time || "12:00", // Valor por defecto si no se selecciona
+        reservation_time: formData.reservation_time || "12:00",
         guests: formData.guests,
         total_amount: total,
         status: "pendiente",
@@ -257,17 +369,9 @@ export default function BookingPage() {
         contact_phone: formData.contact_phone,
       }
 
-      console.log("Información del servicio:", {
-        id: service.id,
-        title: service.title,
-        price: service.price,
-        guests: formData.guests,
-        calculatedTotal: total
-      })
-      console.log("📤 Enviando datos de reserva a la API...")
-      console.log("Datos de reserva a enviar:", JSON.stringify(reservationData, null, 2))
+      toast.loading("Creando reserva...")
 
-      // Enviar datos a la nueva API de reservas
+      // Enviar a la API
       const response = await fetch("/api/reservas/create", {
         method: "POST",
         headers: {
@@ -282,45 +386,54 @@ export default function BookingPage() {
         throw new Error(errorText || "Error al crear la reserva")
       }
 
-      // Recibir el HTML del formulario Redsys
+      toast.dismiss()
+      toast.success("¡Reserva creada exitosamente!")
+
+      // Recibir HTML de Redsys y redirigir
       const html = await response.text()
-      // Opción 1: abrir el HTML como blob en una navegación real
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      window.location.href = url;
-      // Si quieres abrir en nueva pestaña: window.open(url, "_blank");
+      const blob = new Blob([html], { type: "text/html" })
+      const url = URL.createObjectURL(blob)
+      window.location.href = url
+
     } catch (error: any) {
+      toast.dismiss()
+      toast.error(error.message || "Error al procesar la reserva")
       setErrors({ submit: error.message })
     } finally {
       setIsSubmitting(false)
     }
   }
 
+  // Estados de carga
   if (authLoading || servicesLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0061A8] mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-[#0061A8] mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">Cargando formulario de reserva...</p>
         </div>
       </div>
     )
   }
 
+  // Usuario no autenticado
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <AlertCircle className="h-12 w-12 text-[#0061A8] mx-auto mb-4" />
             <CardTitle className="text-2xl text-[#0061A8]">Acceso Requerido</CardTitle>
             <CardDescription>Necesitas iniciar sesión para hacer una reserva</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Link href="/auth/login">
-              <Button className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90">Iniciar Sesión</Button>
+              <Button className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90">
+                Iniciar Sesión
+              </Button>
             </Link>
             <Link href="/services">
-              <Button variant="outline" className="w-full bg-transparent">
+              <Button variant="outline" className="w-full">
                 Volver a Servicios
               </Button>
             </Link>
@@ -330,17 +443,21 @@ export default function BookingPage() {
     )
   }
 
+  // Servicio no encontrado
   if (!service) {
     return (
-      <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <X className="h-12 w-12 text-red-600 mx-auto mb-4" />
             <CardTitle className="text-2xl text-red-600">Servicio No Encontrado</CardTitle>
             <CardDescription>El servicio que buscas no existe o no está disponible</CardDescription>
           </CardHeader>
           <CardContent>
             <Link href="/services">
-              <Button className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90">Ver Todos los Servicios</Button>
+              <Button className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90">
+                Ver Todos los Servicios
+              </Button>
             </Link>
           </CardContent>
         </Card>
@@ -349,166 +466,401 @@ export default function BookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-20">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="mb-8">
-            <Link href="/services" className="text-[#0061A8] hover:underline mb-4 inline-block">
-              ← Volver a Servicios
+    <div className="min-h-screen bg-gray-50">
+      {/* Navbar específico para reservas */}
+      <nav className="bg-white shadow-sm border-b sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-6 py-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-6">
+              <Link 
+                href="/services" 
+                className="flex items-center gap-3 text-[#0061A8] hover:text-[#0061A8]/80 transition-colors font-medium text-base"
+              >
+                <ArrowLeft className="h-5 w-5" />
+                Volver a Servicios
             </Link>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Reservar Servicio</h1>
-            <p className="text-gray-600">Completa los datos para proceder con tu reserva</p>
+              <div className="hidden md:flex items-center gap-6 text-gray-600 text-base">
+                <Link href="/" className="hover:text-[#0061A8] transition-colors font-medium">Inicio</Link>
+                <Link href="/services" className="hover:text-[#0061A8] transition-colors font-medium">Servicios</Link>
+                <Link href="/about" className="hover:text-[#0061A8] transition-colors font-medium">Nosotros</Link>
+                <Link href="/contact" className="hover:text-[#0061A8] transition-colors font-medium">Contacto</Link>
+              </div>
           </div>
 
-          {/* Alerta de precio inválido */}
-          {invalidPriceAlert && (
-            <div className="mb-6">
-              <Alert variant="destructive">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Precio del servicio no disponible</AlertTitle>
-                <AlertDescription>
-                  Este servicio no tiene un precio válido configurado. Por favor, contacta con soporte para más información.
-                </AlertDescription>
-              </Alert>
+            <div className="flex items-center gap-4">
+              {user ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className="relative h-10 w-10 rounded-full p-1.5 transition-all duration-300 hover:scale-110 hover:bg-gray-100"
+                    >
+                      <Avatar className="h-8 w-8 ring-2 ring-gray-200 shadow-md">
+                        <AvatarImage
+                          src={getUserAvatar()}
+                          alt={getUserName()}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-gradient-to-r from-[#0061A8] to-[#F4C762] text-white text-sm font-bold">
+                          {getUserInitials(getUserName())}
+                        </AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-64 p-3" align="end" forceMount>
+                    <div className="flex items-center justify-start gap-4 p-4 rounded-lg bg-gray-50">
+                      <Avatar className="h-12 w-12 flex-shrink-0">
+                        <AvatarImage
+                          src={getUserAvatar()}
+                          alt={getUserName()}
+                          className="object-cover"
+                        />
+                        <AvatarFallback className="bg-gradient-to-r from-[#0061A8] to-[#F4C762] text-white text-base font-bold">
+                          {getUserInitials(getUserName())}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col space-y-1 leading-none min-w-0 flex-1">
+                        <p className="font-semibold text-base text-gray-900 truncate">{getUserName()}</p>
+                        <p className="text-sm text-gray-500 truncate">{user.email}</p>
             </div>
-          )}
+                    </div>
+                    <DropdownMenuSeparator className="my-3" />
+                    <div className="space-y-2">
+                      <DropdownMenuItem asChild className="rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                        <Link href="/profile" className="flex items-center w-full">
+                          <User className="mr-4 h-5 w-5 text-gray-600" />
+                          <span className="font-medium text-base">Mi Perfil</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild className="rounded-lg p-4 hover:bg-gray-100 transition-colors">
+                        <Link href="/reservations" className="flex items-center w-full">
+                          <CalendarIcon2 className="mr-4 h-5 w-5 text-gray-600" />
+                          <span className="font-medium text-base">Mis Reservas</span>
+                        </Link>
+                      </DropdownMenuItem>
+                      {userProfile?.role === 'admin' && (
+                        <DropdownMenuItem asChild className="rounded-lg p-4 hover:bg-purple-50 transition-colors">
+                          <Link href="/admin/dashboard" className="flex items-center w-full text-purple-600">
+                            <MonitorSmartphone className="mr-4 h-5 w-5" />
+                            <span className="font-medium text-base">Panel Admin</span>
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                    </div>
+                    <DropdownMenuSeparator className="my-3" />
+                    <DropdownMenuItem 
+                      onClick={handleSignOut} 
+                      className="rounded-lg p-4 hover:bg-red-50 transition-colors text-red-600"
+                    >
+                      <LogOut className="mr-4 h-5 w-5" />
+                      <span className="font-medium text-base">Cerrar Sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button
+                  variant="ghost"
+                  asChild
+                  className="group transition-all duration-300 font-semibold px-5 py-3 text-base rounded-lg hover:scale-105 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100"
+                >
+                  <Link href="/auth/login" className="flex items-center space-x-3">
+                    <LogIn className="w-5 h-5" />
+                    <span>Iniciar Sesión</span>
+                  </Link>
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Service Info */}
-            <div className="lg:col-span-1">
-              <Card className="sticky top-24">
-                <CardHeader className="p-0">
-                  <ServiceGallery 
-                    images={service.images || []} 
-                    serviceTitle={service.title}
-                    className="rounded-t-lg"
-                  />
-                </CardHeader>
-                <CardContent className="p-6">
-                  <h3 className="text-xl font-semibold mb-2">{service.title}</h3>
-                  <p className="text-gray-600 text-sm mb-4">{service.description}</p>
+      {/* Hero Section - Escala aumentada */}
+      <div className="bg-white border-b border-gray-200 py-8">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+              Reservar Servicio
+            </h1>
+            <p className="text-gray-600 text-base md:text-lg mb-6">
+              Completa los datos para proceder con tu reserva
+            </p>
+            
+            {/* Progress Bar - Escala aumentada */}
+            <div className="max-w-md mx-auto">
+              <div className="flex items-center justify-between text-sm text-gray-600 mb-3">
+                <span>Progreso del formulario</span>
+                <span className="font-medium">{Math.round(formProgress)}%</span>
+                      </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className="bg-[#0061A8] h-3 rounded-full transition-all duration-300"
+                  style={{ width: `${formProgress}%` }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
-                  <div className="space-y-3 text-sm">
-                    {service.duration && (
-                      <div className="flex items-center text-gray-600">
-                        <Clock className="h-4 w-4 mr-2" />
-                        <span>
-                          {Math.floor(service.duration / 60)}h {service.duration % 60}min
-                        </span>
+      {/* Main Content */}
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* Left Column - Service Info & Gallery */}
+          <div className="space-y-6">
+            {/* Service Info Card - Escala aumentada */}
+            <div className="bg-white rounded-lg shadow-lg p-6 sticky top-24">
+              <div className="flex items-start gap-6">
+                {/* Image Gallery - Escala aumentada */}
+                <div className="flex-1">
+                  {service?.images && service.images.length > 0 ? (
+                    <div className="relative">
+                      <div className="relative h-56 md:h-64 rounded-lg overflow-hidden">
+                        <Image
+                          src={service.images[currentImageIndex]}
+                          alt={`${service.name} - Imagen ${currentImageIndex + 1}`}
+                          fill
+                          className="object-cover"
+                        />
+                        {/* Navigation arrows - Escala aumentada */}
+                        {service.images.length > 1 && (
+                          <>
+                            <button
+                              onClick={() => setCurrentImageIndex(prev => 
+                                prev === 0 ? service.images.length - 1 : prev - 1
+                              )}
+                              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
+                            >
+                              <ChevronLeft className="h-5 w-5" />
+                            </button>
+                            <button
+                              onClick={() => setCurrentImageIndex(prev => 
+                                prev === service.images.length - 1 ? 0 : prev + 1
+                              )}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
+                            >
+                              <ChevronRight className="h-5 w-5" />
+                            </button>
+                          </>
+                        )}
+                        {/* Image counter - Escala aumentada */}
+                        <div className="absolute top-3 left-3 bg-black/50 text-white text-sm px-3 py-1.5 rounded-full">
+                          {currentImageIndex + 1}/{service.images.length}
+                        </div>
+                      </div>
+                      
+                      {/* Thumbnails - Escala aumentada */}
+                      {service.images.length > 1 && (
+                        <div className="flex gap-3 mt-4">
+                          {service.images.map((image: string, index: number) => (
+                            <button
+                              key={index}
+                              onClick={() => setCurrentImageIndex(index)}
+                              className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
+                                index === currentImageIndex 
+                                  ? 'border-[#0061A8]' 
+                                  : 'border-gray-200 hover:border-gray-300'
+                              }`}
+                            >
+                              <Image
+                                src={image}
+                                alt={`Miniatura ${index + 1}`}
+                                fill
+                                className="object-cover"
+                              />
+                            </button>
+                          ))}
                       </div>
                     )}
-
-                    {service.location && (
-                      <div className="flex items-center text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span>{service.location}</span>
+                    </div>
+                  ) : (
+                    <div className="h-56 md:h-64 bg-gray-100 rounded-lg flex items-center justify-center">
+                      <div className="text-center text-gray-500">
+                        <Image 
+                          src="/placeholder.svg" 
+                          alt="Sin imágenes" 
+                          width={64} 
+                          height={64} 
+                          className="mx-auto mb-3 opacity-50" 
+                        />
+                        <p className="text-base">No hay imágenes disponibles</p>
                       </div>
-                    )}
-
-                    {service.min_group_size && (
-                      <div className="flex items-center text-gray-600">
-                        <Users className="h-4 w-4 mr-2" />
-                        <span>
-                          {service.min_group_size === service.max_group_size
-                            ? `${service.min_group_size} personas`
-                            : `${service.min_group_size}-${service.max_group_size || "∞"} personas`}
-                        </span>
                       </div>
                     )}
                   </div>
 
-                  <Separator className="my-4" />
-
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg font-semibold">Precio por persona:</span>
-                    <span className="text-2xl font-bold text-[#0061A8]">
-                      {new Intl.NumberFormat("es-ES", {
-                        style: "currency",
-                        currency: "EUR",
-                      }).format(service.price)}
+                {/* Service Info - Escala aumentada */}
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">
+                    {service?.name}
+                  </h2>
+                  <p className="text-base text-gray-600 line-clamp-3 mb-4">
+                    {service?.description}
+                  </p>
+                  
+                  {/* Quick Info - Escala aumentada */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3 text-base text-gray-600">
+                      <MapPin className="h-4 w-4 text-[#0061A8] flex-shrink-0" />
+                      <span className="break-words">{service?.location || "Ubicación no especificada"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-base text-gray-600">
+                      <Clock className="h-4 w-4 text-[#0061A8] flex-shrink-0" />
+                      <span>{service?.duration || "Duración no especificada"}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-base text-gray-600">
+                      <Users className="h-4 w-4 text-[#0061A8] flex-shrink-0" />
+                      <span>Máx. {service?.max_group_size || "N/A"} personas</span>
+                    </div>
+                  </div>
+                  
+                  {/* Price - Escala aumentada */}
+                  <div className="mt-4 text-center">
+                    <div className="text-3xl font-bold text-[#0061A8]">
+                      €{getPriceDisplay().amount || 0}
+                    </div>
+                    <div className="text-sm text-gray-500">{getPriceDisplay().label}</div>
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                        priceType === 'per_person' 
+                          ? 'bg-blue-100 text-blue-800' 
+                          : 'bg-purple-100 text-purple-800'
+                      }`}>
+                        {priceType === 'per_person' ? 'Precio por persona' : 'Precio total'}
                     </span>
                   </div>
-                </CardContent>
-              </Card>
             </div>
 
-            {/* Booking Form */}
-            <div className="lg:col-span-2">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center">
-                    <CreditCard className="h-5 w-5 mr-2" />
-                    Datos de la Reserva
-                  </CardTitle>
-                  <CardDescription>Completa la información necesaria para tu reserva</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleSubmit} className="space-y-6">
-                    {/* Contact Information */}
+                  {/* Badges - Escala aumentada */}
+                  <div className="flex gap-3 mt-4 justify-center">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                      <CheckCircle className="h-4 w-4 mr-1.5" />
+                      Disponible
+                    </span>
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                      <Shield className="h-4 w-4 mr-1.5" />
+                      Pago Seguro
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Booking Form */}
+          <div className="space-y-6">
+            {/* Form Card - Escala aumentada */}
+            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+              <div className="bg-gradient-to-r from-[#0061A8] to-[#0061A8]/90 text-white p-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                    <User className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold">Datos de la Reserva</h2>
+                    <p className="text-base text-white/90">Completa la información necesaria para tu reserva</p>
+                  </div>
+                </div>
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Contact Information - Escala aumentada */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Información de Contacto</h3>
+                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <User className="h-4 w-4 text-[#0061A8]" />
+                    Información de Contacto
+                  </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label htmlFor="contact_name">Nombre Completo *</Label>
-                          <Input
-                            id="contact_name"
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Nombre Completo *
+                      </label>
+                      <input
+                        type="text"
                             value={formData.contact_name}
                             onChange={(e) => handleInputChange("contact_name", e.target.value)}
-                            className={errors.contact_name ? "border-red-500" : ""}
-                          />
-                          {errors.contact_name && <p className="text-red-500 text-sm mt-1">{errors.contact_name}</p>}
+                        className={`w-full px-4 py-3 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8] ${
+                          errors.contact_name ? "border-red-500" : "border-gray-300"
+                        }`}
+                        placeholder="Tu nombre completo"
+                      />
+                      {errors.contact_name && (
+                        <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          {errors.contact_name}
+                        </p>
+                      )}
                         </div>
 
                         <div>
-                          <Label htmlFor="contact_phone">Teléfono *</Label>
-                          <Input
-                            id="contact_phone"
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Teléfono *
+                      </label>
+                      <input
                             type="tel"
                             value={formData.contact_phone}
                             onChange={(e) => handleInputChange("contact_phone", e.target.value)}
-                            className={errors.contact_phone ? "border-red-500" : ""}
-                          />
-                          {errors.contact_phone && <p className="text-red-500 text-sm mt-1">{errors.contact_phone}</p>}
+                        className={`w-full px-4 py-3 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8] ${
+                          errors.contact_phone ? "border-red-500" : "border-gray-300"
+                        }`}
+                        placeholder="+34 600 000 000"
+                      />
+                      {errors.contact_phone && (
+                        <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          {errors.contact_phone}
+                        </p>
+                      )}
                         </div>
                       </div>
 
                       <div>
-                        <Label htmlFor="contact_email">Email *</Label>
-                        <Input
-                          id="contact_email"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Email *
+                    </label>
+                    <input
                           type="email"
                           value={formData.contact_email}
                           onChange={(e) => handleInputChange("contact_email", e.target.value)}
-                          className={errors.contact_email ? "border-red-500" : ""}
-                        />
-                        {errors.contact_email && <p className="text-red-500 text-sm mt-1">{errors.contact_email}</p>}
+                      className={`w-full px-4 py-3 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8] ${
+                        errors.contact_email ? "border-red-500" : "border-gray-300"
+                      }`}
+                      placeholder="tu@email.com"
+                    />
+                    {errors.contact_email && (
+                      <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                        <AlertCircle className="h-4 w-4" />
+                        {errors.contact_email}
+                      </p>
+                    )}
                       </div>
                     </div>
 
-                    <Separator />
-
-                    {/* Reservation Details */}
+                {/* Reservation Details - Escala aumentada */}
                     <div className="space-y-4">
-                      <h3 className="text-lg font-semibold">Detalles de la Reserva</h3>
+                  <h3 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-[#0061A8]" />
+                    Detalles de la Reserva
+                  </h3>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <Label>Fecha de la Reserva *</Label>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Fecha de la Reserva *
+                      </label>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
                                 variant="outline"
-                                className={`w-full justify-start text-left font-normal ${
-                                  !selectedDate ? "text-muted-foreground" : ""
-                                } ${errors.reservation_date ? "border-red-500" : ""}`}
-                              >
-                                <CalendarIcon className="mr-2 h-4 w-4" />
-                                {selectedDate ? (
-                                  format(selectedDate, "PPP", { locale: es })
-                                ) : (
-                                  <span>Selecciona una fecha</span>
+                            className={`w-full justify-start text-left font-normal text-base px-4 py-3 h-auto ${
+                              errors.reservation_date ? "border-red-500" : ""
+                            }`}
+                          >
+                            <CalendarIcon className="mr-3 h-4 w-4" />
+                            {formData.reservation_date ? (
+                              format(selectedDate!, "PPP", { locale: es })
+                            ) : (
+                              <span className="text-gray-500">Selecciona una fecha</span>
                                 )}
                               </Button>
                             </PopoverTrigger>
@@ -517,151 +869,162 @@ export default function BookingPage() {
                                 mode="single"
                                 selected={selectedDate}
                                 onSelect={handleDateSelect}
-                                disabled={(date) => date < new Date()}
+                            disabled={(date) => isBefore(date, startOfDay(new Date()))}
                                 initialFocus
                               />
                             </PopoverContent>
                           </Popover>
                           {errors.reservation_date && (
-                            <p className="text-red-500 text-sm mt-1">{errors.reservation_date}</p>
+                        <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          {errors.reservation_date}
+                        </p>
                           )}
                         </div>
 
                         <div>
-                          <Label htmlFor="reservation_time">Hora Preferida</Label>
-                          <Select
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Hora Preferida
+                      </label>
+                      <select
                             value={formData.reservation_time}
-                            onValueChange={(value) => handleInputChange("reservation_time", value)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecciona una hora" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="09:00">09:00</SelectItem>
-                              <SelectItem value="10:00">10:00</SelectItem>
-                              <SelectItem value="11:00">11:00</SelectItem>
-                              <SelectItem value="12:00">12:00</SelectItem>
-                              <SelectItem value="13:00">13:00</SelectItem>
-                              <SelectItem value="14:00">14:00</SelectItem>
-                              <SelectItem value="15:00">15:00</SelectItem>
-                              <SelectItem value="16:00">16:00</SelectItem>
-                              <SelectItem value="17:00">17:00</SelectItem>
-                              <SelectItem value="18:00">18:00</SelectItem>
-                            </SelectContent>
-                          </Select>
+                        onChange={(e) => handleInputChange("reservation_time", e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8]"
+                      >
+                        <option value="">Selecciona una hora</option>
+                        <option value="09:00">09:00</option>
+                        <option value="10:00">10:00</option>
+                        <option value="11:00">11:00</option>
+                        <option value="12:00">12:00</option>
+                        <option value="13:00">13:00</option>
+                        <option value="14:00">14:00</option>
+                        <option value="15:00">15:00</option>
+                        <option value="16:00">16:00</option>
+                        <option value="17:00">17:00</option>
+                      </select>
                         </div>
                       </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="guests">Número de Huéspedes *</Label>
-                        <Select
-                          value={formData.guests.toString()}
-                          onValueChange={(value) => handleInputChange("guests", Number.parseInt(value))}
-                        >
-                          <SelectTrigger className={errors.guests ? "border-red-500" : ""}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: service.max_group_size || 10 }, (_, i) => i + 1).map((num) => (
-                              <SelectItem key={num} value={num.toString()}>
-                                {num} {num === 1 ? "persona" : "personas"}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        {errors.guests && <p className="text-red-500 text-sm mt-1">{errors.guests}</p>}
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Número de Huéspedes {priceType === 'per_person' ? '*' : ''}
+                        {priceType === 'total' && (
+                          <span className="text-xs text-gray-500 ml-1">(informativo)</span>
+                        )}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={service?.max_group_size || 10}
+                        value={formData.guests}
+                        onChange={(e) => handleInputChange("guests", parseInt(e.target.value))}
+                        className={`w-full px-4 py-3 border rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8] ${
+                          errors.guests ? "border-red-500" : "border-gray-300"
+                        }`}
+                        placeholder={priceType === 'per_person' ? "Número de personas" : "Número de participantes"}
+                      />
+                      {errors.guests && (
+                        <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                          <AlertCircle className="h-4 w-4" />
+                          {errors.guests}
+                        </p>
+                      )}
+                      {priceType === 'total' && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          El precio es fijo independientemente del número de personas
+                        </p>
+                      )}
+                    </div>
                       </div>
 
                       <div>
-                        <Label htmlFor="special_requests">Solicitudes Especiales</Label>
-                        <Textarea
-                          id="special_requests"
-                          placeholder="¿Tienes alguna solicitud especial? (opcional)"
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Solicitudes Especiales
+                    </label>
+                    <textarea
                           value={formData.special_requests}
                           onChange={(e) => handleInputChange("special_requests", e.target.value)}
-                          rows={3}
+                      rows={4}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg text-base focus:outline-none focus:ring-2 focus:ring-[#0061A8] resize-none"
+                      placeholder="Alergias, necesidades especiales, etc."
                         />
                       </div>
                     </div>
 
-                    <Separator />
-
-                    {/* Price Summary */}
-                    <div className="bg-gray-50 p-4 rounded-lg">
-                      <h3 className="text-lg font-semibold mb-3">Resumen del Precio</h3>
-                      <div className="space-y-2">
-                        <div className="flex justify-between">
-                          <span>Precio por persona:</span>
-                          <span>
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                            }).format(service.price)}
-                          </span>
+                {/* Price Summary - Escala aumentada */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Euro className="h-5 w-5 text-[#0061A8]" />
+                      <span className="font-medium text-base">Total a pagar:</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span>Número de huéspedes:</span>
-                          <span>{formData.guests}</span>
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-[#0061A8]">
+                        €{calculateTotal().toFixed(2)}
                         </div>
-                        <Separator />
-                        <div className="flex justify-between text-lg font-semibold">
-                          <span>Total:</span>
-                          <span className="text-[#0061A8]">
-                            {new Intl.NumberFormat("es-ES", {
-                              style: "currency",
-                              currency: "EUR",
-                            }).format(calculateTotal())}
-                          </span>
+                      <div className="text-sm text-gray-500">
+                        {priceType === 'per_person' ? (
+                          <>
+                            {formData.guests} {formData.guests === 1 ? 'persona' : 'personas'} × €{service?.price || 0} por persona
+                          </>
+                        ) : (
+                          <>
+                            Precio total del servicio
+                          </>
+                        )}
+                      </div>
                         </div>
                       </div>
                     </div>
 
-                    {/* Payment Info */}
-                    <div className="bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-start space-x-3">
-                        <Shield className="h-5 w-5 text-blue-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-semibold text-blue-900">Proceso de Pago Seguro</h4>
-                          <p className="text-blue-800 text-sm mt-1">
-                            Tu pago se procesará de forma segura a través de Redsys. El cargo se realizará únicamente
-                            cuando confirmemos la disponibilidad de tu reserva.
-                          </p>
+                {/* Payment Info - Escala aumentada */}
+                <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+                  <div className="flex items-start gap-3">
+                    <Shield className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
+                    <div className="text-base">
+                      <p className="font-medium text-green-800">Pago Seguro</p>
+                      <p className="text-green-700 text-sm">Tu información está protegida con encriptación SSL</p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Submit Button */}
+                {/* Submit Button - Escala aumentada */}
                     <Button
                       type="submit"
-                      className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90 h-12 text-lg"
-                      disabled={isSubmitting}
+                  disabled={isSubmitting || invalidPriceAlert}
+                  className="w-full h-12 text-base font-semibold bg-[#0061A8] hover:bg-[#0061A8]/90 text-white rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
                         <>
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+                      <Loader2 className="mr-3 h-5 w-5 animate-spin" />
                           Procesando...
                         </>
                       ) : (
                         <>
-                          <CreditCard className="h-5 w-5 mr-2" />
+                      <CreditCard className="mr-3 h-5 w-5" />
                           Proceder al Pago
                         </>
                       )}
                     </Button>
+
+                {/* Submit Error */}
+                {errors.submit && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Error</AlertTitle>
+                    <AlertDescription>{errors.submit}</AlertDescription>
+                  </Alert>
+                )}
                   </form>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Redsys Form */}
       {redsysHtml && (
         <div dangerouslySetInnerHTML={{ __html: redsysHtml }} />
-      )}
-      {isSubmitting && !redsysHtml && (
-        <div className="text-center py-8">
-          <p className="text-lg font-semibold text-blue-600">Redirigiendo a Redsys...</p>
-        </div>
       )}
     </div>
   )

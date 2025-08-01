@@ -39,7 +39,7 @@ export function Footer() {
                   <div className="w-12 h-12 relative">
                     <Image
                       src="/images/logo-tenerife.png"
-                      alt="Tenerife Paradise Tours"
+                      alt="TenerifeParadiseTour&Excursions"
                       width={48}
                       height={48}
                       className="rounded-full"
@@ -209,36 +209,30 @@ export function Footer() {
               
               {/* Legal Links with Cookie Settings */}
               <div className="flex flex-wrap justify-center gap-6 text-sm">
-                {[
-                  { 
-                    label: "Política de Privacidad", 
-                    onClick: () => openLegalModal('privacy'),
-                    className: "text-gray-400 hover:text-[#F4C762] cursor-pointer"
-                  },
-                  { 
-                    label: "Términos y Condiciones", 
-                    onClick: () => openLegalModal('terms'),
-                    className: "text-gray-400 hover:text-[#F4C762] cursor-pointer"
-                  },
-                  { 
-                    label: "Política de Cookies", 
-                    onClick: () => openLegalModal('cookies'),
-                    className: "text-gray-400 hover:text-[#F4C762] cursor-pointer"
-                  },
-                  { 
-                    label: "Configuración", 
-                    onClick: () => setIsCookieModalOpen(true),
-                    className: "text-gray-500 hover:text-gray-400 cursor-pointer"
-                  },
-                ].map((link, index) => (
-                  <span
-                    key={index}
-                    onClick={link.onClick}
-                    className={`transition-colors duration-200 hover:underline ${link.className}`}
-                  >
-                    {link.label}
-                  </span>
-                ))}
+                <Link
+                  href="/privacy-policy"
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                >
+                  Política de Privacidad
+                </Link>
+                <Link
+                  href="/terms"
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                >
+                  Términos y Condiciones
+                </Link>
+                <Link
+                  href="/cookies-policy"
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                >
+                  Política de Cookies
+                </Link>
+                <span
+                  onClick={() => setIsCookieModalOpen(true)}
+                  className="text-gray-500 hover:text-gray-400 cursor-pointer transition-colors duration-200 hover:underline"
+                >
+                  Configuración
+                </span>
               </div>
             </div>
             

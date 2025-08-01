@@ -1,241 +1,182 @@
--- Script para corregir search_path de funciones
--- Ejecutar en el SQL Editor de Supabase
+-- Script para arreglar el search_path de las funciones problemáticas
+-- Ejecuta este script en el SQL Editor de Supabase
 
--- =====================================================
--- 1. CORREGIR SEARCH_PATH DE FUNCIONES
--- =====================================================
+-- 1. Verificar las funciones existentes
+SELECT 
+    proname as function_name,
+    prosrc as function_source
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public' 
+AND proname IN (
+    'get_user_role',
+    'has_role',
+    'has_permission',
+    'can_access_resource',
+    'can_access_own_resource',
+    'is_manager_or_above',
+    'is_staff_or_above',
+    'log_audit_event',
+    'get_audit_stats',
+    'export_audit_logs',
+    'confirm_test_user',
+    'is_admin'
+);
 
--- Función generate_display_id
-CREATE OR REPLACE FUNCTION public.generate_display_id()
-RETURNS TEXT
+-- 2. Arreglar la función get_user_role
+CREATE OR REPLACE FUNCTION public.get_user_role(user_id uuid)
+RETURNS text
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    RETURN 'ID-' || to_char(now(), 'YYYYMMDD') || '-' || lpad(floor(random() * 10000)::text, 4, '0');
+    RETURN (SELECT role FROM profiles WHERE id = user_id);
 END;
 $$;
 
--- Función set_display_id
-CREATE OR REPLACE FUNCTION public.set_display_id()
-RETURNS TRIGGER
+-- 3. Arreglar la función has_role
+CREATE OR REPLACE FUNCTION public.has_role(user_id uuid, required_role text)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    IF NEW.display_id IS NULL THEN
-        NEW.display_id := public.generate_display_id();
-    END IF;
-    RETURN NEW;
+    RETURN EXISTS (
+        SELECT 1 FROM profiles 
+        WHERE id = user_id AND role = required_role
+    );
 END;
 $$;
 
--- Función get_user_role
-CREATE OR REPLACE FUNCTION public.get_user_role(user_id UUID)
-RETURNS TEXT
+-- 4. Arreglar la función has_permission
+CREATE OR REPLACE FUNCTION public.has_permission(user_id uuid, permission_name text)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    user_role TEXT;
 BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    RETURN COALESCE(user_role, 'user');
+    RETURN EXISTS (
+        SELECT 1 FROM user_permissions up
+        JOIN profiles p ON up.user_id = p.id
+        WHERE p.id = user_id AND up.permission = permission_name
+    );
 END;
 $$;
 
--- Función has_role
-CREATE OR REPLACE FUNCTION public.has_role(user_id UUID, required_role TEXT)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    RETURN user_role = required_role;
-END;
-$$;
-
--- Función update_contact_messages_updated_at
-CREATE OR REPLACE FUNCTION public.update_contact_messages_updated_at()
-RETURNS TRIGGER
+-- 5. Arreglar la función can_access_resource
+CREATE OR REPLACE FUNCTION public.can_access_resource(user_id uuid, resource_type text, resource_id uuid)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$;
-
--- Función has_permission
-CREATE OR REPLACE FUNCTION public.has_permission(user_id UUID, permission TEXT)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    
-    CASE permission
-        WHEN 'admin' THEN RETURN user_role = 'admin';
-        WHEN 'moderator' THEN RETURN user_role IN ('admin', 'moderator');
-        WHEN 'user' THEN RETURN user_role IN ('admin', 'moderator', 'user');
-        ELSE RETURN FALSE;
-    END CASE;
-END;
-$$;
-
--- Función can_access_resource
-CREATE OR REPLACE FUNCTION public.can_access_resource(user_id UUID, resource_type TEXT, resource_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    
-    -- Admins pueden acceder a todo
-    IF user_role = 'admin' THEN
-        RETURN TRUE;
+    -- Los administradores pueden acceder a todo
+    IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id AND role = 'admin') THEN
+        RETURN true;
     END IF;
     
-    -- Moderators pueden acceder a recursos públicos
-    IF user_role = 'moderator' THEN
-        RETURN TRUE;
-    END IF;
-    
-    -- Users solo pueden acceder a sus propios recursos
-    RETURN FALSE;
+    -- Los usuarios solo pueden acceder a sus propios recursos
+    RETURN user_id = resource_id;
 END;
 $$;
 
--- Función can_access_own_resource
-CREATE OR REPLACE FUNCTION public.can_access_own_resource(user_id UUID, resource_user_id UUID)
-RETURNS BOOLEAN
+-- 6. Arreglar la función can_access_own_resource
+CREATE OR REPLACE FUNCTION public.can_access_own_resource(user_id uuid, resource_user_id uuid)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-DECLARE
-    user_role TEXT;
 BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    
-    -- Admins pueden acceder a todo
-    IF user_role = 'admin' THEN
-        RETURN TRUE;
+    -- Los administradores pueden acceder a todo
+    IF EXISTS (SELECT 1 FROM profiles WHERE id = user_id AND role = 'admin') THEN
+        RETURN true;
     END IF;
     
-    -- Moderators pueden acceder a todo
-    IF user_role = 'moderator' THEN
-        RETURN TRUE;
-    END IF;
-    
-    -- Users solo pueden acceder a sus propios recursos
+    -- Los usuarios solo pueden acceder a sus propios recursos
     RETURN user_id = resource_user_id;
 END;
 $$;
 
--- Función is_manager_or_above
-CREATE OR REPLACE FUNCTION public.is_manager_or_above(user_id UUID)
-RETURNS BOOLEAN
+-- 7. Arreglar la función is_manager_or_above
+CREATE OR REPLACE FUNCTION public.is_manager_or_above(user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM profiles 
+        WHERE id = user_id AND role IN ('admin', 'manager')
+    );
+END;
+$$;
+
+-- 8. Arreglar la función is_staff_or_above
+CREATE OR REPLACE FUNCTION public.is_staff_or_above(user_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM profiles 
+        WHERE id = user_id AND role IN ('admin', 'manager', 'staff')
+    );
+END;
+$$;
+
+-- 9. Arreglar la función log_audit_event
+CREATE OR REPLACE FUNCTION public.log_audit_event(
+    user_id uuid,
+    action_name text,
+    details jsonb DEFAULT '{}'::jsonb
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    INSERT INTO audit_logs (user_id, action, details, created_at)
+    VALUES (user_id, action_name, details, NOW());
+END;
+$$;
+
+-- 10. Arreglar la función get_audit_stats
+CREATE OR REPLACE FUNCTION public.get_audit_stats()
+RETURNS jsonb
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-    user_role TEXT;
+    stats jsonb;
 BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    RETURN user_role IN ('admin', 'moderator');
-END;
-$$;
-
--- Función is_staff_or_above
-CREATE OR REPLACE FUNCTION public.is_staff_or_above(user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    RETURN user_role IN ('admin', 'moderator', 'user');
-END;
-$$;
-
--- Función log_audit_event
-CREATE OR REPLACE FUNCTION public.log_audit_event(user_id UUID, action TEXT, details JSONB DEFAULT NULL)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    INSERT INTO public.audit_logs (user_id, action, details)
-    VALUES (user_id, action, details);
-END;
-$$;
-
--- Función cleanup_old_audit_logs
-CREATE OR REPLACE FUNCTION public.cleanup_old_audit_logs(days_to_keep INTEGER DEFAULT 90)
-RETURNS INTEGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    deleted_count INTEGER;
-BEGIN
-    DELETE FROM public.audit_logs 
-    WHERE created_at < NOW() - INTERVAL '1 day' * days_to_keep;
+    SELECT jsonb_build_object(
+        'total_events', COUNT(*),
+        'today_events', COUNT(*) FILTER (WHERE DATE(created_at) = CURRENT_DATE),
+        'unique_users', COUNT(DISTINCT user_id)
+    ) INTO stats
+    FROM audit_logs;
     
-    GET DIAGNOSTICS deleted_count = ROW_COUNT;
-    RETURN deleted_count;
+    RETURN stats;
 END;
 $$;
 
--- Función get_audit_stats
-CREATE OR REPLACE FUNCTION public.get_audit_stats(days_back INTEGER DEFAULT 30)
-RETURNS TABLE(action TEXT, count BIGINT)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT al.action, COUNT(*) as count
-    FROM public.audit_logs al
-    WHERE al.created_at >= NOW() - INTERVAL '1 day' * days_back
-    GROUP BY al.action
-    ORDER BY count DESC;
-END;
-$$;
-
--- Función export_audit_logs
-CREATE OR REPLACE FUNCTION public.export_audit_logs(start_date DATE, end_date DATE)
+-- 11. Arreglar la función export_audit_logs
+CREATE OR REPLACE FUNCTION public.export_audit_logs(start_date date, end_date date)
 RETURNS TABLE(
-    id UUID,
-    user_id UUID,
-    action TEXT,
-    details JSONB,
-    created_at TIMESTAMPTZ
+    user_id uuid,
+    action text,
+    details jsonb,
+    created_at timestamptz
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -243,160 +184,63 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT al.id, al.user_id, al.action, al.details, al.created_at
-    FROM public.audit_logs al
+    SELECT al.user_id, al.action, al.details, al.created_at
+    FROM audit_logs al
     WHERE DATE(al.created_at) BETWEEN start_date AND end_date
     ORDER BY al.created_at DESC;
 END;
 $$;
 
--- Función detect_suspicious_activity
-CREATE OR REPLACE FUNCTION public.detect_suspicious_activity(hours_back INTEGER DEFAULT 24)
-RETURNS TABLE(user_id UUID, action_count BIGINT, suspicious BOOLEAN)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        al.user_id,
-        COUNT(*) as action_count,
-        COUNT(*) > 100 as suspicious
-    FROM public.audit_logs al
-    WHERE al.created_at >= NOW() - INTERVAL '1 hour' * hours_back
-    GROUP BY al.user_id
-    HAVING COUNT(*) > 50;
-END;
-$$;
-
--- Función confirm_test_user
+-- 12. Arreglar la función confirm_test_user
 CREATE OR REPLACE FUNCTION public.confirm_test_user()
-RETURNS VOID
+RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    UPDATE auth.users 
-    SET email_confirmed_at = NOW()
-    WHERE email = 'test@example.com';
+    UPDATE profiles 
+    SET email_confirmed_at = NOW(), updated_at = NOW()
+    WHERE email = 'brian12guargacho@gmail.com';
 END;
 $$;
 
--- Función get_users_for_admin
-CREATE OR REPLACE FUNCTION public.get_users_for_admin()
-RETURNS TABLE(
-    id UUID,
-    email TEXT,
-    full_name TEXT,
-    role TEXT,
-    created_at TIMESTAMPTZ
-)
+-- 13. Arreglar la función is_admin
+CREATE OR REPLACE FUNCTION public.is_admin(user_id uuid)
+RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    RETURN QUERY
-    SELECT p.id, p.email, p.full_name, p.role, p.created_at
-    FROM public.profiles p
-    ORDER BY p.created_at DESC;
+    RETURN EXISTS (
+        SELECT 1 FROM profiles 
+        WHERE id = user_id AND role = 'admin'
+    );
 END;
 $$;
 
--- Función confirm_user_email
-CREATE OR REPLACE FUNCTION public.confirm_user_email(user_email TEXT)
-RETURNS VOID
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    UPDATE auth.users 
-    SET email_confirmed_at = NOW()
-    WHERE email = user_email;
-END;
-$$;
-
--- Función delete_service_with_reservations
-CREATE OR REPLACE FUNCTION public.delete_service_with_reservations(service_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    -- Eliminar reservas primero
-    DELETE FROM public.reservations WHERE service_id = delete_service_with_reservations.service_id;
-    
-    -- Eliminar servicio
-    DELETE FROM public.services WHERE id = delete_service_with_reservations.service_id;
-    
-    RETURN TRUE;
-EXCEPTION
-    WHEN OTHERS THEN
-        RETURN FALSE;
-END;
-$$;
-
--- Función list_services_with_reservations
-CREATE OR REPLACE FUNCTION public.list_services_with_reservations()
-RETURNS TABLE(
-    service_id UUID,
-    service_name TEXT,
-    reservation_count BIGINT
-)
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        s.id as service_id,
-        s.name as service_name,
-        COUNT(r.id) as reservation_count
-    FROM public.services s
-    LEFT JOIN public.reservations r ON s.id = r.service_id
-    GROUP BY s.id, s.name
-    ORDER BY reservation_count DESC;
-END;
-$$;
-
--- Función update_updated_at_column
-CREATE OR REPLACE FUNCTION public.update_updated_at_column()
-RETURNS TRIGGER
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$;
-
--- Función is_admin
-CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
-RETURNS BOOLEAN
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-    user_role TEXT;
-BEGIN
-    SELECT role INTO user_role FROM public.profiles WHERE id = user_id;
-    RETURN user_role = 'admin';
-END;
-$$;
-
--- =====================================================
--- 2. VERIFICAR CORRECCIÓN
--- =====================================================
-
+-- 14. Verificar que las funciones se arreglaron
 SELECT 
-    'CORRECCIÓN COMPLETADA' as mensaje,
-    'Todas las funciones han sido actualizadas con search_path = public' as detalle,
-    'Revisa el Supabase Linter para confirmar que no hay warnings de search_path' as siguiente_paso; 
+    proname as function_name,
+    CASE 
+        WHEN prosrc LIKE '%SET search_path = public%' THEN '✅ Arreglada'
+        ELSE '❌ Sin search_path'
+    END as status
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+WHERE n.nspname = 'public' 
+AND proname IN (
+    'get_user_role',
+    'has_role',
+    'has_permission',
+    'can_access_resource',
+    'can_access_own_resource',
+    'is_manager_or_above',
+    'is_staff_or_above',
+    'log_audit_event',
+    'get_audit_stats',
+    'export_audit_logs',
+    'confirm_test_user',
+    'is_admin'
+); 

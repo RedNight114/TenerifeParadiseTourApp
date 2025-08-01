@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
+import { AuditLogger } from "@/lib/audit-logger"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -98,6 +99,12 @@ export function ReservationsManagement() {
         `)
         .order("created_at", { ascending: false })
 
+      // Registrar acceso a datos de reservas
+      await AuditLogger.logDataAccess('reservations', 'read', {
+        count: data?.length || 0,
+        filters: { status: statusFilter, search: searchTerm }
+      })
+
       if (fetchError) {
         throw fetchError
       }
@@ -165,6 +172,13 @@ export function ReservationsManagement() {
         throw updateError
       }
 
+      // Registrar modificación de reserva
+      const previousStatus = reservations.find(r => r.id === reservationId)?.status
+      await AuditLogger.logDataModification('reservations', 'update', reservationId, {
+        new_status: newStatus,
+        previous_status: previousStatus
+      })
+
       // Actualizar el estado local
       setReservations((prev) =>
         prev.map((reservation) =>
@@ -188,6 +202,9 @@ export function ReservationsManagement() {
       setStats(newStats)
     } catch (err) {
       setError(`Error al actualizar la reserva: ${  (err as Error).message}`)
+      
+      // Registrar error
+      await AuditLogger.logError(err as Error, 'reservation_status_update', undefined)
     } finally {
       setUpdating(null)
     }

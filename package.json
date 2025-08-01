@@ -2,7 +2,7 @@
   "name": "tenerife-paradise-tours",
   "version": "1.0.0",
   "private": true,
-  "description": "Plataforma de reservas turísticas para Tenerife Paradise Tours & Excursions",
+  "description": "Plataforma de reservas turísticas para TenerifeParadiseTour&Excursions",
   "keywords": [
     "tenerife",
     "tours",
@@ -12,7 +12,7 @@
     "nextjs",
     "supabase"
   ],
-  "author": "Tenerife Paradise Tours & Excursions",
+  "author": "TenerifeParadiseTour&Excursions",
   "license": "MIT",
   "scripts": {
     "dev": "next dev",

@@ -4,7 +4,7 @@ import { Cookie, Shield, BarChart3, Users, Settings, Info } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Política de Cookies",
-  description: "Información sobre el uso de cookies en Tenerife Paradise Tours",
+  description: "Información sobre el uso de cookies en TenerifeParadiseTour&Excursions",
 }
 
 export default function CookiesPage() {
@@ -206,7 +206,7 @@ export default function CookiesPage() {
                 <div className="space-y-3">
                   <div>
                     <h4 className="font-semibold text-gray-900">Responsable del tratamiento</h4>
-                    <p className="text-gray-600">Tenerife Paradise Tours</p>
+                    <p className="text-gray-600">TenerifeParadiseTour&Excursions</p>
                   </div>
                   
                   <div>

@@ -98,7 +98,7 @@ export default function AboutPage() {
               <h2 className="text-3xl md:text-4xl font-bold mb-6 text-gradient">Nuestra Historia</h2>
               <div className="space-y-6 text-gray-600 leading-relaxed">
                 <p className="text-lg">
-                  Tenerife Paradise Tours & Excursions nació en 2025 del amor profundo por nuestra isla y el deseo de
+                  TenerifeParadiseTour&Excursions nació en 2025 del amor profundo por nuestra isla y el deseo de
                   compartir sus tesoros ocultos con viajeros de todo el mundo.
                 </p>
                 <p>

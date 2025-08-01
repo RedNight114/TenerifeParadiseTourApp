@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/components/auth-provider-ultra-simple'
+import { useAuth } from '@/components/auth-provider-simple'
 
 export function useNavigationRecovery() {
   const router = useRouter()

@@ -16,12 +16,34 @@ interface ServiceCardProps {
 }
 
 export const ServiceCard = React.memo(function ServiceCard({ service, priority = false }: ServiceCardProps) {
-  const formatPrice = (price: number, priceType: string) => {
+  const formatPrice = (price: number, priceType?: string) => {
     const formatted = new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: "EUR",
     }).format(price)
-    return `${formatted}${priceType === "per_person" ? "/persona" : ""}`
+    
+    // Si no hay price_type especificado, asumir precio por persona
+    const type = priceType || "per_person"
+    
+    return `${formatted}${type === "per_person" ? "/persona" : ""}`
+  }
+
+  const getPriceDisplay = () => {
+    if (!service.price || service.price <= 0) {
+      return { amount: "Precio no disponible", type: "N/A", badgeText: "N/A" }
+    }
+    
+    const type = service.price_type || "per_person"
+    const formatted = new Intl.NumberFormat("es-ES", {
+      style: "currency",
+      currency: "EUR",
+    }).format(service.price)
+    
+    return {
+      amount: formatted,
+      type: type === "per_person" ? "por persona" : "precio total del servicio",
+      badgeText: type === "per_person" ? "Por persona" : "Precio total"
+    }
   }
 
   const getDifficultyColor = (difficulty: string) => {
@@ -55,98 +77,107 @@ export const ServiceCard = React.memo(function ServiceCard({ service, priority =
   const imageSrc = normalizeImageUrl(firstImage)
 
   return (
-    <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 hover:scale-[1.02] bg-white border-gray-200">
-      <div className="relative h-40 xs:h-44 sm:h-48 overflow-hidden bg-gray-100">
+    <Card className="group overflow-hidden hover:shadow-2xl transition-all duration-500 hover:scale-[1.03] bg-white border-gray-100 rounded-2xl shadow-lg hover:shadow-blue-100/50">
+      <div className="relative h-48 xs:h-52 sm:h-56 overflow-hidden bg-gray-100">
         <Image
           src={imageSrc}
           alt={service.title}
           fill
-          className="object-cover group-hover:scale-105 transition-transform duration-300"
+          className="object-cover group-hover:scale-110 transition-transform duration-700"
           sizes="(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
           priority={priority}
           loading={priority ? "eager" : "lazy"}
-          quality={75}
+          quality={85}
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
         
-        {/* Badges superiores */}
-        <div className="absolute top-1 xs:top-2 right-1 xs:right-2 flex flex-col gap-0.5 xs:gap-1">
+        {/* Badges superiores mejorados */}
+        <div className="absolute top-2 xs:top-3 right-2 xs:right-3 flex flex-col gap-1 xs:gap-1.5">
           {service.featured && (
-            <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white border-0 text-xs px-1.5 py-0.5">
-              <Star className="h-2.5 w-2.5 xs:h-3 xs:w-3 mr-0.5 xs:mr-1" />
+            <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 hover:from-yellow-500 hover:to-orange-600 text-white border-0 text-xs px-2 py-1 shadow-lg">
+              <Star className="h-3 w-3 xs:h-3.5 xs:w-3.5 mr-1" />
               <span className="hidden xs:inline">Destacado</span>
               <span className="xs:hidden">Dest.</span>
             </Badge>
           )}
           {service.difficulty_level && (
-            <Badge className={`${getDifficultyColor(service.difficulty_level)} border-0 text-xs px-1.5 py-0.5`}>
+            <Badge className={`${getDifficultyColor(service.difficulty_level)} border-0 text-xs px-2 py-1 shadow-lg backdrop-blur-sm`}>
               {service.difficulty_level.charAt(0).toUpperCase() + service.difficulty_level.slice(1)}
             </Badge>
           )}
         </div>
         
-        {/* Badge inferior */}
-        <div className="absolute bottom-1 xs:bottom-2 left-1 xs:left-2">
+        {/* Badge inferior mejorado */}
+        <div className="absolute bottom-2 xs:bottom-3 left-2 xs:left-3">
           {service.activity_type && (
-            <Badge variant="secondary" className="bg-white/90 text-gray-800 border-0 text-xs px-1.5 py-0.5">
+            <Badge variant="secondary" className="bg-white/95 backdrop-blur-sm text-gray-800 border-0 text-xs px-2 py-1 shadow-lg">
               {getCategoryIcon(service.category_id)}
-              <span className="ml-0.5 xs:ml-1 hidden sm:inline">{service.activity_type}</span>
-              <span className="ml-0.5 xs:ml-1 sm:hidden">{service.activity_type.slice(0, 8)}...</span>
+              <span className="ml-1 hidden sm:inline">{service.activity_type}</span>
+              <span className="ml-1 sm:hidden">{service.activity_type.slice(0, 8)}...</span>
             </Badge>
           )}
         </div>
       </div>
 
-      <CardContent className="p-2 xs:p-3 sm:p-4">
-        <div className="space-y-2 xs:space-y-3">
-          {/* Título */}
-          <h3 className="font-semibold text-base xs:text-lg line-clamp-2 text-gray-900 group-hover:text-[#0061A8] transition-colors leading-tight">
+      <CardContent className="p-4 xs:p-5 sm:p-6">
+        <div className="space-y-3 xs:space-y-4">
+          {/* Título mejorado */}
+          <h3 className="font-bold text-lg xs:text-xl line-clamp-2 text-gray-900 group-hover:text-[#0061A8] transition-colors leading-tight">
             {service.title}
           </h3>
 
-          {/* Descripción */}
-          <p className="text-gray-600 text-xs xs:text-sm line-clamp-2 leading-relaxed">
+          {/* Descripción mejorada */}
+          <p className="text-gray-600 text-sm xs:text-base line-clamp-2 leading-relaxed">
             {service.description}
           </p>
 
-          {/* Información adicional */}
-          <div className="flex flex-wrap gap-1 xs:gap-2 text-xs text-gray-500">
+          {/* Información adicional mejorada */}
+          <div className="grid grid-cols-1 gap-2 xs:gap-3 text-sm text-gray-500">
             {service.duration && (
-              <div className="flex items-center gap-0.5 xs:gap-1">
-                <Clock className="h-2.5 w-2.5 xs:h-3 xs:w-3 flex-shrink-0" />
-                <span>{service.duration} min</span>
+              <div className="flex items-center gap-1.5 xs:gap-2 bg-gray-50 px-2 py-1 rounded-lg">
+                <Clock className="h-3.5 w-3.5 xs:h-4 xs:w-4 flex-shrink-0 text-[#0061A8]" />
+                <span className="font-medium">{service.duration} min</span>
               </div>
             )}
             {service.location && (
-              <div className="flex items-center gap-0.5 xs:gap-1">
-                <MapPin className="h-2.5 w-2.5 xs:h-3 xs:w-3 flex-shrink-0" />
-                <span className="line-clamp-1">{service.location}</span>
+              <div className="flex items-center gap-1.5 xs:gap-2 bg-gray-50 px-2 py-1 rounded-lg">
+                <MapPin className="h-3.5 w-3.5 xs:h-4 xs:w-4 flex-shrink-0 text-[#0061A8]" />
+                <span className="line-clamp-1 font-medium text-xs xs:text-sm truncate">{service.location}</span>
               </div>
             )}
             {service.min_group_size && service.max_group_size && (
-              <div className="flex items-center gap-0.5 xs:gap-1">
-                <Users className="h-2.5 w-2.5 xs:h-3 xs:w-3 flex-shrink-0" />
-                <span>{service.min_group_size}-{service.max_group_size} pers.</span>
+              <div className="flex items-center gap-1.5 xs:gap-2 bg-gray-50 px-2 py-1 rounded-lg">
+                <Users className="h-3.5 w-3.5 xs:h-4 xs:w-4 flex-shrink-0 text-[#0061A8]" />
+                <span className="font-medium">{service.min_group_size}-{service.max_group_size} pers.</span>
               </div>
             )}
           </div>
 
-          {/* Precio y botones */}
-          <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-2 xs:gap-0 pt-2">
+          {/* Precio y botones mejorados */}
+          <div className="flex flex-col xs:flex-row justify-between items-start xs:items-center gap-3 xs:gap-0 pt-3">
             <div className="text-left xs:text-right w-full xs:w-auto">
-              <div className="text-base xs:text-lg font-bold text-[#0061A8]">
-                {formatPrice(service.price, service.price_type || "per_person")}
+              <div className="flex items-center gap-2 justify-start xs:justify-end mb-1">
+                <div className="text-lg xs:text-xl font-bold text-[#0061A8]">
+                  {getPriceDisplay().amount}
+                </div>
+                <Badge className={`text-xs px-2 py-1 shadow-sm ${
+                  (service.price_type || "per_person") === "per_person"
+                    ? "bg-blue-100 text-blue-800 border-blue-200"
+                    : "bg-purple-100 text-purple-800 border-purple-200"
+                }`}>
+                  {getPriceDisplay().badgeText}
+                </Badge>
               </div>
-              {service.price_type === "per_person" && (
-                <div className="text-xs text-gray-500">por persona</div>
-              )}
+              <div className="text-xs text-gray-500">
+                {getPriceDisplay().type}
+              </div>
             </div>
             
             <div className="flex gap-2 w-full xs:w-auto">
               <Link href={`/services/${service.id}`} className="flex-1 xs:flex-none">
                 <Button 
                   variant="outline"
-                  className="w-full xs:w-auto px-3 xs:px-4 sm:px-5 py-2 xs:py-2.5 sm:py-3 text-xs xs:text-sm font-medium transition-all duration-200 hover:scale-105 border-gray-300 hover:border-[#0061A8] hover:bg-[#0061A8]/5"
+                  className="w-full xs:w-auto px-4 xs:px-5 sm:px-6 py-2.5 xs:py-3 sm:py-3.5 text-sm xs:text-base font-semibold transition-all duration-300 hover:scale-105 border-gray-300 hover:border-[#0061A8] hover:bg-[#0061A8]/5 rounded-xl"
                   size="sm"
                 >
                   <span className="hidden sm:inline">Ver Detalles</span>
@@ -155,7 +186,7 @@ export const ServiceCard = React.memo(function ServiceCard({ service, priority =
               </Link>
               <Link href={`/booking/${service.id}`} className="flex-1 xs:flex-none">
                 <Button 
-                  className="w-full xs:w-auto bg-[#0061A8] hover:bg-[#0061A8]/90 text-white px-3 xs:px-4 sm:px-5 py-2 xs:py-2.5 sm:py-3 text-xs xs:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-sm hover:shadow-md"
+                  className="w-full xs:w-auto bg-gradient-to-r from-[#0061A8] to-[#0061A8]/90 hover:from-[#0061A8]/90 hover:to-[#0061A8] text-white px-4 xs:px-5 sm:px-6 py-2.5 xs:py-3 sm:py-3.5 text-sm xs:text-base font-semibold transition-all duration-300 hover:scale-105 shadow-lg hover:shadow-xl rounded-xl"
                   size="sm"
                 >
                   <span className="hidden sm:inline">Reservar</span>

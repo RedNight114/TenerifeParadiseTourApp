@@ -1,4 +1,4 @@
-# 🏝️ Tenerife Paradise Tours & Excursions
+# 🏝️ TenerifeParadiseTour&Excursions
 
 [![Next.js](https://img.shields.io/badge/Next.js-14.2.30-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-blue?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)

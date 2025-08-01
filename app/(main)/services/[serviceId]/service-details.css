@@ -1,4 +1,6 @@
-/* Ocultar Navbar y Footer del layout principal en páginas de detalles de servicios */
+/* Estilos simplificados para la página de detalles de servicio */
+
+/* Ocultar Navbar y Footer del layout principal */
 .service-details-page nav:first-of-type,
 .service-details-page footer:first-of-type {
   display: none !important;
@@ -7,4 +9,32 @@
 /* Asegurar que el contenido ocupe toda la pantalla */
 .service-details-page {
   min-height: 100vh;
+}
+
+/* Mejoras de legibilidad */
+.service-details-page h1,
+.service-details-page h2,
+.service-details-page h3 {
+  line-height: 1.3;
+}
+
+.service-details-page p {
+  line-height: 1.6;
+}
+
+/* Transiciones suaves */
+.service-details-page * {
+  transition: all 0.2s ease-in-out;
+}
+
+/* Mejoras para móviles */
+@media (max-width: 768px) {
+  .service-details-page .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+  
+  .service-details-page .card {
+    margin-bottom: 1rem;
+  }
 } 

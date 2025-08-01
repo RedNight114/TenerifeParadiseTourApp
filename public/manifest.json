@@ -1,7 +1,7 @@
 {
-  "name": "Tenerife Paradise Tours & Excursions",
+  "name": "TenerifeParadiseTour&Excursions - Tours y Excursiones",
   "short_name": "Tenerife Tours",
-  "description": "Plataforma de reservas turísticas para Tenerife Paradise Tours & Excursions. Reserva actividades, alquiler de vehículos y experiencias gastronómicas.",
+  "description": "Descubre Tenerife con nuestras excursiones únicas. Tours guiados, actividades turísticas, alquiler de vehículos y experiencias gastronómicas. Reserva online con garantía.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
@@ -73,14 +73,14 @@
       "sizes": "1280x720",
       "type": "image/jpeg",
       "form_factor": "wide",
-      "label": "Página principal de Tenerife Paradise Tours"
+      "label": "Página principal de TenerifeParadiseTour&Excursions"
     },
     {
       "src": "/placeholder.jpg",
       "sizes": "750x1334",
       "type": "image/jpeg",
       "form_factor": "narrow",
-      "label": "Vista móvil de Tenerife Paradise Tours"
+      "label": "Vista móvil de TenerifeParadiseTour&Excursions"
     }
   ]
 } 

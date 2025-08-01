@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
-import { useAuthRedirect } from "@/components/auth-redirect-handler"
+import { useAuth } from "@/components/auth-provider-simple"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -24,7 +23,6 @@ export default function AdminLoginPage() {
   const [redirecting, setRedirecting] = useState(false)
 
   const { signIn, user, profile, loading: authLoading } = useAuth()
-  const { handleLoginError } = useAuthRedirect()
   const router = useRouter()
 
   // Verificar si ya está autenticado y es admin
@@ -67,7 +65,23 @@ export default function AdminLoginPage() {
       const { error: signInError, data } = await signIn(email.trim(), password)
 
       if (signInError) {
-        handleLoginError(signInError)
+        // Manejar error de login
+        let errorMessage = "Error al iniciar sesión"
+        
+        if (signInError && typeof signInError === 'object' && 'message' in signInError) {
+          const errorMsg = (signInError as any).message
+          if (errorMsg?.includes("Invalid login credentials")) {
+            errorMessage = "Email o contraseña incorrectos"
+          } else if (errorMsg?.includes("Email not confirmed")) {
+            errorMessage = "Por favor confirma tu email antes de iniciar sesión"
+          } else if (errorMsg?.includes("Too many requests")) {
+            errorMessage = "Demasiados intentos. Espera unos minutos"
+          } else {
+            errorMessage = errorMsg
+          }
+        }
+        
+        toast.error(errorMessage)
       } else {
         console.log('✅ Autenticación exitosa, verificando perfil...')
         toast.success("Verificando permisos de administrador...")

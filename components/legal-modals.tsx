@@ -20,7 +20,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
           content: (
             <div className="space-y-4 text-sm text-gray-600">
               <p>
-                En Tenerife Paradise Tours & Excursions, nos comprometemos a proteger tu privacidad. 
+                En TenerifeParadiseTour&Excursions, nos comprometemos a proteger tu privacidad. 
                 Esta política describe cómo recopilamos, utilizamos y protegemos tu información personal.
               </p>
               

@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { adminApi } from "@/lib/api-client"
+import { getAuditStats, cleanupOldLogs } from "@/lib/audit-logger"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { 
   Activity, 
   Shield, 
@@ -59,6 +60,8 @@ interface AuditStats {
 interface AuditLog {
   id: string
   user_email: string
+  user_name: string
+  user_role: string
   action: string
   category: string
   level: string
@@ -84,33 +87,38 @@ export function AuditDashboard() {
   const fetchStats = async () => {
     try {
       setLoading(true)
-      const data = await adminApi.getAuditStats(filters.days)
+      const data = await getAuditStats(filters.days)
       
-      // Transformar los datos de la nueva API al formato esperado por el componente
+      if (!data) {
+        setError('No se pudieron obtener las estadísticas de auditoría')
+        return
+      }
+      
+      // Transformar los datos reales al formato esperado por el componente
       const transformedStats: AuditStats = {
         summary: {
-          total_logs: data.stats.total,
-          success_rate: data.stats.total > 0 ? '95.00' : '0',
-          error_rate: data.stats.total > 0 ? '5.00' : '0'
+          total_logs: data.total,
+          success_rate: data.total > 0 ? '95.00' : '0',
+          error_rate: data.total > 0 ? '5.00' : '0'
         },
-        by_category: data.stats.byAction || {},
-        by_level: data.stats.bySeverity || {},
+        by_category: data.byCategory || {},
+        by_level: data.byLevel || {},
         by_success: {
-          success: Math.floor(data.stats.total * 0.95),
-          failed: Math.floor(data.stats.total * 0.05)
+          success: Math.floor(data.total * 0.95),
+          failed: Math.floor(data.total * 0.05)
         },
         suspicious_activity: null,
-        recent_logs: data.stats.topActions?.map((action: any) => ({
-          id: action.action,
+        recent_logs: Object.entries(data.byAction || {}).slice(0, 10).map(([action, count]) => ({
+          id: action,
           user_email: 'Sistema',
-          action: action.action,
+          action,
           category: 'system',
           level: 'info',
           success: true,
           created_at: new Date().toISOString(),
           level_class: 'info'
-        })) || [],
-        daily_stats: data.stats.timeline?.map((item: any) => ({
+        })),
+        daily_stats: data.timeline?.map((item) => ({
           date: item.date,
           category: 'system',
           level: 'info',
@@ -129,27 +137,67 @@ export function AuditDashboard() {
 
   const fetchLogs = async () => {
     try {
-      const params = {
-        limit: 50,
-        ...(filters.category && { action: filters.category }),
-        ...(filters.level && { severity: filters.level })
+      const client = getSupabaseClient()
+      
+      let query = client
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+      
+      if (filters.category) {
+        query = query.eq('category', filters.category)
+      }
+      if (filters.level) {
+        query = query.eq('level', filters.level)
       }
       
-      const data = await adminApi.getAuditLogs(params)
+      const { data: logsData, error } = await query
+      
+      if (error) {
+        throw new Error(`Error obteniendo logs: ${error.message}`)
+      }
+      
+      // Obtener información de usuarios si hay user_ids
+      const userIds = [...new Set((logsData || []).map((log: any) => log.user_id).filter(Boolean))]
+      let userProfiles: any = {}
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await client
+          .from('profiles')
+          .select('id, full_name, email, role')
+          .in('id', userIds)
+        
+        if (profilesData) {
+          userProfiles = profilesData.reduce((acc: any, profile: any) => {
+            acc[profile.id] = profile
+            return acc
+          }, {})
+        }
+      }
       
       // Transformar los logs al formato esperado por el componente
-      const transformedLogs: AuditLog[] = data.logs.map((log: any) => ({
-        id: log.id,
-        user_email: log.user_id || 'Sistema',
-        action: log.action,
-        category: log.category,
-        level: log.level,
-        details: log.details,
-        success: log.level !== 'error',
-        created_at: log.created_at,
-        ip_address: log.ip_address,
-        user_agent: log.user_agent
-      }))
+      const transformedLogs: AuditLog[] = (logsData || []).map((log: any) => {
+        const userInfo = userProfiles[log.user_id]
+        const userName = userInfo ? (userInfo.full_name || userInfo.email) : (log.user_id ? 'Usuario' : 'Sistema')
+        const userEmail = userInfo ? userInfo.email : (log.user_id ? 'usuario@ejemplo.com' : 'Sistema')
+        const userRole = userInfo ? userInfo.role : (log.user_id ? 'user' : 'Sistema')
+        
+        return {
+          id: log.id,
+          user_email: userEmail,
+          user_name: userName,
+          user_role: userRole,
+          action: log.action,
+          category: log.category,
+          level: log.level,
+          details: log.details,
+          success: log.level !== 'error',
+          created_at: log.created_at,
+          ip_address: log.ip_address,
+          user_agent: log.user_agent
+        }
+      })
       
       setLogs(transformedLogs)
     } catch (err) {
@@ -159,15 +207,56 @@ export function AuditDashboard() {
 
   const exportLogs = async (format: 'json' | 'csv' = 'json') => {
     try {
-      const data = await adminApi.getAuditLogs({ limit: 1000 })
+      const client = getSupabaseClient()
+      const { data: logsData, error } = await client
+        .from('audit_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1000)
+      
+      if (error) {
+        throw new Error(`Error obteniendo logs para exportar: ${error.message}`)
+      }
+      
+      // Obtener información de usuarios si hay user_ids
+      const userIds = [...new Set((logsData || []).map((log: any) => log.user_id).filter(Boolean))]
+      let userProfiles: any = {}
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await client
+          .from('profiles')
+          .select('id, full_name, email, role')
+          .in('id', userIds)
+        
+        if (profilesData) {
+          userProfiles = profilesData.reduce((acc: any, profile: any) => {
+            acc[profile.id] = profile
+            return acc
+          }, {})
+        }
+      }
+      
+      // Transformar los datos para incluir información de usuarios
+      const transformedLogs = (logsData || []).map((log: any) => {
+        const userInfo = userProfiles[log.user_id]
+        return {
+          ...log,
+          user_name: userInfo ? (userInfo.full_name || userInfo.email) : (log.user_id ? 'Usuario' : 'Sistema'),
+          user_email: userInfo ? userInfo.email : (log.user_id ? 'usuario@ejemplo.com' : 'Sistema'),
+          user_role: userInfo ? userInfo.role : (log.user_id ? 'user' : 'Sistema')
+        }
+      })
       
       if (format === 'csv') {
         // Convertir a CSV
         const csvContent = [
-          ['ID', 'Usuario', 'Acción', 'Categoría', 'Nivel', 'Éxito', 'Fecha', 'IP', 'User Agent'],
-          ...data.logs.map((log: any) => [
+          ['ID', 'Usuario', 'Nombre', 'Email', 'Rol', 'Acción', 'Categoría', 'Nivel', 'Éxito', 'Fecha', 'IP', 'User Agent'],
+          ...transformedLogs.map((log: any) => [
             log.id,
             log.user_id || 'Sistema',
+            log.user_name || 'Sistema',
+            log.user_email || 'Sistema',
+            log.user_role || 'Sistema',
             log.action,
             log.category,
             log.level,
@@ -186,7 +275,7 @@ export function AuditDashboard() {
         a.click()
         window.URL.revokeObjectURL(url)
       } else {
-        const blob = new Blob([JSON.stringify(data.logs, null, 2)], { type: 'application/json' })
+        const blob = new Blob([JSON.stringify(transformedLogs, null, 2)], { type: 'application/json' })
         const url = window.URL.createObjectURL(blob)
         const a = document.createElement('a')
         a.href = url
@@ -201,14 +290,15 @@ export function AuditDashboard() {
 
   const cleanupLogs = async () => {
     try {
-      const data = await adminApi.postAuditLogs({ 
-        action: 'cleanup', 
-        days_to_keep: 90 
-      })
+      const result = await cleanupOldLogs(90)
       
-      alert(`Se eliminaron ${data.deleted_count} logs antiguos`)
-      fetchStats()
-      fetchLogs()
+      if (result.success) {
+        alert(`Se eliminaron ${result.deletedCount} logs antiguos`)
+        fetchStats()
+        fetchLogs()
+      } else {
+        setError(`Error limpiando logs: ${result.error}`)
+      }
     } catch (err) {
       setError((err as Error).message)
     }
@@ -413,7 +503,7 @@ export function AuditDashboard() {
             <CardHeader>
               <CardTitle>Logs Recientes</CardTitle>
               <CardDescription>
-                Últimas actividades registradas en el sistema
+                Últimas actividades registradas en el sistema con información detallada de usuarios
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -421,36 +511,64 @@ export function AuditDashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Usuario</TableHead>
+                    <TableHead>Rol</TableHead>
                     <TableHead>Acción</TableHead>
                     <TableHead>Categoría</TableHead>
                     <TableHead>Nivel</TableHead>
                     <TableHead>Estado</TableHead>
+                    <TableHead>IP</TableHead>
                     <TableHead>Fecha</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats?.recent_logs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium">
-                        {log.user_email || 'Sistema'}
+                  {logs.map((log) => (
+                    <TableRow key={log.id} className="hover:bg-gray-50/50">
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-gray-900">
+                            {log.user_name}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {log.user_email}
+                          </span>
+                        </div>
                       </TableCell>
-                      <TableCell>{log.action}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className={
+                            log.user_role === 'admin' ? 'border-purple-200 text-purple-700 bg-purple-50' :
+                            log.user_role === 'user' ? 'border-blue-200 text-blue-700 bg-blue-50' :
+                            'border-gray-200 text-gray-700 bg-gray-50'
+                          }
+                        >
+                          {log.user_role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-medium">{log.action}</span>
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {getCategoryIcon(log.category)}
-                          <span className="capitalize">{log.category}</span>
+                          <span className="capitalize text-sm">{log.category}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {getLevelIcon(log.level)}
-                          <span className="capitalize">{log.level}</span>
+                          <span className="capitalize text-sm">{log.level}</span>
                         </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant={log.success ? "default" : "destructive"}>
                           {log.success ? "Exitoso" : "Fallido"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-xs text-gray-500 font-mono">
+                          {log.ip_address || 'N/A'}
+                        </span>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">

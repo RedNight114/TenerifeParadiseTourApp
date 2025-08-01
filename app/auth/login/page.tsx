@@ -5,8 +5,8 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
-import { useAuthRedirect } from "@/components/auth-redirect-handler"
+import { useAuth } from "@/components/auth-provider-simple"
+import { EmailVerificationNotice } from "@/components/auth/email-verification-notice"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,58 +25,93 @@ export default function LoginPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [logoError, setLogoError] = useState(false)
 
-  const { signIn, user, profile, loading, error } = useAuth()
-  const { handleSuccessfulLogin, handleLoginError } = useAuthRedirect()
+  const { signIn, signOut, user, profile, loading, authError: error } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  // Redirección si ya está autenticado (solo para usuarios normales)
+  // Mostrar opción de cerrar sesión si ya está autenticado
   useEffect(() => {
-    if (user && profile && profile.role === 'user' && !loading) {
-      const redirectTo = searchParams.get("redirect") || "/profile"
-      console.log('🔄 Usuario ya autenticado, redirigiendo a:', redirectTo)
-      router.replace(redirectTo)
+    if (user && profile && !loading) {
+      console.log('👤 Usuario ya autenticado:', user.email, 'Rol:', profile.role)
     }
-  }, [user, profile, loading, router, searchParams])
+  }, [user, profile, loading])
 
   // Mensaje de éxito si viene del registro
   useEffect(() => {
     const message = searchParams.get("message")
     if (message === "registration-success") {
-      toast.success("¡Registro exitoso! Ahora puedes iniciar sesión.")
+      toast.success("¡Registro exitoso! Ahora puedes iniciar sesión con tu cuenta verificada.")
+    } else if (message === "email-verified") {
+      toast.success("¡Email verificado exitosamente! Ya puedes iniciar sesión.")
     }
   }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("🚀 Iniciando proceso de login...")
     setIsSubmitting(true)
 
     // Validaciones del cliente
     if (!email || !password) {
+      console.log("❌ Validación fallida: campos vacíos")
       toast.error("Por favor completa todos los campos")
       setIsSubmitting(false)
       return
     }
 
     if (!email.includes("@")) {
+      console.log("❌ Validación fallida: email inválido")
       toast.error("Por favor ingresa un email válido")
       setIsSubmitting(false)
       return
     }
 
-    try {
-      const { error } = await signIn(email, password)
+    console.log("✅ Validaciones pasadas, llamando a signIn...")
 
-      if (error) {
-        handleLoginError(error)
+    try {
+      console.log("📞 Llamando a signIn con:", { email, password: "***" })
+      const result = await signIn(email, password)
+      console.log("📥 Resultado de signIn:", { success: result.success, hasError: !!result.error })
+
+      if (!result.success) {
+        console.log("❌ Login fallido:", result.error)
+        // Manejar error de login
+        let errorMessage = "Error al iniciar sesión"
+        
+        if (result.error && typeof result.error === 'object' && 'message' in result.error) {
+          const errorMsg = (result.error as any).message
+          if (errorMsg?.includes("Invalid login credentials")) {
+            errorMessage = "Email o contraseña incorrectos"
+          } else if (errorMsg?.includes("Email not confirmed")) {
+            errorMessage = "Por favor confirma tu email antes de iniciar sesión"
+          } else if (errorMsg?.includes("Too many requests")) {
+            errorMessage = "Demasiados intentos. Espera unos minutos"
+          } else {
+            errorMessage = errorMsg
+          }
+        }
+        
+        console.log("🚨 Mostrando error:", errorMessage)
+        toast.error(errorMessage)
       } else {
+        console.log("✅ Login exitoso, preparando redirección...")
         toast.success("¡Inicio de sesión exitoso! Redirigiendo...")
-        handleSuccessfulLogin(false) // false = no es admin
+        
+        // Redirección después de login exitoso
+        const redirectPath = searchParams.get("redirect") || "/profile"
+        console.log("🎯 Redirigiendo a:", redirectPath)
+        
+        // Usar window.location.href para redirección más confiable
+        setTimeout(() => {
+          console.log("🔄 Ejecutando redirección...")
+          window.location.href = redirectPath
+        }, 1000)
       }
     } catch (error) {
-      console.error("Error en login:", error)
-      handleLoginError(error)
+      console.error("💥 Error en login:", error)
+      toast.error("Error al iniciar sesión. Por favor intenta de nuevo.")
     } finally {
+      console.log("🏁 Finalizando proceso de login")
       setIsSubmitting(false)
     }
   }
@@ -136,7 +171,7 @@ export default function LoginPage() {
                 {!logoError ? (
                   <Image
                     src="/images/logo-tenerife.png"
-                    alt="Tenerife Paradise Tours & Excursions"
+                    alt="TenerifeParadiseTour&Excursions"
                     fill
                     className="object-contain drop-shadow-xl"
                     onError={() => setLogoError(true)}
@@ -175,7 +210,7 @@ export default function LoginPage() {
                   {!logoError ? (
                     <Image
                       src="/images/logo-tenerife.png"
-                      alt="Tenerife Paradise Tours & Excursions"
+                      alt="TenerifeParadiseTour&Excursions"
                       fill
                       className="object-contain drop-shadow-xl"
                       onError={() => setLogoError(true)}
@@ -270,7 +305,46 @@ export default function LoginPage() {
               </CardHeader>
               
               <CardContent className="space-y-4">
-                <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Notificación de verificación de email */}
+                <EmailVerificationNotice 
+                  type={searchParams.get("message") === "email-verified" ? "success" : "info"}
+                />
+                
+                {/* Aviso si ya está autenticado */}
+                {user && profile && !loading && (
+                  <Alert className="bg-blue-50 border-blue-200">
+                    <AlertCircle className="h-4 w-4 text-blue-600" />
+                    <AlertDescription className="text-blue-800">
+                      Ya estás autenticado como <strong>{user.email}</strong> ({profile.role})
+                    </AlertDescription>
+                    <div className="mt-3 space-y-2">
+                      <Button
+                        onClick={async () => {
+                          console.log("🚪 Cerrando sesión...")
+                          await signOut()
+                          toast.success("Sesión cerrada. Puedes iniciar sesión nuevamente.")
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
+                      >
+                        Cerrar Sesión
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          const redirectPath = profile.role === 'admin' ? '/admin/dashboard' : '/profile'
+                          window.location.href = redirectPath
+                        }}
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700"
+                      >
+                        Ir a {profile.role === 'admin' ? 'Dashboard' : 'Perfil'}
+                      </Button>
+                    </div>
+                  </Alert>
+                )}
+                
+                <form onSubmit={handleSubmit} className={`space-y-4 ${user && profile ? 'opacity-50 pointer-events-none' : ''}`}>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                       Email
@@ -388,7 +462,7 @@ export default function LoginPage() {
                     Términos de Servicio
                   </Link>{" "}
                   y{" "}
-                  <Link href="/privacy" className="text-[#0061A8] hover:underline">
+                  <Link href="/privacy-policy" className="text-[#0061A8] hover:underline">
                     Política de Privacidad
                   </Link>
                 </div>

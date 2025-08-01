@@ -1,34 +1,76 @@
 import { NextResponse } from 'next/server'
 
 export async function GET() {
-  const robotsTxt = `# Tenerife Paradise Tours & Excursions - Robots.txt
+  const robotsTxt = `# TenerifeParadiseTour&Excursions - Robots.txt
+# Generated for SEO optimization
+
 User-agent: *
 Allow: /
 
 # Sitemap
-Sitemap: https://tenerifeparadisetoursexcursions.com/sitemap.xml
+Sitemap: https://www.tenerifeparadisetoursexcursions.com/sitemap.xml
 
-# Disallow admin areas
+# Disallow sensitive areas
 Disallow: /admin/
 Disallow: /api/
 Disallow: /_next/
 Disallow: /static/
+Disallow: /auth/
+Disallow: /profile/
+Disallow: /reservations/
 
 # Allow important pages
 Allow: /services
 Allow: /about
 Allow: /contact
-Allow: /booking/
+Allow: /terms
+Allow: /privacy-policy
 
-# Crawl delay
+# Crawl delay for all bots
 Crawl-delay: 1
 
-# Google AdsBot ignores robots.txt unless specifically named
+# Google AdsBot specific rules
 User-agent: AdsBot-Google
 Allow: /
+Crawl-delay: 1
 
-# Bing Bot
+# Bing Bot specific rules
 User-agent: Bingbot
+Allow: /
+Crawl-delay: 1
+
+# Yandex Bot
+User-agent: Yandex
+Allow: /
+Crawl-delay: 2
+
+# Baidu Bot
+User-agent: Baiduspider
+Allow: /
+Crawl-delay: 2
+
+# DuckDuckGo Bot
+User-agent: DuckDuckBot
+Allow: /
+Crawl-delay: 1
+
+# Facebook Bot
+User-agent: facebookexternalhit
+Allow: /
+Crawl-delay: 1
+
+# Twitter Bot
+User-agent: Twitterbot
+Allow: /
+Crawl-delay: 1
+
+# LinkedIn Bot
+User-agent: LinkedInBot
+Allow: /
+Crawl-delay: 1
+
+# WhatsApp Bot
+User-agent: WhatsApp
 Allow: /
 Crawl-delay: 1
 `

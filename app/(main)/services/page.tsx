@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Search, Car, Utensils, Activity, RefreshCw, MapPin, Star, Clock } from "lucide-react"
+import { Search, Car, Utensils, Activity, RefreshCw, MapPin, Star, Clock, Filter, Calendar, Sparkles, TrendingUp, Users, Award } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -14,6 +14,7 @@ import { AdvancedLoading, SectionLoading, TableLoading } from "@/components/adva
 import { AdvancedError } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
 import Image from "next/image"
+import { toast } from "sonner"
 
 export default function ServicesPage() {
   const {
@@ -27,8 +28,12 @@ export default function ServicesPage() {
 
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
+  const [selectedLocation, setSelectedLocation] = useState("all")
+  const [selectedDate, setSelectedDate] = useState("")
   const [sortBy, setSortBy] = useState("newest")
+  const [isFiltering, setIsFiltering] = useState(false)
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -36,6 +41,8 @@ export default function ServicesPage() {
     // Obtener parámetros de la URL si existen
     const category = searchParams.get("category")
     const query = searchParams.get("query")
+    const location = searchParams.get("location")
+    const date = searchParams.get("date")
 
     if (category && category !== "all") {
       setSelectedCategory(category)
@@ -43,11 +50,42 @@ export default function ServicesPage() {
     if (query) {
       setSearchQuery(query)
     }
+    if (location && location !== "todas") {
+      setSelectedLocation(location)
+    }
+    if (date) {
+      setSelectedDate(date)
+    }
+
+    // Mostrar toast si hay parámetros de búsqueda
+    if (query || location || date) {
+      const searchTerms = []
+      if (query) searchTerms.push(`"${query}"`)
+      if (location && location !== "todas") searchTerms.push(location)
+      if (date) searchTerms.push(new Date(date).toLocaleDateString('es-ES'))
+      
+      if (searchTerms.length > 0) {
+        toast.success(`Buscando: ${searchTerms.join(", ")}`)
+      }
+    }
   }, [searchParams])
 
+  // Debounce para la búsqueda
   useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  useEffect(() => {
+    setIsFiltering(true)
     applyFilters()
-  }, [services, searchQuery, selectedCategory, sortBy])
+    // Simular un pequeño delay para mostrar el estado de filtrado
+    const timer = setTimeout(() => setIsFiltering(false), 200)
+    return () => clearTimeout(timer)
+  }, [services, debouncedSearchQuery, selectedCategory, selectedLocation, selectedDate, sortBy])
 
   const applyFilters = () => {
     let filtered = [...services]
@@ -57,11 +95,38 @@ export default function ServicesPage() {
       filtered = filtered.filter((service) => service.category_id === selectedCategory)
     }
 
+    // Filtrar por ubicación
+    if (selectedLocation !== "all") {
+      filtered = filtered.filter((service) => {
+        if (!service.location) return false
+        
+        const serviceLocation = service.location.toLowerCase()
+        const selectedLocationLower = selectedLocation.toLowerCase()
+        
+        // Mapeo de ubicaciones
+        const locationMap: Record<string, string[]> = {
+          'norte': ['norte', 'puerto de la cruz', 'la laguna', 'tacoronte', 'la orotava'],
+          'sur': ['sur', 'adeje', 'arona', 'san miguel', 'granadilla'],
+          'teide': ['teide', 'parque nacional', 'vilaflor', 'guía de isora'],
+          'anaga': ['anaga', 'parque rural', 'santa cruz', 'san cristóbal'],
+          'costa': ['costa', 'adeje', 'playa', 'mar'],
+          'santa-cruz': ['santa cruz', 'capital'],
+          'la-laguna': ['la laguna', 'laguna', 'universidad'],
+          'puerto-cruz': ['puerto de la cruz', 'puerto cruz', 'loro parque']
+        }
+        
+        const locations = locationMap[selectedLocationLower] || [selectedLocationLower]
+        return locations.some(loc => serviceLocation.includes(loc))
+      })
+    }
+
     // Filtrar por búsqueda
-    if (searchQuery) {
+    if (debouncedSearchQuery) {
       filtered = filtered.filter((service) =>
-        service.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        service.description.toLowerCase().includes(searchQuery.toLowerCase())
+        service.title.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        service.description.toLowerCase().includes(debouncedSearchQuery.toLowerCase()) ||
+        (service.location && service.location.toLowerCase().includes(debouncedSearchQuery.toLowerCase())) ||
+        (service.category && service.category.name && service.category.name.toLowerCase().includes(debouncedSearchQuery.toLowerCase()))
       )
     }
 
@@ -98,6 +163,30 @@ export default function ServicesPage() {
     router.push(`/services?${params.toString()}`)
   }
 
+  const handleLocationChange = (location: string) => {
+    setSelectedLocation(location)
+    // Actualizar URL
+    const params = new URLSearchParams(searchParams.toString())
+    if (location === "all") {
+      params.delete("location")
+    } else {
+      params.set("location", location)
+    }
+    router.push(`/services?${params.toString()}`)
+  }
+
+  const handleDateChange = (date: string) => {
+    setSelectedDate(date)
+    // Actualizar URL
+    const params = new URLSearchParams(searchParams.toString())
+    if (date) {
+      params.set("date", date)
+    } else {
+      params.delete("date")
+    }
+    router.push(`/services?${params.toString()}`)
+  }
+
   const handleSearchChange = (query: string) => {
     setSearchQuery(query)
     // Actualizar URL
@@ -110,169 +199,169 @@ export default function ServicesPage() {
     router.push(`/services?${params.toString()}`)
   }
 
+  const clearAllFilters = () => {
+    setSearchQuery("")
+    setSelectedCategory("all")
+    setSelectedLocation("all")
+    setSelectedDate("")
+    setSortBy("newest")
+    router.push("/services")
+  }
+
   const getCategoryIcon = (categoryId: string) => {
     switch (categoryId) {
-      case "1": return <Car className="h-4 w-4" />
-      case "2": return <Utensils className="h-4 w-4" />
-      case "3": return <Activity className="h-4 w-4" />
-      default: return <Activity className="h-4 w-4" />
+      case "tours":
+        return <Activity className="h-4 w-4" />
+      case "vehicles":
+        return <Car className="h-4 w-4" />
+      case "gastronomy":
+        return <Utensils className="h-4 w-4" />
+      default:
+        return <Activity className="h-4 w-4" />
     }
   }
 
-  const categoryOptions = [
-    { id: "all", name: "Todas las Categorías", count: services.length },
-    ...Object.entries(servicesByCategory).map(([categoryId, servicesList]) => ({
-      id: categoryId,
-      name: `Categoría ${categoryId}`,
-      count: servicesList.length,
-    })),
-  ]
-
-  // Loading inicial
-  if (loading) {
-    return (
-      <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <h2 className="text-2xl font-semibold mb-2">Cargando servicios...</h2>
-            <p className="text-gray-600">Por favor, espera un momento</p>
-          </div>
-        </div>
-      </div>
-    )
+  const getLocationName = (locationKey: string) => {
+    const locationMap: Record<string, string> = {
+      'norte': 'Norte de Tenerife',
+      'sur': 'Sur de Tenerife',
+      'teide': 'Parque Nacional del Teide',
+      'anaga': 'Parque Rural de Anaga',
+      'costa': 'Costa Adeje',
+      'santa-cruz': 'Santa Cruz de Tenerife',
+      'la-laguna': 'La Laguna',
+      'puerto-cruz': 'Puerto de la Cruz'
+    }
+    return locationMap[locationKey] || locationKey
   }
 
-  // Error
+  // Mostrar loading mientras se cargan los servicios
+  if (loading) {
+    return <AdvancedLoading isLoading={true} />
+  }
+
+  // Mostrar error si hay algún problema
   if (error) {
-    return (
-      <div className="min-h-screen">
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
-              <h2 className="text-xl font-semibold text-red-800 mb-2">Error al cargar servicios</h2>
-              <p className="text-red-600 mb-4">{error}</p>
-              <Button onClick={refreshServices}>
-                Reintentar
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <AdvancedError 
+      error={{
+        message: error,
+        type: 'unknown',
+        timestamp: new Date(),
+        retryCount: 0
+      }} 
+      onRetry={refreshServices} 
+    />
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <div className="relative bg-gradient-to-r from-blue-900 via-blue-800 to-blue-700 overflow-hidden">
-        {/* Background Image */}
-        <div className="absolute inset-0">
-          <Image
-            src="/images/hero-services.jpg"
-            alt="Tenerife Paradise Tours - Servicios"
-            fill
-            className="object-cover opacity-20"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/80 via-blue-800/70 to-blue-700/80"></div>
-        </div>
-        
-        {/* Hero Content */}
-        <div className="relative container mx-auto px-4 py-20">
-          <div className="text-center text-white max-w-4xl mx-auto">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Star className="h-8 w-8 text-yellow-400" />
-              <h1 className="text-4xl md:text-6xl font-bold hero-text-shadow">
-                Nuestros Servicios
-              </h1>
-              <Star className="h-8 w-8 text-yellow-400" />
-            </div>
-            <p className="text-xl md:text-2xl text-blue-100 mb-6 hero-text-shadow">
+      {/* Hero Section Simple */}
+      <div className="bg-gradient-to-r from-[#0061A8] to-[#1E40AF] text-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 sm:pt-28 md:pt-32 lg:pt-36 pb-8">
+          <div className="text-center">
+            <h1 className="text-4xl sm:text-5xl font-bold mb-4">
+              ✩ Nuestros Servicios ✩
+            </h1>
+            <p className="text-xl text-white/90 mb-6">
               Descubre las mejores experiencias en Tenerife
             </p>
-            <p className="text-lg text-blue-200 mb-8 max-w-2xl mx-auto">
-              Desde aventuras en la naturaleza hasta experiencias gastronómicas únicas, 
-              tenemos todo lo que necesitas para hacer de tu viaje a Tenerife una experiencia inolvidable.
+            <p className="text-lg text-white/80 max-w-3xl mx-auto mb-8">
+              Desde tours guiados hasta alquiler de vehículos, pasando por experiencias gastronómicas únicas. 
+              Explora la isla de la eterna primavera con nuestras actividades cuidadosamente seleccionadas.
             </p>
             
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400 mb-2">
+                <div className="text-2xl font-bold text-[#F4C762] mb-2">
                   {services.length}+
                 </div>
-                <div className="text-blue-100">Experiencias Únicas</div>
+                <div className="text-white/80 text-sm">Experiencias Únicas</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400 mb-2">
-                  <MapPin className="h-8 w-8 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-[#F4C762] mb-2">
+                  <MapPin className="h-6 w-6 mx-auto" />
                 </div>
-                <div className="text-blue-100">Toda la Isla</div>
+                <div className="text-white/80 text-sm">Toda la Isla</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold text-yellow-400 mb-2">
-                  <Clock className="h-8 w-8 mx-auto mb-2" />
+                <div className="text-2xl font-bold text-[#F4C762] mb-2">
+                  <Clock className="h-6 w-6 mx-auto" />
                 </div>
-                <div className="text-blue-100">Reserva 24/7</div>
+                <div className="text-white/80 text-sm">Reserva 24/7</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="container mx-auto px-4 py-8">
-        {/* Filtros */}
-        <div className="bg-white rounded-lg shadow-sm border p-6 mb-8 -mt-8 relative z-10">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Búsqueda */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Buscar servicios
-              </label>
+      {/* Filters Section Simple */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <Card className="shadow-lg">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Search Input */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
+                  type="text"
                   placeholder="Buscar servicios..."
                   value={searchQuery}
                   onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]"
                 />
               </div>
-            </div>
 
-            {/* Categoría */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Categoría
-              </label>
+              {/* Category Filter */}
               <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]">
+                  <SelectValue placeholder="Categoría" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categoryOptions.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      <div className="flex items-center justify-between w-full">
-                        <span>{category.name}</span>
-                        <Badge variant="secondary" className="ml-2">
-                          {category.count}
-                        </Badge>
-                      </div>
-                    </SelectItem>
-                  ))}
+                  <SelectItem value="all">Todas las Categorías</SelectItem>
+                  <SelectItem value="tours">Tours y Excursiones</SelectItem>
+                  <SelectItem value="vehicles">Alquiler de Vehículos</SelectItem>
+                  <SelectItem value="gastronomy">Gastronomía</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
 
-            {/* Ordenar */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Ordenar por
-              </label>
+              {/* Location Filter */}
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 z-10" />
+                <Select value={selectedLocation} onValueChange={handleLocationChange}>
+                  <SelectTrigger className="pl-10 border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]">
+                    <SelectValue placeholder="Ubicación" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas las zonas</SelectItem>
+                    <SelectItem value="norte">Norte de Tenerife</SelectItem>
+                    <SelectItem value="sur">Sur de Tenerife</SelectItem>
+                    <SelectItem value="teide">Parque Nacional del Teide</SelectItem>
+                    <SelectItem value="anaga">Parque Rural de Anaga</SelectItem>
+                    <SelectItem value="costa">Costa Adeje</SelectItem>
+                    <SelectItem value="santa-cruz">Santa Cruz de Tenerife</SelectItem>
+                    <SelectItem value="la-laguna">La Laguna</SelectItem>
+                    <SelectItem value="puerto-cruz">Puerto de la Cruz</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Date Filter */}
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => handleDateChange(e.target.value)}
+                  min={new Date().toISOString().split('T')[0]}
+                  className="pl-10 border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]"
+                />
+              </div>
+
+              {/* Sort Filter */}
               <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue />
+                <SelectTrigger className="border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]">
+                  <SelectValue placeholder="Ordenar por" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="newest">Más recientes</SelectItem>
@@ -282,39 +371,87 @@ export default function ServicesPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </div>
 
-        {/* Resultados */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              {selectedCategory === "all"
-                ? "Todos los Servicios"
-                : `Categoría ${selectedCategory}`}
-            </h2>
-            <p className="text-gray-600">
-              {filteredServices.length} servicio{filteredServices.length !== 1 ? 's' : ''} encontrado{filteredServices.length !== 1 ? 's' : ''}
-            </p>
-          </div>
-
-          {/* Services Grid */}
-          {filteredServices.length > 0 ? (
-            <ServicesGrid services={filteredServices} loading={loading} />
-          ) : (
-            <div className="text-center py-16">
-              <div className="text-gray-400 mb-4">
-                <Search className="h-12 w-12 mx-auto" />
+            {/* Active Filters */}
+            {(searchQuery || selectedCategory !== "all" || selectedLocation !== "all" || selectedDate) && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Filtros activos:</span>
+                    {searchQuery && (
+                      <Badge variant="secondary" className="text-xs">
+                        Búsqueda: "{searchQuery}"
+                      </Badge>
+                    )}
+                    {selectedCategory !== "all" && (
+                      <Badge variant="secondary" className="text-xs">
+                        Categoría: {selectedCategory}
+                      </Badge>
+                    )}
+                    {selectedLocation !== "all" && (
+                      <Badge variant="secondary" className="text-xs">
+                        Ubicación: {getLocationName(selectedLocation)}
+                      </Badge>
+                    )}
+                    {selectedDate && (
+                      <Badge variant="secondary" className="text-xs">
+                        Fecha: {new Date(selectedDate).toLocaleDateString('es-ES')}
+                      </Badge>
+                    )}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="text-xs"
+                  >
+                    Limpiar filtros
+                  </Button>
+                </div>
               </div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No se encontraron servicios
-              </h3>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Results Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+        {isFiltering ? (
+          <SectionLoading />
+        ) : (
+          <>
+            {/* Results Count */}
+            <div className="mb-6">
               <p className="text-gray-600">
-                Intenta ajustar los filtros de búsqueda
+                {filteredServices.length === 0 ? (
+                  "No se encontraron experiencias"
+                ) : (
+                  `${filteredServices.length} experiencia${filteredServices.length !== 1 ? 's' : ''} encontrada${filteredServices.length !== 1 ? 's' : ''}`
+                )}
               </p>
             </div>
-          )}
-        </div>
+
+            {/* Services Grid */}
+            {filteredServices.length > 0 ? (
+              <ServicesGrid services={filteredServices} />
+            ) : (
+              <div className="text-center py-12">
+                <div className="max-w-md mx-auto">
+                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    No se encontraron experiencias
+                  </h3>
+                  <p className="text-gray-600 mb-6">
+                    Intenta ajustar tus filtros de búsqueda o explorar todas nuestras experiencias.
+                  </p>
+                  <Button onClick={clearAllFilters} variant="outline">
+                    Ver todas las experiencias
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </div>
   )

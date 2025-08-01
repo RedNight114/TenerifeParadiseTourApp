@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
+import { useAuth } from "@/components/auth-provider-simple"
 import { Button } from "@/components/ui/button"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import {
@@ -25,15 +25,11 @@ export function Navbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      if (typeof window !== 'undefined') {
-        setIsScrolled(window.scrollY > 20)
-      }
+      setIsScrolled(window.scrollY > 20)
     }
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener("scroll", handleScroll)
-      return () => window.removeEventListener("scroll", handleScroll)
-    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   // Cargar perfil cuando el usuario esté disponible
@@ -172,7 +168,7 @@ export function Navbar() {
               {!logoError ? (
                 <Image
                   src="/images/logo-tenerife.png"
-                  alt="Tenerife Paradise Tours & Excursions"
+                  alt="TenerifeParadiseTour&Excursions"
                   fill
                   className="object-contain drop-shadow-xl"
                   onError={() => setLogoError(true)}

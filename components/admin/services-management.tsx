@@ -10,6 +10,7 @@ import { Search, Plus, Edit, Trash2, Eye, EyeOff, Star, StarOff, Loader2, X, Mor
 import { useServices } from "@/hooks/use-services"
 import { useCategories } from "@/hooks/use-categories"
 import { ServiceForm } from "./service-form"
+import { AuditLogger } from "@/lib/audit-logger"
 import type { Service } from "@/lib/supabase"
 import { normalizeImageUrl } from "@/lib/utils"
 

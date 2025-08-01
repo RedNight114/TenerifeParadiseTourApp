@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '@/components/auth-provider-ultra-simple'
+import { useAuth } from '@/components/auth-provider-simple'
 import { supabase } from '@/lib/supabase'
 
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'

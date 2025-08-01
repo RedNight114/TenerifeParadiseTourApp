@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
+import { useAuth } from "@/components/auth-provider-simple"
 import { useAuthModals } from "@/hooks/use-auth-modals"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -229,8 +229,12 @@ export function RegisterModal({ isOpen, onClose }: RegisterModalProps) {
             <Checkbox id="terms" checked={acceptTerms} onCheckedChange={value => setAcceptTerms(value === true)} />
             <Label htmlFor="terms" className="text-sm">
               Acepto los{" "}
-              <a href="/terms" className="text-[#0061A8] hover:underline">
+              <a href="/terms" target="_blank" className="text-[#0061A8] hover:underline">
                 términos y condiciones
+              </a>{" "}
+              y la{" "}
+              <a href="/privacy-policy" target="_blank" className="text-[#0061A8] hover:underline">
+                política de privacidad
               </a>
             </Label>
           </div>

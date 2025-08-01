@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 
 export async function middleware(req: NextRequest) {
   // Headers de seguridad adicionales
@@ -13,75 +12,10 @@ export async function middleware(req: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
   
-  // Configuración de sesiones extendidas para rutas protegidas
-  if (req.nextUrl.pathname.startsWith('/admin') || 
-      req.nextUrl.pathname.startsWith('/profile') ||
-      req.nextUrl.pathname.startsWith('/reservations')) {
-    
-    try {
-      // Crear cliente de middleware con configuración extendida
-      const supabase = createMiddlewareClient({ req, res: response as any }, {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: false,
-          storage: {
-            getItem: (key: string) => {
-              // Buscar en cookies primero
-              const cookies = req.cookies
-              const cookieValue = cookies.get(key)?.value
-              if (cookieValue) return cookieValue
-              
-              // Fallback a localStorage (solo en cliente)
-              return null
-            },
-            setItem: (key: string, value: string) => {
-              // Configurar cookie con tiempo extendido
-              response.cookies.set(key, value, {
-                httpOnly: false,
-                secure: process.env.NODE_ENV === 'production',
-                sameSite: 'lax',
-                maxAge: 28800, // 8 horas
-                path: '/'
-              })
-            },
-            removeItem: (key: string) => {
-              response.cookies.delete(key)
-            }
-          }
-        }
-      })
-      
-      // Verificar sesión
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      // Log para debugging
-      console.log(`🔍 Middleware: ${req.nextUrl.pathname} - Session: ${session ? '✅' : '❌'}`)
-      
-      // Si no hay sesión en rutas protegidas, redirigir al login
-      if (!session) {
-        console.log(`🔒 Middleware: Redirigiendo a login desde ${req.nextUrl.pathname}`)
-        return NextResponse.redirect(new URL('/auth/login', req.url))
-      }
-      
-      // Verificar si el usuario es admin para rutas de admin
-      if (req.nextUrl.pathname.startsWith('/admin')) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', session.user.id)
-          .single()
-        
-        if (profile?.role !== 'admin') {
-          console.log(`🚫 Middleware: Acceso denegado a admin desde ${req.nextUrl.pathname}`)
-          return NextResponse.redirect(new URL('/auth/login', req.url))
-        }
-      }
-      
-    } catch (error) {
-      console.error('❌ Middleware error:', error)
-      // En caso de error, permitir acceso temporalmente
-    }
+  // Permitir que el cliente maneje toda la autenticación
+  // El middleware ya no interfiere con la autenticación
+  if (req.nextUrl.pathname.startsWith('/admin')) {
+    console.log(`🔓 Middleware: Permitir acceso a ${req.nextUrl.pathname}, el cliente manejará la autenticación`)
   }
   
   // Rate limiting básico para APIs críticas
