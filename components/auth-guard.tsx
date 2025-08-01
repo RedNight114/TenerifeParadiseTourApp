@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { AlertCircle, RefreshCw } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ interface AuthGuardProps {
 
 // Memoizar el componente para evitar re-renders innecesarios
 export const AuthGuard = React.memo(({ children, fallback, requireAuth = true }: AuthGuardProps) => {
-  const { user, profile, loading, authError, isAuthenticated } = useAuth()
+  const { user, profile, loading, error: authError, isAuthenticated } = useAuthContext()
   const [isChecking, setIsChecking] = useState(true)
   const router = useRouter()
 

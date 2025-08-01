@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider-ultra-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { Loader2, Shield, AlertTriangle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -12,7 +12,7 @@ interface AdminGuardProps {
 }
 
 export function AdminGuard({ children, fallback }: AdminGuardProps) {
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, loading: authLoading } = useAuthContext()
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [isChecking, setIsChecking] = useState(true)

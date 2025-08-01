@@ -3,8 +3,7 @@ import { GeistSans } from "geist/font/sans"
 import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProviderUltraSimple } from "@/components/auth-provider-ultra-simple"
-import { SuppressHydrationWarning } from "@/components/hydration-safe"
+import { AuthProvider } from "@/components/auth-provider"
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -28,19 +27,17 @@ export default function RootLayout({
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <SuppressHydrationWarning>
-          <ThemeProvider
-            attribute="class"
-            defaultTheme="light"
-            enableSystem
-            disableTransitionOnChange
-          >
-            <AuthProviderUltraSimple>
-              {/* Contenido principal */}
-              {children}
-            </AuthProviderUltraSimple>
-          </ThemeProvider>
-        </SuppressHydrationWarning>
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            {/* Contenido principal */}
+            {children}
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
