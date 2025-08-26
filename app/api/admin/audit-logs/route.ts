@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+﻿import { NextRequest, NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { withAuthorization } from "@/lib/authorization"
 
 // GET - Obtener logs de auditoría con filtros
@@ -13,19 +13,17 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
     const severity = searchParams.get("severity")
-
-    console.log("Obteniendo logs de auditoría con filtros:", {
-      page,
-      limit,
-      action,
-      userId,
-      startDate,
-      endDate,
-      severity,
-    })
+const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      return NextResponse.json(
+        { error: "Error de conexión con la base de datos" },
+        { status: 500 }
+      )
+    }
 
     // Construir query base
-    let query = supabase
+    let query = client
       .from("audit_logs")
       .select("*", { count: "exact" })
       .order("created_at", { ascending: false })
@@ -58,8 +56,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
     const { data: logs, error, count } = await query
 
     if (error) {
-      console.error("Error obteniendo logs de auditoría:", error)
-      return NextResponse.json(
+return NextResponse.json(
         { error: "Error interno del servidor" },
         { status: 500 }
       )
@@ -74,7 +71,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
 
         // Obtener información del usuario si existe
         if (log.user_id) {
-          const { data: userData } = await supabase
+          const { data: userData } = await client
             .from("profiles")
             .select("full_name, email")
             .eq("id", log.user_id)
@@ -84,7 +81,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
 
         // Obtener información del servicio si existe
         if (log.service_id) {
-          const { data: serviceData } = await supabase
+          const { data: serviceData } = await client
             .from("services")
             .select("title")
             .eq("id", log.service_id)
@@ -94,7 +91,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
 
         // Obtener información de la reserva si existe
         if (log.reservation_id) {
-          const { data: reservationData } = await supabase
+          const { data: reservationData } = await client
             .from("reservations")
             .select("id, reservation_date, guests")
             .eq("id", log.reservation_id)
@@ -110,10 +107,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
         }
       }) || []
     )
-
-    console.log(`Logs obtenidos: ${processedLogs.length} de ${count} total`)
-
-    return NextResponse.json({
+return NextResponse.json({
       logs: processedLogs,
       pagination: {
         page,
@@ -123,8 +117,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
       },
     })
   } catch (error) {
-    console.error("Error inesperado en audit-logs:", error)
-    return NextResponse.json(
+return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )
@@ -136,16 +129,16 @@ export const POST = withAuthorization({ requiredRole: "admin" })(async (request:
   try {
     const body = await request.json()
     const { action, details, severity = "info", user_id, service_id, reservation_id } = body
+const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      return NextResponse.json(
+        { error: "Error de conexión con la base de datos" },
+        { status: 500 }
+      )
+    }
 
-    console.log("Creando log de auditoría:", {
-      action,
-      severity,
-      user_id,
-      service_id,
-      reservation_id,
-    })
-
-    const { data, error } = await supabase.from("audit_logs").insert({
+    const { data, error } = await client.from("audit_logs").insert({
       action,
       details,
       severity,
@@ -155,19 +148,14 @@ export const POST = withAuthorization({ requiredRole: "admin" })(async (request:
     })
 
     if (error) {
-      console.error("Error creando log de auditoría:", error)
-      return NextResponse.json(
+return NextResponse.json(
         { error: "Error interno del servidor" },
         { status: 500 }
       )
     }
-
-    console.log("Log de auditoría creado exitosamente:", data)
-
-    return NextResponse.json({ success: true, log: data })
+return NextResponse.json({ success: true, log: data })
   } catch (error) {
-    console.error("Error inesperado creando log:", error)
-    return NextResponse.json(
+return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )

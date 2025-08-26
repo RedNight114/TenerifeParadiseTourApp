@@ -55,7 +55,7 @@ function createFinalTestButton() {
         return;
       }
       
-      console.log('✅ Token obtenido:', token.substring(0, 30) + '...');
+      console.log('✅ Token obtenido:', `${token.substring(0, 30)  }...`);
       
       // Verificar sesión
       const sessionResponse = await fetch('/api/auth/session', {

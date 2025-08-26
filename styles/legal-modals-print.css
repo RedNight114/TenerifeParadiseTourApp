@@ -1,0 +1,89 @@
+/* Estilos de impresión para modales legales */
+@media print {
+  /* Ocultar elementos no necesarios para impresión */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Ajustar el modal para impresión */
+  .legal-modal-print {
+    position: relative !important;
+    inset: auto !important;
+    background: white !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  
+  /* Ajustar el contenido del modal */
+  .legal-modal-content-print {
+    overflow: visible !important;
+    max-height: none !important;
+    padding: 20px !important;
+  }
+  
+  /* Ajustar el header del modal */
+  .legal-modal-header-print {
+    position: static !important;
+    background: white !important;
+    border-bottom: 2px solid #333 !important;
+    margin-bottom: 20px !important;
+  }
+  
+  /* Ajustar el footer del modal */
+  .legal-modal-footer-print {
+    display: none !important;
+  }
+  
+  /* Mejorar la legibilidad del texto impreso */
+  .legal-modal-content-print h3 {
+    page-break-after: avoid;
+    margin-top: 20px !important;
+    margin-bottom: 15px !important;
+  }
+  
+  .legal-modal-content-print p {
+    margin-bottom: 10px !important;
+    line-height: 1.5 !important;
+  }
+  
+  .legal-modal-content-print ul {
+    margin-bottom: 15px !important;
+  }
+  
+  .legal-modal-content-print li {
+    margin-bottom: 5px !important;
+  }
+  
+  /* Ajustar las tarjetas para impresión */
+  .legal-modal-content-print .bg-white {
+    background: white !important;
+    border: 1px solid #ddd !important;
+    margin-bottom: 10px !important;
+  }
+  
+  /* Ajustar los iconos para impresión */
+  .legal-modal-content-print span[class*="text-"] {
+    color: #333 !important;
+  }
+  
+  /* Ajustar los bordes de colores para impresión */
+  .legal-modal-content-print .border-l-4 {
+    border-left: 3px solid #333 !important;
+  }
+  
+  /* Ajustar los fondos de colores para impresión */
+  .legal-modal-content-print .bg-\\[\\#.*\\] {
+    background: #f8f9fa !important;
+  }
+  
+  /* Ajustar los gradientes para impresión */
+  .legal-modal-content-print .bg-gradient-to-r {
+    background: #f8f9fa !important;
+  }
+}
+
+

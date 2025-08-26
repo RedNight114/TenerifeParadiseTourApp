@@ -96,8 +96,8 @@ function createFinalPaymentButton() {
     
     console.log('💰 Datos de prueba final:', {
       servicePrice: service.price,
-      guests: guests,
-      total: total,
+      guests,
+      total,
       reservationId: validReservationId,
       calculation: `${service.price} * ${guests} = ${total}`
     });

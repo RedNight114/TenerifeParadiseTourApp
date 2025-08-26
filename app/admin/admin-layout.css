@@ -603,3 +603,297 @@
     font-size: 1.25rem;
   }
 } 
+
+/* Estilos mejorados para el avatar del admin */
+.admin-avatar {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.admin-avatar:hover {
+  transform: scale(1.08) rotate(2deg);
+  filter: brightness(1.05) contrast(1.05);
+}
+
+.admin-avatar::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  bottom: -2px;
+  background: linear-gradient(45deg, #3b82f6, #8b5cf6, #06b6d4, #3b82f6);
+  border-radius: 50%;
+  z-index: -1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  animation: gradient-rotate 3s linear infinite;
+}
+
+.admin-avatar:hover::before {
+  opacity: 1;
+}
+
+@keyframes gradient-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.admin-avatar-ring {
+  box-shadow: 
+    0 0 0 2px rgba(59, 130, 246, 0.25),
+    0 0 0 4px rgba(139, 92, 246, 0.15),
+    0 4px 12px -2px rgba(0, 0, 0, 0.08),
+    0 2px 4px -1px rgba(0, 0, 0, 0.04);
+}
+
+.admin-avatar-ring:hover {
+  box-shadow: 
+    0 0 0 3px rgba(59, 130, 246, 0.35),
+    0 0 0 6px rgba(139, 92, 246, 0.25),
+    0 8px 20px -4px rgba(0, 0, 0, 0.12),
+    0 4px 8px -2px rgba(0, 0, 0, 0.06);
+}
+
+.admin-status-indicator {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+@keyframes status-pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.admin-user-info {
+  transition: all 0.3s ease;
+}
+
+.admin-user-info:hover {
+  transform: translateX(5px);
+}
+
+.admin-user-name {
+  background: linear-gradient(135deg, #1f2937, #374151);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 700;
+}
+
+.admin-user-email {
+  color: #6b7280;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.admin-user-email:hover {
+  color: #3b82f6;
+}
+
+.admin-online-status {
+  color: #059669;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: all 0.3s ease;
+}
+
+.admin-online-status:hover {
+  color: #047857;
+  transform: scale(1.05);
+}
+
+/* ===== ESTILOS PARA EL MENÚ DE OPCIONES DE SERVICIOS ===== */
+
+/* Animaciones para el menú desplegable */
+@keyframes slide-in-from-top-2 {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-in {
+  animation: slide-in-from-top-2 0.2s ease-out;
+}
+
+/* Mejoras para el menú con portal */
+.service-dropdown-menu {
+  animation: fade-in 0.15s ease-out, slide-in-from-top-2 0.2s ease-out;
+  will-change: transform, opacity;
+  position: fixed !important;
+  z-index: 9999 !important;
+  background: white !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
+}
+
+/* Efectos hover para botones del menú */
+.service-menu-button {
+  position: relative;
+  overflow: hidden;
+}
+
+.service-menu-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+  transition: left 0.3s ease;
+}
+
+.service-menu-button:hover::before {
+  left: 100%;
+}
+
+/* Mejoras para el botón de opciones */
+.service-options-button {
+  backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.service-options-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(59, 130, 246, 0.1), transparent);
+  transition: left 0.5s ease;
+}
+
+.service-options-button:hover::before {
+  left: 100%;
+}
+
+.service-options-button:hover {
+  transform: scale(1.1) rotate(2deg);
+  box-shadow: 0 12px 30px rgba(59, 130, 246, 0.25);
+  z-index: 10000;
+}
+
+/* Asegurar que el botón esté siempre visible */
+.service-options-button {
+  isolation: isolate;
+}
+
+/* Mejorar la visibilidad del botón sobre imágenes */
+.service-options-button {
+  background: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  border: 2px solid rgba(255, 255, 255, 0.8) !important;
+  position: relative !important;
+  z-index: 9999 !important;
+}
+
+/* Contenedor del botón de opciones */
+.service-options-container {
+  position: relative;
+  z-index: 9999;
+  pointer-events: auto;
+}
+
+/* Asegurar que el botón esté por encima de la imagen */
+.service-options-container .service-options-button {
+  position: relative;
+  z-index: 10000;
+  transform: translateZ(0);
+}
+
+/* Estilos para el menú desplegable */
+.service-dropdown-menu {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.service-dropdown-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.service-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.service-dropdown-menu::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.service-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(156, 163, 175, 0.7);
+}
+
+/* Efectos de pulso para el botón */
+.service-options-button:active {
+  transform: scale(0.95);
+}
+
+/* Mejoras para el menú desplegable */
+.service-dropdown-menu {
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 20px 25px -5px rgba(0, 0, 0, 0.1),
+    0 10px 10px -5px rgba(0, 0, 0, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Efectos para los items del menú */
+.service-menu-item {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+.service-menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left 0.4s ease;
+}
+
+.service-menu-item:hover::before {
+  left: 100%;
+}
+
+.service-menu-item:hover {
+  transform: translateX(6px) scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.service-menu-item:active {
+  transform: translateX(3px) scale(0.98);
+}

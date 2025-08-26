@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+﻿import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { withAuthRateLimit } from "@/lib/rate-limiting"
 import { auditAuthEvent } from "@/lib/audit-middleware"
@@ -13,19 +13,13 @@ export const GET = withAuthRateLimit(async (request: NextRequest) => {
     const next = searchParams.get("next") || "/"
 
     if (!code) {
-      console.error("Código de autorización no encontrado en callback")
-      return NextResponse.redirect(new URL("/login?error=missing_code", request.url))
+return NextResponse.redirect(new URL("/login?error=missing_code", request.url))
     }
-
-    console.log("Procesando callback de autenticación")
-
-    // Intercambiar código por sesión
+// Intercambiar código por sesión
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      console.error("Error intercambiando código por sesión:", error)
-      
-      // Registrar evento de auditoría para error de autenticación
+// Registrar evento de auditoría para error de autenticación
       await auditAuthEvent(
         'auth_callback_failed',
         'unknown',
@@ -40,9 +34,7 @@ export const GET = withAuthRateLimit(async (request: NextRequest) => {
     }
 
     if (!data.session) {
-      console.error("No se pudo crear sesión")
-      
-      // Registrar evento de auditoría para sesión fallida
+// Registrar evento de auditoría para sesión fallida
       await auditAuthEvent(
         'auth_callback_failed',
         'unknown',
@@ -55,10 +47,7 @@ export const GET = withAuthRateLimit(async (request: NextRequest) => {
       
       return NextResponse.redirect(new URL("/login?error=no_session", request.url))
     }
-
-    console.log("Sesión creada exitosamente para usuario:", data.user?.id)
-
-    // Registrar evento de auditoría para login exitoso
+// Registrar evento de auditoría para login exitoso
     await auditAuthEvent(
       'auth_callback_success',
       data.user?.id || 'unknown',
@@ -75,9 +64,7 @@ export const GET = withAuthRateLimit(async (request: NextRequest) => {
     // Redirigir al usuario a la página solicitada o dashboard
     return NextResponse.redirect(new URL(next, request.url))
   } catch (error) {
-    console.error("Error interno en callback de autenticación:", error)
-    
-    // Registrar evento de auditoría para error interno
+// Registrar evento de auditoría para error interno
     await auditAuthEvent(
       'auth_callback_error',
       'unknown',

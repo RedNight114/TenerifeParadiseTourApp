@@ -96,7 +96,7 @@ async function fixContactTable() {
         .from('contact_messages')
         .update({ 
           status: 'read',
-          admin_notes: 'Prueba de actualización - ' + new Date().toISOString()
+          admin_notes: `Prueba de actualización - ${  new Date().toISOString()}`
         })
         .eq('id', testMessage.id)
         .select()

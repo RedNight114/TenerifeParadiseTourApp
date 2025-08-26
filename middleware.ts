@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { log } from '@/lib/advanced-logger'
+import { recordMetric } from '@/lib/api-metrics'
 
 export async function middleware(req: NextRequest) {
+  const startTime = Date.now()
+  const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  
   // Headers de seguridad adicionales
   const response = NextResponse.next()
   
@@ -15,7 +20,7 @@ export async function middleware(req: NextRequest) {
   // Permitir que el cliente maneje toda la autenticación
   // El middleware ya no interfiere con la autenticación
   if (req.nextUrl.pathname.startsWith('/admin')) {
-    console.log(`🔓 Middleware: Permitir acceso a ${req.nextUrl.pathname}, el cliente manejará la autenticación`)
+    // Middleware: Permitir acceso a admin, el cliente manejará la autenticación
   }
   
   // Rate limiting básico para APIs críticas
@@ -44,6 +49,29 @@ export async function middleware(req: NextRequest) {
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   }
+  
+  // Logging y métricas del middleware
+  const duration = Date.now() - startTime
+  const pathname = req.nextUrl.pathname
+  
+  // Log de la petición
+  log.info('Middleware processed request', {
+    endpoint: pathname,
+    method: req.method,
+    requestId,
+    duration,
+    userAgent: req.headers.get('user-agent'),
+    ip: req.ip || req.headers.get('x-forwarded-for') || 'unknown',
+    country: req.headers.get('cf-ipcountry')
+  })
+  
+  // Registrar métrica
+  if (pathname.startsWith('/api/')) {
+    recordMetric.request(pathname, req.method, 200, duration)
+  }
+  
+  // Agregar request ID al header para tracking
+  response.headers.set('X-Request-ID', requestId)
   
   return response
 }

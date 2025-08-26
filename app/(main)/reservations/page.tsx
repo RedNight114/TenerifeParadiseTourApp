@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useAuthContext } from "@/components/auth-provider"
 import { useReservations } from "@/hooks/use-reservations"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,7 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function ReservationsPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuth()
+  const { user, loading: authLoading, isAuthenticated } = useAuthContext()
   const { reservations, loading: reservationsLoading, error: reservationsError, cancelReservation } = useReservations()
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
@@ -23,8 +23,7 @@ export default function ReservationsPage() {
   // Redirigir si no está autenticado
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      console.log('🔒 Usuario no autenticado, redirigiendo al login')
-      window.location.href = '/auth/login'
+window.location.href = '/auth/login'
     }
   }, [authLoading, isAuthenticated])
 
@@ -39,7 +38,11 @@ export default function ReservationsPage() {
     if (!user?.id) return
 
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+return
+      }
       const { data, error } = await client
         .from("profiles")
         .select("*")
@@ -47,24 +50,21 @@ export default function ReservationsPage() {
         .maybeSingle()
 
       if (error) {
-        console.error("Error cargando perfil en reservas:", error)
-        return
+return
       }
 
       if (data) {
         setProfile(data)
       }
     } catch (error) {
-      console.error("Error cargando perfil en reservas:", error)
-    }
+}
   }
 
   const handleCancelReservation = async (reservationId: string) => {
     try {
       await cancelReservation(reservationId)
     } catch (error) {
-      console.error("Error cancelando reserva:", error)
-    }
+}
   }
 
   const getStatusBadge = (status: string) => {
@@ -131,24 +131,24 @@ export default function ReservationsPage() {
     }).format(price)
   }
 
-  const getUserInitials = (name: string) => {
+  const getUserInitials = useCallback((name: string) => {
     return name
       .split(" ")
       .map((n) => n[0])
       .join("")
       .toUpperCase()
       .slice(0, 2)
-  }
+  }, [])
 
-  const getUserAvatar = () => {
+  const getUserAvatar = useCallback(() => {
     return profile?.avatar_url || "/placeholder.svg"
-  }
+  }, [profile?.avatar_url])
 
-  const getUserName = () => {
+  const getUserName = useCallback(() => {
     return profile?.full_name || user?.email || "Usuario"
-  }
+  }, [profile?.full_name, user?.email])
 
-  const ReservationCard = ({ reservation }: { reservation: any }) => (
+  const ReservationCard = useCallback(({ reservation }: { reservation: any }) => (
     <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
       <CardHeader className="pb-4">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
@@ -199,13 +199,11 @@ export default function ReservationsPage() {
           )}
         </div>
         {reservation.notes && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-xl border border-gray-100">
-            <p className="text-sm sm:text-base text-gray-700 leading-relaxed">{reservation.notes}</p>
-          </div>
+          <div className="text-sm sm:text-base text-gray-700 leading-relaxed">{reservation.notes}</div>
         )}
       </CardContent>
     </Card>
-  )
+  ), [handleCancelReservation])
 
   // Mostrar loading mientras verifica autenticación
   if (authLoading) {
@@ -225,13 +223,21 @@ export default function ReservationsPage() {
     return null
   }
 
-  // Filtrar reservas por estado
-  const upcomingReservations = reservations.filter(
-    (r) => r.status === "confirmed" && new Date(r.date) > new Date()
+  // Filtrar reservas por estado - optimizado con useMemo
+  const upcomingReservations = useMemo(() => 
+    reservations.filter(
+      (r) => r.status === "confirmed" && new Date(r.date) > new Date()
+    ), [reservations]
   )
-  const pendingReservations = reservations.filter((r) => r.status === "pending")
-  const historyReservations = reservations.filter(
-    (r) => r.status === "completed" || r.status === "cancelled" || new Date(r.date) < new Date()
+  
+  const pendingReservations = useMemo(() => 
+    reservations.filter((r) => r.status === "pending"), [reservations]
+  )
+  
+  const historyReservations = useMemo(() => 
+    reservations.filter(
+      (r) => r.status === "completed" || r.status === "cancelled" || new Date(r.date) < new Date()
+    ), [reservations]
   )
 
   // Mostrar error si hay problemas cargando reservas
@@ -425,3 +431,4 @@ export default function ReservationsPage() {
     </div>
   )
 }
+

@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { supabase } from "@/lib/supabase"
+﻿import { NextRequest, NextResponse } from "next/server"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { withAuthorization } from "@/lib/authorization"
 
 // GET - Obtener estadísticas de auditoría
@@ -8,10 +8,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
     const { searchParams } = new URL(request.url)
     const period = searchParams.get("period") || "7d" // 7d, 30d, 90d, 1y
     const groupBy = searchParams.get("groupBy") || "action" // action, severity, user_id
-
-    console.log("Obteniendo estadísticas de auditoría:", { period, groupBy })
-
-    // Calcular fecha de inicio basada en el período
+// Calcular fecha de inicio basada en el período
     const now = new Date()
     let startDate: Date
 
@@ -32,16 +29,24 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
         startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     }
 
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      return NextResponse.json(
+        { error: "Error de conexión con la base de datos" },
+        { status: 500 }
+      )
+    }
+
     // Obtener logs del período
-    const { data: logs, error } = await supabase
+    const { data: logs, error } = await client
       .from("audit_logs")
       .select("*")
       .gte("created_at", startDate.toISOString())
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error obteniendo logs para estadísticas:", error)
-      return NextResponse.json(
+return NextResponse.json(
         { error: "Error interno del servidor" },
         { status: 500 }
       )
@@ -81,9 +86,9 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
       .sort((a, b) => a.date.localeCompare(b.date))
 
     // Obtener información adicional de usuarios si se agrupa por usuario
-    let userDetails: Record<string, any> = {}
+    const userDetails: Record<string, any> = {}
     if (groupBy === "user_id" && Object.keys(stats.byUser).length > 0) {
-      const { data: userData } = await supabase
+      const { data: userData } = await client
         .from("profiles")
         .select("id, full_name, email")
         .in("id", Object.keys(stats.byUser))
@@ -111,14 +116,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
         count,
         user_info: userDetails[userId] || null,
       }))
-
-    console.log("Estadísticas calculadas:", {
-      total: stats.total,
-      topActions: topActions.length,
-      topUsers: topUsers.length,
-    })
-
-    return NextResponse.json({
+return NextResponse.json({
       period,
       groupBy,
       stats: {
@@ -132,8 +130,7 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
       },
     })
   } catch (error) {
-    console.error("Error inesperado en audit-stats:", error)
-    return NextResponse.json(
+return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )
@@ -145,13 +142,22 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { action, hours_back = 24, days = 30 } = body
 
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      return NextResponse.json(
+        { error: "Error de conexión con la base de datos" },
+        { status: 500 }
+      )
+    }
+
     switch (action) {
       case 'detect_suspicious':
         // Detectar actividades sospechosas
         const startDate = new Date()
         startDate.setHours(startDate.getHours() - hours_back)
 
-        const { data: recentLogs, error } = await supabase
+        const { data: recentLogs, error } = await client
           .from('audit_logs')
           .select('*')
           .gte('created_at', startDate.toISOString())
@@ -203,7 +209,7 @@ export async function POST(request: NextRequest) {
         const reportStartDate = new Date()
         reportStartDate.setDate(reportStartDate.getDate() - days)
 
-        const { data: reportLogs, error: reportError } = await supabase
+        const { data: reportLogs, error: reportError } = await client
           .from('audit_logs')
           .select('*')
           .gte('created_at', reportStartDate.toISOString())
@@ -250,8 +256,7 @@ export async function POST(request: NextRequest) {
     }
 
   } catch (error) {
-    console.error('Error in audit stats action:', error)
-    return NextResponse.json(
+return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )

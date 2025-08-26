@@ -502,3 +502,75 @@
     @apply text-black bg-white;
   }
 }
+
+  /* Animaciones del hero */
+  .animate-fade-in-up {
+    animation: fadeInUp 0.8s ease-out forwards;
+  }
+
+  .animation-delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .animation-delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .animation-delay-600 {
+    animation-delay: 600ms;
+  }
+
+  .animation-delay-800 {
+    animation-delay: 800ms;
+  }
+
+  /* Keyframes para las animaciones del hero */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* Optimizaciones de imágenes del hero */
+  .hero-image-container {
+    @apply relative overflow-hidden;
+  }
+
+  .hero-image {
+    @apply transition-all duration-1000 ease-out;
+  }
+
+  .hero-image-loading {
+    @apply opacity-0 scale-105;
+  }
+
+  .hero-image-loaded {
+    @apply opacity-100 scale-100;
+  }
+
+  /* Fallback del hero */
+  .hero-fallback {
+    @apply bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900;
+  }
+
+  .hero-fallback-content {
+    @apply text-center text-white;
+  }
+
+  .hero-fallback-icon {
+    @apply w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-4;
+  }
+
+  /* Indicador de carga del hero */
+  .hero-loading-indicator {
+    @apply absolute inset-0 bg-gradient-to-br from-blue-900 via-purple-900 to-indigo-900 flex items-center justify-center;
+  }
+
+  .hero-loading-spinner {
+    @apply w-16 h-16 border-4 border-white/20 border-t-white rounded-full animate-spin mx-auto mb-4;
+  }

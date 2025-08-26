@@ -1,0 +1,184 @@
+/* Estilos personalizados para avatares del chat administrativo */
+
+/* Avatar del administrador en el header */
+.admin-header-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.admin-header-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Avatar del administrador en mensajes */
+.admin-message-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.admin-message-avatar:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Avatar de usuarios en mensajes */
+.user-message-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.user-message-avatar:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Avatar de usuarios en lista de conversaciones */
+.conversation-user-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.conversation-user-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Avatar en header de conversación activa */
+.active-conversation-avatar {
+  border-radius: 50%;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.active-conversation-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Imagen del avatar - asegurar que no se estire */
+.avatar-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  /* Forzar proporción cuadrada */
+  aspect-ratio: 1 / 1;
+}
+
+/* Fallback del avatar */
+.avatar-fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-weight: 600;
+  /* Asegurar proporción perfecta */
+  aspect-ratio: 1 / 1;
+}
+
+/* Animación de entrada */
+.avatar-fade-in {
+  animation: avatarFadeIn 0.3s ease-in-out;
+}
+
+@keyframes avatarFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Estilos para avatares que no se cargan */
+.avatar-loading {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Asegurar que todos los avatares mantengan proporción */
+.avatar-container {
+  position: relative;
+  display: inline-block;
+  /* Forzar proporción cuadrada */
+  aspect-ratio: 1 / 1;
+}
+
+/* Estilos específicos para diferentes tamaños */
+.avatar-xs {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+}
+
+.avatar-sm {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.avatar-md {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.avatar-lg {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+.avatar-xl {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  min-height: 64px;
+}

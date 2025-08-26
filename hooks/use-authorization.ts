@@ -1,6 +1,8 @@
+﻿"use client"
+
 import { useEffect, useState, useCallback } from 'react'
-import { useAuth } from '@/components/auth-provider-simple'
-import { supabase } from '@/lib/supabase'
+import { useAuthContext } from '@/components/auth-provider'
+import { getSupabaseClient } from '@/lib/supabase-optimized'
 
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
 
@@ -23,18 +25,73 @@ export interface AuthorizationState {
   isStaffOrAbove: boolean
 }
 
+export const checkUserRole = async (userId: string): Promise<string | null> => {
+  try {
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    
+    if (!client) {
+      throw new Error('No se pudo obtener el cliente de Supabase')
+    }
+
+    const { data, error } = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+
+    if (error) {
+return null
+    }
+
+    return data?.role || null
+  } catch (error) {
+return null
+  }
+}
+
+export const isUserAdmin = async (userId: string): Promise<boolean> => {
+  const role = await checkUserRole(userId)
+  return role === 'admin'
+}
+
+export const checkPermission = async (userId: string, permission: string): Promise<boolean> => {
+  try {
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    
+    if (!client) {
+      throw new Error('No se pudo obtener el cliente de Supabase')
+    }
+
+    const { data, error } = await client
+      .from('user_permissions')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('permission', permission)
+      .single()
+
+    if (error) {
+return false
+    }
+
+    return !!data
+  } catch (error) {
+return false
+  }
+}
+
 export function useAuthorization(): AuthorizationState {
-  const { user } = useAuth()
+  const { user } = useAuthContext()
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [permissions, setPermissions] = useState<Permission[]>([])
 
   // Función para cargar el rol y permisos del usuario
   const loadUserAuthorization = useCallback(async () => {
-    if (!user) {
+    if (!user?.id) {
       setUserRole(null)
       setPermissions([])
-      setIsLoading(false)
       return
     }
 
@@ -42,7 +99,14 @@ export function useAuthorization(): AuthorizationState {
       setIsLoading(true)
 
       // Obtener el perfil del usuario
-      const { data: profile, error: profileError } = await supabase
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase para cargar el perfil")
+      }
+
+      const { data: profile, error: profileError } = await client
         .from('profiles')
         .select('role')
         .eq('id', user.id)
@@ -59,7 +123,7 @@ export function useAuthorization(): AuthorizationState {
       setUserRole(role)
 
       // Obtener los permisos del usuario
-      const { data: userPermissions, error: permissionsError } = await supabase
+      const { data: userPermissions, error: permissionsError } = await client
         .from('user_permissions')
         .select(`
           permission_name,
@@ -147,7 +211,7 @@ export function useAuthorization(): AuthorizationState {
 
 // Hook para verificar autorización en componentes
 export function useRequireAuth(requiredRole?: UserRole, requiredPermission?: string) {
-  const { user, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuthContext()
   const { 
     isLoading: authzLoading, 
     userRole, 

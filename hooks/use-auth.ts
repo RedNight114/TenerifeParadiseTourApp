@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useState, useRef, useCallback } from "react"
-import type { User } from "@supabase/supabase-js"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { useState, useEffect, useCallback } from 'react'
+import { User, Session } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-singleton'
+import { logAuth, logError } from '@/lib/logger'
 
 interface Profile {
   id: string
@@ -18,206 +19,335 @@ interface Profile {
 export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isInitialized, setIsInitialized] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  
-  const mounted = useRef(true)
 
-  // Función para cargar perfil
+  // Cargar perfil del usuario
   const loadProfile = useCallback(async (userId: string) => {
     try {
-      console.log('🔄 Cargando perfil para usuario:', userId)
+      const supabase = getSupabaseClient()
       
-      const client = getSupabaseClient()
-      const { data, error: profileError } = await client
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
+      }
+
+      const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single()
 
-      if (!mounted.current) return
-
-      if (profileError) {
-        console.error('❌ Error cargando perfil:', profileError)
-        setProfile(null)
-      } else {
-        console.log('✅ Perfil cargado exitosamente:', data.full_name)
-        setProfile(data)
+      if (error) {
+        logAuth('Error cargando perfil', { error: error.message })
+        return null
       }
-    } catch (err) {
-      if (!mounted.current) return
-      console.error('❌ Error cargando perfil:', err)
-      setProfile(null)
+
+      setProfile(data)
+      return data
+    } catch (error) {
+      logAuth('Error cargando perfil', { error: error instanceof Error ? error.message : 'Error desconocido' })
+      return null
     }
   }, [])
 
-  // Inicialización de autenticación
+  // Crear perfil por defecto
+  const createDefaultProfile = async (userId: string, fullName: string) => {
+    try {
+      const supabase = getSupabaseClient()
+      
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
+      }
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            id: userId,
+            full_name: fullName,
+            email: user?.email || '',
+            role: 'user',
+          },
+        ])
+        .select()
+        .single()
+
+      if (error) {
+        logAuth('Error creando perfil por defecto', { error: error.message })
+        return null
+      }
+
+      setProfile(data)
+      return data
+    } catch (error) {
+      logAuth('Error creando perfil por defecto', { error: error instanceof Error ? error.message : 'Error desconocido' })
+      return null
+    }
+  }
+
+  // Inicializar autenticación
   useEffect(() => {
-    const initAuth = async () => {
+    const initializeAuth = async () => {
       try {
-        console.log('🚀 Inicializando autenticación...')
-        setLoading(true)
-        setError(null)
+        logAuth('Iniciando sistema de autenticación...');
+        
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+          logError('No se pudo obtener el cliente de Supabase');
+          setIsInitialized(true);
+          return;
+        }
 
-        const client = getSupabaseClient()
-        const { data: { session } } = await client.auth.getSession()
+        // Obtener sesión actual
+        try {
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+          
+          if (sessionError) {
+            logError('Error obteniendo sesión', sessionError);
+            setIsInitialized(true);
+            return;
+          }
 
-        if (!mounted.current) return
+          if (session?.user) {
+            logAuth('Usuario autenticado encontrado', { userId: session.user.id });
+            setUser(session.user);
+            await loadProfile(session.user.id);
+          } else {
+            logAuth('No hay sesión activa');
+            setUser(null);
+            setProfile(null);
+          }
+        } catch (error) {
+          logError('Error obteniendo sesión', error);
+          setIsInitialized(true);
+          return;
+        }
 
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
+        // Configurar listener de cambios de autenticación
+        try {
+          const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            async (event, session) => {
+              logAuth('Cambio de autenticación', { event, userId: session?.user?.id });
+              
+              if (event === 'SIGNED_IN' && session?.user) {
+                setUser(session.user);
+                await loadProfile(session.user.id);
+              } else if (event === 'SIGNED_OUT') {
+                setUser(null);
+                setProfile(null);
+              }
+            }
+          );
 
-        if (currentUser) {
-          console.log('👤 Usuario autenticado:', currentUser.id)
-          await loadProfile(currentUser.id)
-        } else {
-          console.log('👤 No hay sesión activa')
+          setIsInitialized(true);
+          logAuth('Sistema de autenticación inicializado correctamente');
+
+          return () => {
+            subscription.unsubscribe();
+          };
+        } catch (error) {
+          logError('Error configurando listener de autenticación', error);
+          setIsInitialized(true);
         }
       } catch (err) {
-        if (!mounted.current) return
-        console.error('❌ Error inicializando auth:', err)
-        setError(err instanceof Error ? err.message : 'Error de autenticación')
-      } finally {
-        if (mounted.current) {
-          setLoading(false)
-          console.log('✅ Inicialización completada')
-        }
+        logError('Error inicializando autenticación', err);
+        setIsInitialized(true);
       }
-    }
+    };
 
-    initAuth()
-
-    // Listener de cambios de autenticación
-    const client = getSupabaseClient()
-    const { data: { subscription } } = client.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted.current) return
-        
-        console.log('🔄 Cambio de autenticación:', event, session?.user?.id)
-        
-        const currentUser = session?.user ?? null
-        setUser(currentUser)
-        setError(null)
-
-        if (currentUser) {
-          await loadProfile(currentUser.id)
-        } else {
-          setProfile(null)
-        }
-        
-        if (mounted.current) {
-          setLoading(false)
-        }
-      }
-    )
-
-    return () => {
-      mounted.current = false
-      subscription.unsubscribe()
-    }
+    initializeAuth();
   }, [loadProfile])
 
-  // Función de login
-  const signIn = useCallback(async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     try {
-      setError(null)
-      setLoading(true)
+      setIsLoading(true);
+      logAuth('Intentando login', { email });
       
-      console.log('🔐 Intentando login:', email)
+      const supabase = getSupabaseClient()
       
-      const client = getSupabaseClient()
-      const { data, error: signInError } = await client.auth.signInWithPassword({ 
-        email, 
-        password 
-      })
-      
-      if (signInError) {
-        console.error('❌ Error en login:', signInError)
-        setError(signInError.message)
-        setLoading(false)
-        return { data: null, error: signInError }
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
       }
 
-      if (data?.user) {
-        console.log('✅ Login exitoso')
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+
+      if (error) {
+        logAuth('Error en login', { error: error.message })
+        setError(error.message)
+        return { data: null, error: error.message }
+      }
+
+      if (data.user) {
+        logAuth('Login exitoso')
         setUser(data.user)
         await loadProfile(data.user.id)
+        // Retornar información completa para redirección
+        return {
+          data: {
+            user: data.user,
+            profile // Usar el perfil actualizado
+          },
+          error: null
+        };
+      }
+      return { data: null, error: 'No se pudo iniciar sesión' }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      logAuth('Error en login', { error: errorMessage })
+      setError(errorMessage)
+      return { data: null, error: errorMessage }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const register = async (email: string, password: string, fullName: string) => {
+    try {
+      setIsLoading(true);
+      logAuth('Iniciando proceso de registro...');
+      logAuth('Datos de registro', { email, fullName });
+      
+      const supabase = getSupabaseClient()
+      
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
       }
 
-      setLoading(false)
-      return { data, error: null }
-    } catch (err) {
-      console.error('❌ Error en login:', err)
-      const message = err instanceof Error ? err.message : 'Error en el login'
-      setError(message)
-      setLoading(false)
-      return { data: null, error: { message } }
-    }
-  }, [loadProfile])
-
-  // Función de registro
-  const signUp = useCallback(async (email: string, password: string, fullName: string) => {
-    try {
-      setError(null)
-      setLoading(true)
-      
-      console.log('📝 Intentando registro:', email)
-      
-      const client = getSupabaseClient()
-      const { data, error: signUpError } = await client.auth.signUp({ 
-        email, 
+      const { data, error } = await supabase.auth.signUp({
+        email,
         password,
         options: {
           data: {
-            full_name: fullName
-          }
-        }
+            full_name: fullName,
+          },
+        },
       })
-      
-      if (signUpError) {
-        console.error('❌ Error en registro:', signUpError)
-        setError(signUpError.message)
-        setLoading(false)
-        return { data: null, error: signUpError }
+
+      if (error) {
+        logAuth('Error en registro', { error: error.message })
+        setError(error.message)
+        return { success: false, error: error.message }
       }
 
-      console.log('✅ Registro exitoso')
-      setLoading(false)
-      return { data, error: null }
-    } catch (err) {
-      console.error('❌ Error en registro:', err)
-      const message = err instanceof Error ? err.message : 'Error en el registro'
-      setError(message)
-      setLoading(false)
-      return { data: null, error: { message } }
-    }
-  }, [])
+      if (data.user) {
+        logAuth('Registro exitoso')
+        setUser(data.user)
+        await createDefaultProfile(data.user.id, fullName)
+        return { success: true, error: null }
+      }
 
-  // Función de logout
-  const signOut = useCallback(async () => {
+      return { success: false, error: 'No se pudo crear la cuenta' }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      logAuth('Error en registro', { error: errorMessage })
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const logout = async () => {
     try {
-      console.log('🚪 Cerrando sesión...')
-      const client = getSupabaseClient()
-      await client.auth.signOut()
+      logAuth('Cerrando sesión...');
+      
+      const supabase = getSupabaseClient()
+      
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
+      }
+
+      const { error } = await supabase.auth.signOut()
+      if (error) {
+        logAuth('Error en logout', { error: error.message })
+        setError(error.message)
+        return { success: false, error: error.message }
+      }
+
+      logAuth('Logout exitoso')
       setUser(null)
       setProfile(null)
-      setError(null)
-      console.log('✅ Sesión cerrada')
-    } catch (err) {
-      console.error('❌ Error en logout:', err)
-      setError(err instanceof Error ? err.message : 'Error al cerrar sesión')
+      return { success: true, error: null }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      logAuth('Error en logout', { error: errorMessage })
+      setError(errorMessage)
+      return { success: false, error: errorMessage }
+    } finally {
+      setIsLoading(false);
     }
-  }, [])
+  };
+
+  const loginWithProvider = async (provider: 'google' | 'github') => {
+    try {
+      setIsLoading(true);
+      logAuth('Intentando login con proveedor', { provider });
+      
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase');
+      }
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      logAuth('Redirección a proveedor iniciada');
+    } catch (err) {
+      logError('Error iniciando login con proveedor', err);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resendVerificationEmail = async () => {
+    try {
+      logAuth('Reenviando email de verificación...');
+      
+      const supabase = getSupabaseClient();
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase');
+      }
+
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: user?.email || '',
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      logAuth('Email de verificación reenviado');
+      return { success: true };
+    } catch (err) {
+      logError('Error reenviando email de verificación', err);
+      return { success: false, error: err instanceof Error ? err.message : 'Error desconocido' };
+    }
+  };
 
   return {
     user,
     profile,
-    loading,
+    isInitialized,
+    isLoading,
     error,
-    isAuthenticated: !!user,
-    isAdmin: profile?.role === "admin",
-    signIn,
-    signUp,
-    signOut,
+    login,
+    register,
+    logout,
+    loginWithProvider,
+    resendVerificationEmail,
   }
 } 

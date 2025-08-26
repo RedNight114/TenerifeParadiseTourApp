@@ -108,7 +108,7 @@ importFiles.forEach(file => {
       if (importStatement.includes('login-modal')) {
         console.log(`⚠️ Import problemático en ${file}: ${importStatement}`);
         // Eliminar la línea de import
-        const newContent = content.replace(importStatement + '\n', '');
+        const newContent = content.replace(`${importStatement  }\n`, '');
         fs.writeFileSync(file, newContent);
         console.log(`✅ Import eliminado de ${file}`);
         fixesApplied++;

@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import Image from 'next/image'
 import { useState } from 'react'
@@ -41,8 +41,7 @@ export default function ImageWithFallback({
       setImgSrc(fallbackSrc)
       setHasError(true)
     } else {
-      console.error(`❌ Imagen de fallback también falló: ${fallbackSrc}`)
-    }
+}
   }
 
   const handleLoad = () => {

@@ -65,7 +65,12 @@ export function AvatarUpload({
   const uploadAvatar = async (file: File) => {
     try {
       setUploading(true)
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
 
       // Generar nombre único para el archivo
       const fileExt = file.name.split(".").pop()

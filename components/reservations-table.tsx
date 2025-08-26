@@ -66,7 +66,7 @@ export default function ReservationsTable({
           <TableRow key={reservation.id}>
             <TableCell className="font-medium">{reservation.service?.title}</TableCell>
             <TableCell>{formatDate(reservation.date)}</TableCell>
-            <TableCell>{reservation.participants}</TableCell>
+            <TableCell>{reservation.guests}</TableCell>
             <TableCell>{formatPrice(reservation.total_price)}</TableCell>
             <TableCell>{getStatusBadge(reservation.status)}</TableCell>
             <TableCell>{getPaymentStatusBadge(reservation.payment_status)}</TableCell>

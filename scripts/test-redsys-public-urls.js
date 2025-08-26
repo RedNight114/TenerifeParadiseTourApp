@@ -131,7 +131,7 @@ const testHtml = generateTestForm();
 console.log('\n📄 FORMULARIO DE PRUEBA GENERADO:');
 console.log('==================================');
 console.log('Guarda el siguiente HTML en un archivo .html y ábrelo en el navegador:');
-console.log('\n' + '='.repeat(50));
+console.log(`\n${  '='.repeat(50)}`);
 console.log(testHtml);
 console.log('='.repeat(50));
 

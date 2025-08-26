@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Forzar renderizado dinámico para evitar errores de build
@@ -12,37 +12,24 @@ const supabase = createClient(
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('🔐 SESSION API - Verificando sesión...')
-    
-    // Obtener el token de autorización del header
+// Obtener el token de autorización del header
     const authHeader = request.headers.get('authorization')
     let accessToken = null
     
     if (authHeader && authHeader.startsWith('Bearer ')) {
       accessToken = authHeader.substring(7)
     }
-    
-    console.log('🔐 SESSION API - Token encontrado:', !!accessToken)
-    
-    if (!accessToken) {
+if (!accessToken) {
       // Intentar obtener la sesión sin token
       const { data: { session }, error } = await supabase.auth.getSession()
       
       if (error) {
-        console.error('❌ SESSION API - Error al obtener sesión:', error)
-        return NextResponse.json({ 
+return NextResponse.json({ 
           error: 'Error al obtener sesión',
           details: error.message 
         }, { status: 401 })
       }
-      
-      console.log('🔐 SESSION API - Sesión obtenida sin token:', {
-        hasSession: !!session,
-        hasUser: !!session?.user,
-        userId: session?.user?.id
-      })
-      
-      // Si hay sesión sin token, devolverla
+// Si hay sesión sin token, devolverla
       if (session?.access_token) {
         return NextResponse.json({ 
           session,
@@ -60,26 +47,18 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser(accessToken)
     
     if (error) {
-      console.error('❌ SESSION API - Error al verificar token:', error)
-      return NextResponse.json({ 
+return NextResponse.json({ 
         error: 'Token inválido',
         details: error.message 
       }, { status: 401 })
     }
     
     if (!user) {
-      console.log('❌ SESSION API - No hay usuario para el token')
-      return NextResponse.json({ 
+return NextResponse.json({ 
         error: 'Usuario no encontrado'
       }, { status: 401 })
     }
-    
-    console.log('✅ SESSION API - Usuario verificado:', {
-      userId: user.id,
-      email: user.email
-    })
-    
-    // Crear objeto de sesión con tiempo extendido
+// Crear objeto de sesión con tiempo extendido
     const session = {
       user,
       access_token: accessToken,
@@ -92,8 +71,7 @@ export async function GET(request: NextRequest) {
     })
     
   } catch (error) {
-    console.error('❌ SESSION API - Error inesperado:', error)
-    return NextResponse.json({ 
+return NextResponse.json({ 
       error: 'Error interno del servidor',
       details: error instanceof Error ? error.message : 'Error desconocido'
     }, { status: 500 })

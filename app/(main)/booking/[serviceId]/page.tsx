@@ -4,8 +4,9 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useAuth } from "@/components/auth-provider-simple"
-import { useServices } from "@/hooks/use-services"
+import { useAuthContext } from "@/components/auth-provider"
+import { useUnifiedData } from "@/hooks/use-unified-data"
+import { OptimizedServiceGallery } from "@/components/optimized-service-gallery"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -38,14 +39,15 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
+import type { Service, Profile } from "@/lib/supabase"
 
 export default function BookingPage() {
   const { serviceId } = useParams()
-  const { user, loading: authLoading, signOut } = useAuth()
-  const { services, loading: servicesLoading, fetchServices } = useServices()
+  const { user, loading: authLoading, signOut } = useAuthContext()
+  const { services, loading: servicesLoading, refreshData: refreshServices, isInitialized } = useUnifiedData()
   const router = useRouter()
 
-  const [service, setService] = useState<any>(null)
+  const [service, setService] = useState<Service | null>(null)
   const [formData, setFormData] = useState({
     reservation_date: "",
     reservation_time: "",
@@ -57,12 +59,12 @@ export default function BookingPage() {
   })
   const [selectedDate, setSelectedDate] = useState<Date>()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [errors, setErrors] = useState<any>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [invalidPriceAlert, setInvalidPriceAlert] = useState(false)
   const [redsysHtml, setRedsysHtml] = useState<string | null>(null)
   const [formProgress, setFormProgress] = useState(0)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
-  const [userProfile, setUserProfile] = useState<any>(null)
+  const [userProfile, setUserProfile] = useState<Profile | null>(null)
   const [priceType, setPriceType] = useState<'per_person' | 'total'>('per_person')
 
   // Validar acceso del usuario
@@ -76,9 +78,9 @@ export default function BookingPage() {
   // Cargar servicios
   useEffect(() => {
     if (services.length === 0) {
-      fetchServices()
+      refreshServices()
     }
-  }, [services, fetchServices])
+  }, [services, refreshServices])
 
   // Cargar perfil cuando el usuario esté disponible
   useEffect(() => {
@@ -91,7 +93,12 @@ export default function BookingPage() {
     if (!user?.id) return
 
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        console.error("Error: No se pudo obtener el cliente de Supabase")
+        return
+      }
       const { data, error } = await client
         .from("profiles")
         .select("*")
@@ -147,7 +154,7 @@ export default function BookingPage() {
   useEffect(() => {
     if (services.length > 0 && serviceId) {
       const foundService = services.find((s) => s.id === serviceId)
-      setService(foundService)
+      setService(foundService || null)
 
       if (foundService && user) {
         setFormData((prev) => ({
@@ -217,7 +224,7 @@ export default function BookingPage() {
       }))
       // Limpiar error de fecha
       if (errors.reservation_date) {
-        setErrors((prev: any) => ({ ...prev, reservation_date: "" }))
+        setErrors((prev: Record<string, string>) => ({ ...prev, reservation_date: "" }))
       }
     }
   }
@@ -230,7 +237,7 @@ export default function BookingPage() {
 
     // Limpiar error cuando el usuario empieza a escribir
     if (errors[field]) {
-      setErrors((prev: any) => ({
+      setErrors((prev: Record<string, string>) => ({
         ...prev,
         [field]: "",
       }))
@@ -238,7 +245,7 @@ export default function BookingPage() {
   }
 
   const validateForm = () => {
-    const newErrors: any = {}
+    const newErrors: Record<string, string> = {}
 
     // Validar fecha
     if (!formData.reservation_date) {
@@ -346,8 +353,12 @@ export default function BookingPage() {
     setRedsysHtml(null)
 
     try {
-      // Verificar sesión
-      const { data: { session } } = await supabase.auth.getSession()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+      const { data: { session } } = await client.auth.getSession()
       
       if (!session?.access_token) {
         throw new Error("No hay sesión activa")
@@ -395,10 +406,11 @@ export default function BookingPage() {
       const url = URL.createObjectURL(blob)
       window.location.href = url
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast.dismiss()
-      toast.error(error.message || "Error al procesar la reserva")
-      setErrors({ submit: error.message })
+      const errorMessage = error instanceof Error ? error.message : "Error al procesar la reserva"
+      toast.error(errorMessage)
+      setErrors({ submit: errorMessage })
     } finally {
       setIsSubmitting(false)
     }
@@ -612,86 +624,18 @@ export default function BookingPage() {
               <div className="flex items-start gap-6">
                 {/* Image Gallery - Escala aumentada */}
                 <div className="flex-1">
-                  {service?.images && service.images.length > 0 ? (
-                    <div className="relative">
-                      <div className="relative h-56 md:h-64 rounded-lg overflow-hidden">
-                        <Image
-                          src={service.images[currentImageIndex]}
-                          alt={`${service.name} - Imagen ${currentImageIndex + 1}`}
-                          fill
-                          className="object-cover"
-                        />
-                        {/* Navigation arrows - Escala aumentada */}
-                        {service.images.length > 1 && (
-                          <>
-                            <button
-                              onClick={() => setCurrentImageIndex(prev => 
-                                prev === 0 ? service.images.length - 1 : prev - 1
-                              )}
-                              className="absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
-                            >
-                              <ChevronLeft className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => setCurrentImageIndex(prev => 
-                                prev === service.images.length - 1 ? 0 : prev + 1
-                              )}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 bg-black/50 hover:bg-black/70 text-white rounded-full flex items-center justify-center transition-all duration-200"
-                            >
-                              <ChevronRight className="h-5 w-5" />
-                            </button>
-                          </>
-                        )}
-                        {/* Image counter - Escala aumentada */}
-                        <div className="absolute top-3 left-3 bg-black/50 text-white text-sm px-3 py-1.5 rounded-full">
-                          {currentImageIndex + 1}/{service.images.length}
-                        </div>
-                      </div>
-                      
-                      {/* Thumbnails - Escala aumentada */}
-                      {service.images.length > 1 && (
-                        <div className="flex gap-3 mt-4">
-                          {service.images.map((image: string, index: number) => (
-                            <button
-                              key={index}
-                              onClick={() => setCurrentImageIndex(index)}
-                              className={`relative w-16 h-16 rounded-lg overflow-hidden border-2 transition-all duration-200 ${
-                                index === currentImageIndex 
-                                  ? 'border-[#0061A8]' 
-                                  : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                            >
-                              <Image
-                                src={image}
-                                alt={`Miniatura ${index + 1}`}
-                                fill
-                                className="object-cover"
-                              />
-                            </button>
-                          ))}
-                      </div>
-                    )}
-                    </div>
-                  ) : (
-                    <div className="h-56 md:h-64 bg-gray-100 rounded-lg flex items-center justify-center">
-                      <div className="text-center text-gray-500">
-                        <Image 
-                          src="/placeholder.svg" 
-                          alt="Sin imágenes" 
-                          width={64} 
-                          height={64} 
-                          className="mx-auto mb-3 opacity-50" 
-                        />
-                        <p className="text-base">No hay imágenes disponibles</p>
-                      </div>
-                      </div>
-                    )}
-                  </div>
+                  <OptimizedServiceGallery
+                    images={service?.images || []}
+                    serviceTitle={service?.title || 'Servicio'}
+                    priority={true}
+                    className="h-56 md:h-64"
+                  />
+                </div>
 
                 {/* Service Info - Escala aumentada */}
                 <div className="flex-1 min-w-0">
                   <h2 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">
-                    {service?.name}
+                    {service?.title}
                   </h2>
                   <p className="text-base text-gray-600 line-clamp-3 mb-4">
                     {service?.description}

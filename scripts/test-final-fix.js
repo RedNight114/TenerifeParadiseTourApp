@@ -80,7 +80,7 @@ const merchantParametersBase64 = Buffer.from(merchantParametersJson, 'utf8').toS
 
 console.log('   JSON length:', merchantParametersJson.length);
 console.log('   Base64 length:', merchantParametersBase64.length);
-console.log('   JSON preview:', merchantParametersJson.substring(0, 100) + '...');
+console.log('   JSON preview:', `${merchantParametersJson.substring(0, 100)  }...`);
 
 // Verificar caracteres escapados
 console.log('\n🔍 VERIFICANDO CARACTERES ESCAPADOS:');
@@ -116,8 +116,8 @@ function generateSignature(order, merchantParameters, secretKey) {
     const cleanSecretKey = secretKey.toString().trim();
     
     console.log('   Order (clean):', cleanOrder);
-    console.log('   Merchant Parameters (clean):', cleanMerchantParameters.substring(0, 50) + '...');
-    console.log('   Secret Key (clean):', cleanSecretKey.substring(0, 10) + '...');
+    console.log('   Merchant Parameters (clean):', `${cleanMerchantParameters.substring(0, 50)  }...`);
+    console.log('   Secret Key (clean):', `${cleanSecretKey.substring(0, 10)  }...`);
     
     // Decodificar clave
     let decodedKey;
@@ -142,7 +142,7 @@ function generateSignature(order, merchantParameters, secretKey) {
     
     console.log('   Data to sign length:', dataToSign.length);
     console.log('   Signature length:', signature.length);
-    console.log('   Signature preview:', signature.substring(0, 20) + '...');
+    console.log('   Signature preview:', `${signature.substring(0, 20)  }...`);
     
     return signature;
   } catch (error) {

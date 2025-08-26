@@ -38,8 +38,8 @@ function simulateRedsysSubmission() {
   
   console.log('💰 Datos de prueba:', {
     originalAmount: testAmount,
-    amountInCents: amountInCents,
-    formattedAmount: formattedAmount,
+    amountInCents,
+    formattedAmount,
     formattedLength: formattedAmount.length
   });
   
@@ -69,7 +69,7 @@ function simulateRedsysSubmission() {
   console.log('🔍 Codificación Base64:', {
     jsonLength: merchantParametersJson.length,
     base64Length: merchantParametersBase64.length,
-    base64Preview: merchantParametersBase64.substring(0, 100) + '...'
+    base64Preview: `${merchantParametersBase64.substring(0, 100)  }...`
   });
   
   // Decodificar para verificar

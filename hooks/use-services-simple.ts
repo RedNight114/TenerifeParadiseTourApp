@@ -1,123 +1,69 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect, useCallback } from 'react'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
-import type { Service, Category, Subcategory } from '@/lib/supabase'
+import { useState, useEffect, useCallback, useRef } from "react"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
+import type { Service } from "@/lib/supabase"
 
 interface UseServicesSimpleReturn {
   services: Service[]
-  categories: Category[]
-  subcategories: Subcategory[]
-  isLoading: boolean
-  isInitialLoading: boolean
-  isRefreshing: boolean
+  loading: boolean
   error: string | null
-  hasError: boolean
-  refreshServices: () => Promise<void>
-  clearError: () => void
-  searchServices: (query: string) => Service[]
-  getServiceById: (id: string) => Service | undefined
-  fetchServiceById: (id: string) => Promise<Service | null>
-  totalServices: number
+  featuredServices: Service[]
   servicesByCategory: Record<string, Service[]>
+  refreshServices: () => Promise<void>
+  totalServices: number
 }
 
 export function useServicesSimple(): UseServicesSimpleReturn {
   const [services, setServices] = useState<Service[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isInitialLoading, setIsInitialLoading] = useState(true)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const loadData = useCallback(async () => {
+  const fetchServices = useCallback(async () => {
     try {
-      setIsLoading(true)
+      setLoading(true)
       setError(null)
+
+      const supabaseClient = getSupabaseClient()
+      const supabase = await supabaseClient.getClient()
       
-      const supabase = getSupabaseClient()
-      
-      // Cargar servicios
-      const { data: servicesData, error: servicesError } = await supabase
-        .from('services')
-        .select('*')
-        .order('created_at', { ascending: false })
-      
-      if (servicesError) throw servicesError
-      
-      // Cargar categorías
-      const { data: categoriesData, error: categoriesError } = await supabase
-        .from('categories')
-        .select('*')
-      
-      if (categoriesError) throw categoriesError
-      
-      // Cargar subcategorías
-      const { data: subcategoriesData, error: subcategoriesError } = await supabase
-        .from('subcategories')
-        .select('*')
-      
-      if (subcategoriesError) throw subcategoriesError
-      
-      // Actualizar estados
-      setServices(servicesData || [])
-      setCategories(categoriesData || [])
-      setSubcategories(subcategoriesData || [])
-      
-    } catch (error: any) {
-      console.error('Error cargando servicios:', error)
-      setError(error.message || 'Error al cargar los servicios')
-    } finally {
-      setIsLoading(false)
-      setIsInitialLoading(false)
-    }
-  }, [])
-  
-  const refreshServices = useCallback(async () => {
-    setIsRefreshing(true)
-    await loadData()
-    setIsRefreshing(false)
-  }, [loadData])
-  
-  const clearError = useCallback(() => {
-    setError(null)
-  }, [])
-  
-  const searchServices = useCallback((query: string): Service[] => {
-    if (!query.trim()) return services
-    
-    const searchTerm = query.toLowerCase()
-    return services.filter(service => 
-      service.title.toLowerCase().includes(searchTerm) ||
-      service.description.toLowerCase().includes(searchTerm)
-    )
-  }, [services])
-  
-  const getServiceById = useCallback((id: string): Service | undefined => {
-    return services.find(service => service.id === id)
-  }, [services])
-  
-  const fetchServiceById = useCallback(async (id: string): Promise<Service | null> => {
-    try {
-      const supabase = getSupabaseClient()
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
+      }
+
       const { data, error } = await supabase
         .from('services')
-        .select('*')
-        .eq('id', id)
-        .single()
-      
-      if (error) throw error
-      return data
-    } catch (error: any) {
-      console.error('Error fetching service by ID:', error)
-      return null
+        .select(`
+          *,
+          category:categories(name, description),
+          subcategory:subcategories(name, description)
+        `)
+        .eq('available', true)
+        .order('featured', { ascending: false })
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      setServices(data || [])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      setError(errorMessage)
+} finally {
+      setLoading(false)
     }
   }, [])
-  
-  // Calcular estadísticas
-  const totalServices = services.length
-  
+
+  // Carga inicial
+  useEffect(() => {
+    fetchServices()
+  }, []) // Removida la dependencia fetchServices para evitar bucle infinito
+
+  // Servicios destacados
+  const featuredServices = services.filter(service => service.featured).slice(0, 6)
+
+  // Servicios por categoría
   const servicesByCategory = services.reduce((acc, service) => {
     const categoryId = service.category_id
     if (!acc[categoryId]) {
@@ -126,27 +72,28 @@ export function useServicesSimple(): UseServicesSimpleReturn {
     acc[categoryId].push(service)
     return acc
   }, {} as Record<string, Service[]>)
+
+  // Log solo en desarrollo y solo cuando cambian los datos importantes
+  const prevServicesCount = useRef(services.length)
+  const prevLoading = useRef(loading)
   
-  // Carga inicial
   useEffect(() => {
-    loadData()
-  }, [loadData])
-  
+    if (process.env.NODE_ENV === 'development' && 
+        (prevServicesCount.current !== services.length || prevLoading.current !== loading)) {
+prevServicesCount.current = services.length
+      prevLoading.current = loading
+    }
+  }, [services.length, loading, error, featuredServices.length])
+
   return {
     services,
-    categories,
-    subcategories,
-    isLoading,
-    isInitialLoading,
-    isRefreshing,
+    loading,
     error,
-    hasError: !!error,
-    refreshServices,
-    clearError,
-    searchServices,
-    getServiceById,
-    fetchServiceById,
-    totalServices,
-    servicesByCategory
+    featuredServices,
+    servicesByCategory,
+    refreshServices: fetchServices,
+    totalServices: services.length
   }
-} 
+}
+
+

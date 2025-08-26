@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 
@@ -120,8 +120,7 @@ export default function ContactPage() {
         throw new Error('Error en el servidor')
       }
     } catch (error) {
-      console.error('Error enviando formulario:', error)
-      setSubmitStatus("error")
+setSubmitStatus("error")
     } finally {
       setIsSubmitting(false)
     }
@@ -545,3 +544,4 @@ export default function ContactPage() {
     </div>
   )
 }
+

@@ -1,0 +1,31 @@
+/* Estilos específicos para el hero section */
+
+/* Asegurar que el texto del input sea visible */
+.hero-search-input {
+  color: #111827 !important; /* text-gray-900 */
+}
+
+.hero-search-input::placeholder {
+  color: #4B5563 !important; /* text-gray-600 */
+  opacity: 1 !important;
+}
+
+.hero-search-input:focus {
+  color: #111827 !important; /* text-gray-900 */
+}
+
+.hero-search-input:disabled {
+  color: #374151 !important; /* text-gray-700 */
+}
+
+/* Mejorar la visibilidad del texto en diferentes estados */
+.hero-search-input:not(:placeholder-shown) {
+  color: #111827 !important;
+}
+
+/* Asegurar que el texto sea visible en todos los navegadores */
+.hero-search-input {
+  -webkit-text-fill-color: #111827 !important;
+  -webkit-text-color: #111827 !important;
+}
+

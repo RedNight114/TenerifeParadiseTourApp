@@ -1,71 +1,93 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect } from "react"
-import Image from "next/image"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
-import { Loader2, ChevronDown, ChevronUp } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { normalizeImageUrl } from "@/lib/utils"
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import { Loader2 } from 'lucide-react'
+import { createClient } from '@supabase/supabase-js'
+
+// Función para normalizar URLs de imágenes
+const normalizeImageUrl = (url: string) => {
+  if (!url) return null
+  
+  // Si ya es una URL completa de Supabase, usarla tal como está
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url
+  }
+  
+  // Si no es una URL válida, retornar null
+  return null
+}
 
 export function GallerySection() {
   const [images, setImages] = useState<string[]>([])
-  const [loading, setLoading] = useState(true)
-  const [showAll, setShowAll] = useState(false)
   const [initialImages, setInitialImages] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showAll, setShowAll] = useState(false)
 
   useEffect(() => {
     const fetchServiceImages = async () => {
-      setLoading(true)
-      setError(null)
-      
       try {
-        console.log('🖼️ Cargando imágenes de todos los servicios...')
-        const supabase = getSupabaseClient()
+        setLoading(true)
+        setError(null)
+// Crear cliente de Supabase directamente
+        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         
-        // Fetch ALL services that have images (not just featured)
-        const { data, error } = await supabase
-          .from("services")
-          .select("id, title, images, featured")
-          .not("images", "is", null)
-          .limit(50) // Increased limit to get more images
-
-        if (error) {
-          console.error('❌ Error cargando servicios:', error)
-          setError(error.message)
-          setLoading(false)
-          return
+        if (!url || !key) {
+          throw new Error('Variables de entorno de Supabase no configuradas')
         }
 
-        console.log('📊 Servicios con imágenes encontrados:', data?.length || 0)
-        
-        if (!data || data.length === 0) {
-          console.log('⚠️ No hay servicios con imágenes')
-          setImages([])
+        const supabase = createClient(url, key)
+
+        // Obtener servicios con imágenes
+        const { data: services, error: servicesError } = await supabase
+          .from('services')
+          .select('images, title')
+          .eq('available', true)
+          .not('images', 'is', null)
+
+        if (servicesError) {
+          throw new Error(`Error obteniendo servicios: ${servicesError.message}`)
+        }
+
+        if (!services || services.length === 0) {
+setImages([])
           setInitialImages([])
           setLoading(false)
           return
         }
 
-        // Log para debugging
-        data.forEach((service, index) => {
-          console.log(`📸 Servicio ${index + 1}: ${service.title} - ${service.images?.length || 0} imágenes (Destacado: ${service.featured ? 'Sí' : 'No'})`)
+        // Extraer todas las URLs de imágenes válidas
+        const allImageUrls: string[] = []
+        services.forEach(service => {
+          if (service.images && Array.isArray(service.images)) {
+            service.images.forEach((imageUrl: string) => {
+              const normalizedUrl = normalizeImageUrl(imageUrl)
+              if (normalizedUrl) {
+                allImageUrls.push(normalizedUrl)
+              }
+            })
+          }
         })
 
-        // Flatten the array of image arrays and shuffle them
-        const allImages = data.flatMap((service: any) => service.images || []).filter(Boolean)
-        const shuffledImages = allImages.sort(() => 0.5 - Math.random())
+        // Filtrar URLs duplicadas y válidas
+        const uniqueImageUrls = [...new Set(allImageUrls)].filter(url => url && url.length > 0)
+if (uniqueImageUrls.length === 0) {
+          setImages([])
+          setInitialImages([])
+        } else {
+          // Mostrar las primeras 8 imágenes inicialmente
+          const initial = uniqueImageUrls.slice(0, 8)
+          setInitialImages(initial)
+          setImages(uniqueImageUrls)
+        }
 
-        console.log('🖼️ Total de imágenes encontradas:', allImages.length)
-        console.log('🖼️ Imágenes después de filtrar:', shuffledImages.length)
-
-        setImages(shuffledImages as string[])
-        setInitialImages((shuffledImages.slice(0, 8) as string[]))
         setLoading(false)
         
       } catch (err) {
-        console.error('❌ Error inesperado cargando imágenes:', err)
-        setError(err instanceof Error ? err.message : 'Error desconocido')
+setError(err instanceof Error ? err.message : 'Error desconocido')
         setLoading(false)
       }
     }
@@ -101,78 +123,48 @@ export function GallerySection() {
               Reintentar
             </Button>
           </div>
-        ) : images.length > 0 ? (
-          <>
-            <div className="w-full flex flex-col items-center">
-              <div className="text-center mb-6">
-                <p className="text-sm text-gray-600">
-                  Mostrando {displayedImages.length} de {images.length} imágenes disponibles
-                </p>
-              </div>
-              
-              <div
-                className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 w-full max-w-6xl mx-auto"
-              >
-                {displayedImages.map((imgSrc, index) => (
-                  <div key={index} className="overflow-hidden rounded-lg shadow-lg flex items-center justify-center bg-gray-100 aspect-square">
-                    <Image
-                      src={normalizeImageUrl(imgSrc)}
-                      alt={`Galería de experiencia en Tenerife ${index + 1}`}
-                      width={500}
-                      height={500}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
-                      onError={(e) => {
-                        console.error('❌ Error cargando imagen:', imgSrc)
-                        const target = e.target as HTMLImageElement
-                        target.src = '/placeholder.jpg'
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-
-              {/* Botón Ver más/Ver menos */}
-              {images.length > 8 && (
-                <div className="text-center mt-8">
-                  <Button
-                    onClick={() => setShowAll(!showAll)}
-                    variant="outline"
-                    className="border-[#0061A8] text-[#0061A8] hover:bg-[#0061A8] hover:text-white font-semibold px-8 py-3 transition-all duration-300"
-                  >
-                    {showAll ? (
-                      <>
-                        <ChevronUp className="h-4 w-4 mr-2" />
-                        Ver Menos
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4 mr-2" />
-                        Ver Más ({images.length - 8} más)
-                      </>
-                    )}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="text-center py-12 border-2 border-dashed rounded-lg">
-            <p className="text-muted-foreground">No hay imágenes disponibles para mostrar en este momento.</p>
-            <p className="text-sm text-muted-foreground">
-              Sube imágenes a los servicios para que aparezcan aquí.
+        ) : displayedImages.length === 0 ? (
+          <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+            <p className="text-gray-600 font-medium">No hay imágenes disponibles</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Las imágenes aparecerán aquí cuando se suban a los servicios
             </p>
-            <div className="mt-4">
-              <Button 
-                onClick={() => window.location.reload()} 
-                variant="outline"
-                size="sm"
-              >
-                Actualizar
-              </Button>
-            </div>
           </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+              {displayedImages.map((imageUrl, index) => (
+                <div key={index} className="group relative overflow-hidden rounded-lg shadow-lg hover:shadow-xl transition-all duration-300">
+                  <div className="aspect-square relative">
+                    <Image
+                      src={imageUrl}
+                      alt={`Experiencia ${index + 1}`}
+                      fill
+                      className="object-cover group-hover:scale-110 transition-transform duration-500"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {images.length > initialImages.length && (
+              <div className="text-center">
+                <Button
+                  onClick={() => setShowAll(!showAll)}
+                  variant="outline"
+                  size="lg"
+                  className="px-8"
+                >
+                  {showAll ? 'Mostrar Menos' : `Ver Todas (${images.length})`}
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </section>
   )
 }
+

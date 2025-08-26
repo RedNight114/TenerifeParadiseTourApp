@@ -1,10 +1,16 @@
-import { NextResponse } from 'next/server'
-import { supabase } from '@/lib/supabase'
+﻿import { NextResponse } from 'next/server'
+import { getSupabaseClient } from '@/lib/supabase-optimized'
 
 export async function GET() {
   try {
     // Obtener servicios para el sitemap
-    const { data: services } = await supabase
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      return new NextResponse('Error de conexión con la base de datos', { status: 500 })
+    }
+
+    const { data: services } = await client
       .from('services')
       .select('id, title, updated_at')
       .eq('available', true)
@@ -69,9 +75,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error('Error generating sitemap:', error)
-    
-    // Fallback sitemap básico
+// Fallback sitemap básico
     const fallbackSitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>

@@ -86,7 +86,7 @@ function createMinimalTestForm() {
   console.log('📊 Parámetros con importe mínimo:', {
     amount: merchantParameters.DS_MERCHANT_AMOUNT,
     originalAmount: minimalAmount,
-    amountInCents: amountInCents
+    amountInCents
   });
   
   const merchantParametersJson = JSON.stringify(merchantParameters);

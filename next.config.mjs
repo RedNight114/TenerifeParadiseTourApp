@@ -1,25 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true, // Habilitado para mejor desarrollo
+  reactStrictMode: true,
   swcMinify: true,
   
-  // Configuración experimental optimizada
+  // Configuración experimental simplificada para estabilidad
   experimental: {
-    // Optimizaciones de rendimiento
-    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
-    turbo: {
-      resolveAlias: {
-        '@': '.',
-        '@/components': './components',
-        '@/lib': './lib',
-        '@/hooks': './hooks',
-        '@/app': './app',
-      },
-    },
-    // Mejoras de rendimiento
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
-    optimizeCss: true,
-    scrollRestoration: true,
+    // Solo mantener optimizaciones esenciales
+    optimizePackageImports: ['lucide-react'],
+    // Deshabilitar configuraciones que pueden causar problemas
+    // turbo: false, // Comentado para evitar conflictos
+    // optimizeCss: false, // Comentado para evitar problemas de CSS
+    // scrollRestoration: false, // Comentado para estabilidad
   },
 
   // Optimización de imágenes
@@ -40,24 +31,24 @@ const nextConfig = {
     ],
     dangerouslyAllowSVG: true,
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: false, // Habilitado para optimización
-    formats: ['image/webp', 'image/avif'], // Formatos modernos
+    unoptimized: false,
+    formats: ['image/webp', 'image/avif'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
     minimumCacheTTL: 60 * 60 * 24 * 30, // 30 días
   },
 
-  // Configuración de compilación
+  // Configuración de compilación más estricta
   eslint: {
-    ignoreDuringBuilds: false, // Habilitado para mejor calidad
+    ignoreDuringBuilds: false,
   },
   typescript: {
-    ignoreBuildErrors: false, // Habilitado para mejor calidad
+    ignoreBuildErrors: false,
   },
 
-  // Optimización de webpack
+  // Configuración de webpack simplificada
   webpack: (config, { dev, isServer }) => {
-    // Configuración de alias
+    // Configuración de alias básica
     config.resolve.alias = {
       ...config.resolve.alias,
       '@': '.',
@@ -67,9 +58,8 @@ const nextConfig = {
       '@/app': './app',
     }
 
-    // Optimizaciones de producción
+    // Optimizaciones de producción más conservadoras
     if (!dev && !isServer) {
-      // Optimización de bundles
       config.optimization.splitChunks = {
         chunks: 'all',
         cacheGroups: {
@@ -77,12 +67,12 @@ const nextConfig = {
             test: /[\\/]node_modules[\\/]/,
             name: 'vendors',
             chunks: 'all',
+            priority: 10,
           },
-          common: {
-            name: 'common',
+          default: {
             minChunks: 2,
-            chunks: 'all',
-            enforce: true,
+            priority: -20,
+            reuseExistingChunk: true,
           },
         },
       }
@@ -91,7 +81,7 @@ const nextConfig = {
     return config
   },
 
-  // Configuración de headers para caché y seguridad
+  // Headers para caché y seguridad
   async headers() {
     return [
       {
@@ -112,11 +102,11 @@ const nextConfig = {
         ],
       },
       {
-        source: '/api/(.*)',
+        source: '/_next/static/(.*)',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=300, s-maxage=600', // 5 min browser, 10 min CDN
+            value: 'public, max-age=31536000, immutable', // 1 año para archivos estáticos
           },
         ],
       },
@@ -129,76 +119,19 @@ const nextConfig = {
           },
         ],
       },
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable', // 1 año
-          },
-        ],
-      },
-      {
-        source: '/favicon.ico',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable', // 1 año
-          },
-        ],
-      },
     ]
   },
 
-  // Configuración de redirecciones
-  async redirects() {
-    return [
-      {
-        source: '/home',
-        destination: '/',
-        permanent: true,
-      },
-      {
-        source: '/tours',
-        destination: '/services?category=tours',
-        permanent: false,
-      },
-      {
-        source: '/vehicles',
-        destination: '/services?category=vehicles',
-        permanent: false,
-      },
-      {
-        source: '/gastronomy',
-        destination: '/services?category=gastronomy',
-        permanent: false,
-      },
-    ]
-  },
-
-  // Configuración adicional para estabilidad y rendimiento
+  // Configuración básica para estabilidad
   poweredByHeader: false,
   compress: true,
   generateEtags: true,
   
-  // Configuración de PWA (opcional)
-  // pwa: {
-  //   dest: 'public',
-  //   register: true,
-  //   skipWaiting: true,
-  // },
-
-  // Configuración de análisis de bundle
-  ...(process.env.ANALYZE === 'true' && {
-    webpack: (config) => {
-      config.plugins.push(
-        new (require('@next/bundle-analyzer')({
-          enabled: true,
-        }))()
-      )
-      return config
-    },
-  }),
+  // Configuración de output para mejor estabilidad
+  output: 'standalone',
+  
+  // Configuración de trailing slash para consistencia
+  trailingSlash: false,
 }
 
 export default nextConfig

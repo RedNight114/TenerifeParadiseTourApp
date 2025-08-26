@@ -1,8 +1,8 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useCallback } from "react"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 
 interface Reservation {
   id: string
@@ -20,54 +20,42 @@ interface Reservation {
 }
 
 export function useReservations() {
-  const { user } = useAuth()
+  const { user } = useAuthContext()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const fetchReservations = useCallback(async () => {
-    if (!user?.id) return
-
-    setLoading(true)
-    setError(null)
-
     try {
-      const client = getSupabaseClient()
+      setLoading(true)
+      setError(null)
+
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
+      }
+
       const { data, error } = await client
-        .from("reservations")
+        .from('reservations')
         .select(`
           *,
-          service:services(
-            title,
-            location
-          )
+          profiles(full_name, email),
+          services(title, price)
         `)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        throw error
+      }
 
-      // Transformar los datos para que coincidan con la interfaz
-      const transformedData = (data || []).map((reservation: any) => ({
-        id: reservation.id,
-        user_id: reservation.user_id,
-        service_id: reservation.service_id,
-        service_name: reservation.service?.title || "Servicio no disponible",
-        date: reservation.reservation_date || reservation.date,
-        time: reservation.reservation_time || reservation.time,
-        participants: reservation.guests || reservation.participants,
-        total_price: reservation.total_amount || reservation.total_price,
-        status: reservation.status,
-        notes: reservation.special_requests || reservation.notes,
-        location: reservation.service?.location || reservation.location,
-        created_at: reservation.created_at
-      }))
-
-      setReservations(transformedData)
-    } catch (err) {
-      console.error("Error fetching reservations:", err)
-      setError(err instanceof Error ? err.message : "Error al cargar las reservas")
-    } finally {
+      setReservations(data || [])
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+      setError(errorMessage)
+} finally {
       setLoading(false)
     }
   }, [user?.id])
@@ -76,7 +64,11 @@ export function useReservations() {
     if (!user?.id) return
 
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
       const { error } = await client
         .from("reservations")
         .update({ status: "cancelled" })
@@ -94,8 +86,7 @@ export function useReservations() {
 
       return { success: true }
     } catch (err) {
-      console.error("Error canceling reservation:", err)
-      return { error: err instanceof Error ? err.message : "Error al cancelar la reserva" }
+return { error: err instanceof Error ? err.message : "Error al cancelar la reserva" }
     }
   }, [user?.id])
 
@@ -114,3 +105,4 @@ export function useReservations() {
     cancelReservation,
   }
 }
+

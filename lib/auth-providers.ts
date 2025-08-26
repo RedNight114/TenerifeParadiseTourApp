@@ -1,28 +1,31 @@
-import { supabase } from "./supabase"
+import { getSupabaseClient } from "./supabase-optimized"
 
 export async function signInWithGoogle() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
+  const supabaseClient = getSupabaseClient()
+  const client = await supabaseClient.getClient()
+  if (!client) {
+    throw new Error("No se pudo obtener el cliente de Supabase")
+  }
+  const { data, error } = await client.auth.signInWithOAuth({
     provider: "google",
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
-      queryParams: {
-        access_type: "offline",
-        prompt: "consent",
-      },
     },
   })
-
   return { data, error }
 }
 
-export async function signInWithFacebook() {
-  const { data, error } = await supabase.auth.signInWithOAuth({
-    provider: "facebook",
+export async function signInWithGithub() {
+  const supabaseClient = getSupabaseClient()
+  const client = await supabaseClient.getClient()
+  if (!client) {
+    throw new Error("No se pudo obtener el cliente de Supabase")
+  }
+  const { data, error } = await client.auth.signInWithOAuth({
+    provider: "github",
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
-      scopes: "email",
     },
   })
-
   return { data, error }
 }

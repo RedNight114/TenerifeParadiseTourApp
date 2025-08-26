@@ -1,105 +1,38 @@
-// DEPRECATED: Este archivo crea múltiples instancias de GoTrueClient
-// Usar lib/supabase-optimized.ts en su lugar
-import { getSupabaseClient } from './supabase-optimized'
+﻿// ✅ ACTUALIZADO: Usar el nuevo cliente Supabase optimizado
+// Este archivo mantiene compatibilidad con el código existente
+import { getSupabaseClient, supabaseClient } from './supabase-client'
 
-// Re-exportar el cliente unificado
-export const supabase = getSupabaseClient()
+// Re-exportar el cliente optimizado
+export const supabase = supabaseClient
 
-// Tipos de datos
-export interface Category {
-  id: string
-  name: string
-  description?: string
-  created_at: string
+// Re-exportar la función getSupabaseClient
+export { getSupabaseClient }
+
+// Función de fallback para compatibilidad
+export function getSupabaseClientFallback() {
+  try {
+    return getSupabaseClient();
+  } catch (error) {
+return null;
+  }
 }
 
-export interface Subcategory {
-  id: string
-  name: string
-  description?: string
-  category_id: string
-  created_at: string
-}
+// Re-exportar tipos desde el archivo separado
+export type { 
+  Service, 
+  Category, 
+  Subcategory, 
+  Profile, 
+  User, 
+  Booking, 
+  Review, 
+  ContactForm, 
+  NewsletterSubscription, 
+  FAQ, 
+  Page, 
+  Setting, 
+  Notification, 
+  Log,
+  Reservation
+} from './types'
 
-export interface Service {
-  id: string
-  title: string
-  description: string
-  category_id: string
-  subcategory_id?: string
-  price: number
-  price_type: "per_person" | "total"
-  images?: string[]
-  available: boolean
-  featured: boolean
-  duration?: number
-  location?: string
-  min_group_size?: number
-  max_group_size?: number
-  difficulty_level?: "facil" | "moderado" | "dificil"
-  vehicle_type?: string
-  characteristics?: string
-  insurance_included?: boolean
-  fuel_included?: boolean
-  menu?: string
-  schedule?: string[]
-  capacity?: number
-  dietary_options?: string[]
-  min_age?: number
-  license_required?: boolean
-  permit_required?: boolean
-  what_to_bring?: string[]
-  included_services?: string[]
-  not_included_services?: string[]
-  meeting_point_details?: string
-  transmission?: "manual" | "automatic"
-  seats?: number
-  doors?: number
-  fuel_policy?: string
-  pickup_locations?: string[]
-  deposit_required?: boolean
-  deposit_amount?: number
-  experience_type?: string
-  chef_name?: string
-  drink_options?: string
-  ambience?: string
-  activity_type?: string
-  fitness_level_required?: "bajo" | "medio" | "alto"
-  equipment_provided?: string[]
-  cancellation_policy?: string
-  itinerary?: string
-  guide_languages?: string[]
-  created_at: string
-  updated_at: string
-  category?: Category
-  subcategory?: Subcategory
-}
-
-export interface Profile {
-  id: string
-  email: string
-  full_name?: string
-  avatar_url?: string
-  phone?: string
-  role: "user" | "admin"
-  created_at: string
-  updated_at: string
-}
-
-export interface Reservation {
-  id: string
-  user_id: string
-  service_id: string
-  date: string
-  time: string
-  participants: number
-  total_price: number
-  status: "pending" | "confirmed" | "cancelled" | "completed"
-  payment_status: "pending" | "paid" | "failed" | "refunded"
-  payment_id?: string
-  special_requests?: string
-  created_at: string
-  updated_at: string
-  service?: Service
-  user?: Profile
-}

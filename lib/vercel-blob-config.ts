@@ -1,4 +1,4 @@
-// Configuración de Vercel Blob
+﻿// Configuración de Vercel Blob
 export const vercelBlobConfig = {
   // Verificar si el token está configurado (servidor)
   isConfigured: () => {
@@ -31,13 +31,11 @@ export const vercelBlobConfig = {
   // Función de debug para verificar configuración
   debugConfig: () => {
     if (typeof window !== 'undefined') {
-      console.log('🔍 Debug Vercel Blob Config (Cliente):')
-      console.log('NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN:', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ? '✅ Configurado' : '❌ No configurado')
-      console.log('Token preview:', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ? process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN.substring(0, 20) + '...' : 'N/A')
+      console.log('Cliente configurado:', !!process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN)
+      console.log('Token (primeros 10 chars):', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
     } else {
-      console.log('🔍 Debug Vercel Blob Config (Servidor):')
-      console.log('BLOB_READ_WRITE_TOKEN:', process.env.BLOB_READ_WRITE_TOKEN ? '✅ Configurado' : '❌ No configurado')
-      console.log('NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN:', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN ? '✅ Configurado' : '❌ No configurado')
+      console.log('Servidor configurado:', !!process.env.BLOB_READ_WRITE_TOKEN)
+      console.log('Token (primeros 10 chars):', process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
     }
   }
 }
@@ -61,7 +59,7 @@ export const validateBlobConfig = () => {
 }
 
 // Función para obtener mensaje de error amigable
-export const getBlobErrorMessage = (error: any): string => {
+export const getBlobErrorMessage = (error: unknown): string => {
   if (error instanceof Error) {
     const message = error.message.toLowerCase()
     

@@ -112,7 +112,7 @@ Object.entries(environments).forEach(([name, url]) => {
   const orderCheck = paymentData.debug.finalOrder;
   const terminalCheck = config.terminal.padStart(3, '0');
   
-  let issues = [];
+  const issues = [];
   
   if (amountCheck === '000000000000') {
     issues.push('Importe en cero');

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
 // Forzar renderizado dinámico para evitar errores de build
@@ -102,8 +102,7 @@ export async function POST(request: NextRequest) {
       .select()
     
     if (error) {
-      console.error('Error guardando mensaje:', error)
-      return NextResponse.json(
+return NextResponse.json(
         { error: 'Error interno del servidor' },
         { status: 500 }
       )
@@ -125,8 +124,7 @@ export async function POST(request: NextRequest) {
     )
     
   } catch (error) {
-    console.error('Error procesando formulario de contacto:', error)
-    return NextResponse.json(
+return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
@@ -136,11 +134,9 @@ export async function POST(request: NextRequest) {
 // Función para enviar notificación por email (implementar con servicio como SendGrid, Resend, etc.)
 async function sendNotificationEmail(contactData: any) {
   // Implementar envío de email
-  console.log('Enviando notificación por email:', contactData)
 }
 
 // Función para enviar notificación por WhatsApp (implementar con API de WhatsApp Business)
 async function sendWhatsAppNotification(contactData: any) {
   // Implementar envío de WhatsApp
-  console.log('Enviando notificación por WhatsApp:', contactData)
 } 

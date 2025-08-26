@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import React, { useState, useCallback, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -7,11 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { X, Upload, Loader2, CheckCircle, AlertCircle, Image as ImageIcon, FileWarning } from "lucide-react"
-import { upload } from "@vercel/blob/client"
+import { X, Upload, Loader2, CheckCircle, AlertCircle, Image as ImageIcon } from "lucide-react"
 import { useImageCompression } from "@/hooks/use-image-compression"
 import { toast } from "@/components/ui/use-toast"
-import { vercelBlobConfig, getBlobErrorMessage } from "@/lib/vercel-blob-config"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 
 interface ImageUploadProps {
   onImagesUploaded: (urls: string[]) => void
@@ -20,15 +19,16 @@ interface ImageUploadProps {
   className?: string
   disabled?: boolean
   showCompressionInfo?: boolean
+  initialImages?: string[] // Agregar soporte para imágenes existentes
+  onImageRemove?: (index: number) => void // Callback para eliminar imágenes
 }
 
 interface ImageFile {
   file: File
   preview: string
-  status: 'pending' | 'compressing' | 'uploading' | 'success' | 'error'
+  status: 'pending' | 'uploading' | 'success' | 'error'
   progress: number
   error?: string
-  url?: string
   originalSize?: number
   compressedSize?: number
   compressionRatio?: number
@@ -41,50 +41,48 @@ export function ImageUpload({
   maxSizeMB = 5,
   className = "",
   disabled = false,
-  showCompressionInfo = true
+  showCompressionInfo = true,
+  initialImages = [],
+  onImageRemove
 }: ImageUploadProps) {
   const [images, setImages] = useState<ImageFile[]>([])
-  const [isProcessing, setIsProcessing] = useState(false)
-  const { compressImage, isCompressing, compressionProgress } = useImageCompression()
+  const [existingImages, setExistingImages] = useState<string[]>(initialImages)
+  const [uploading, setUploading] = useState(false)
+  const { compressImage } = useImageCompression()
 
-  // Limpiar URLs de objetos al desmontar el componente
+  // Sincronizar imágenes existentes cuando cambien
   useEffect(() => {
-    return () => {
-      images.forEach(image => {
-        try {
-          if (image.preview) {
-            URL.revokeObjectURL(image.preview)
-          }
-        } catch (error) {
-          console.warn('Error al limpiar URL del objeto:', error)
-        }
-      })
-    }
-  }, [images])
+    setExistingImages(initialImages)
+  }, [initialImages])
 
-  const validateFile = useCallback((file: File): string | null => {
-    // Verificar tipo
+  // Calcular el total de imágenes (existentes + nuevas)
+  const totalImages = existingImages.length + images.length
+
+  // Validar archivo
+  const validateFile = (file: File): string | null => {
     if (!file.type.startsWith('image/')) {
-      return 'El archivo debe ser una imagen'
+      return 'Solo se permiten archivos de imagen'
     }
     
-    // Verificar tamaño inicial
-    const sizeMB = file.size / 1024 / 1024
-    if (sizeMB > 50) {
-      return `La imagen es demasiado grande (${sizeMB.toFixed(2)}MB). Máximo 50MB`
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      return `El archivo es demasiado grande. Máximo ${maxSizeMB}MB`
     }
     
     return null
-  }, [])
+  }
 
+  // Subir imagen a Supabase Storage
   const uploadImage = useCallback(async (imageFile: ImageFile): Promise<string> => {
     try {
-      console.log('🚀 Iniciando upload de imagen:', imageFile.file.name)
-      console.log('📊 Tamaño original:', imageFile.file.size, 'bytes')
+      // Iniciando upload de imagen
       
-      // Debug: Verificar configuración
-      vercelBlobConfig.debugConfig()
-      
+      // Actualizar estado a uploading
+      setImages(prev => prev.map(img => 
+        img.file === imageFile.file 
+          ? { ...img, status: 'uploading' as const, progress: 0 }
+          : img
+      ))
+
       let fileToUpload = imageFile.file
       let compressionInfo = {
         originalSize: imageFile.file.size,
@@ -92,27 +90,21 @@ export function ImageUpload({
         compressionRatio: 1,
         iterations: 0
       }
-      
-      // Intentar comprimir imagen
+
+      // Intentar comprimir la imagen
       try {
-        console.log('🗜️ Iniciando compresión...')
-        const compressionResult = await compressImage(imageFile.file, {
+        // Comprimiendo imagen
+        const compressionResult = await compressImage(fileToUpload, {
           maxSizeMB: 5,
-          maxWidthOrHeight: 1920,
-          quality: 0.85,
-          maxIterations: 3
+          maxWidth: 1920,
+          maxHeight: 1920,
+          quality: 0.85
         })
 
-        console.log('📊 Resultado de compresión:', {
-          originalSize: compressionResult.originalSize,
-          compressedSize: compressionResult.compressedSize,
-          compressionRatio: compressionResult.compressionRatio,
-          iterations: compressionResult.iterations,
-          error: compressionResult.error
-        })
+        // Resultado de compresión
 
         if (compressionResult.error) {
-          console.warn('⚠️ Error en compresión, usando archivo original:', compressionResult.error)
+          // Error en compresión, usando archivo original
           // Continuar con el archivo original
         } else {
           fileToUpload = compressionResult.file
@@ -120,12 +112,12 @@ export function ImageUpload({
             originalSize: compressionResult.originalSize,
             compressedSize: compressionResult.compressedSize,
             compressionRatio: compressionResult.compressionRatio,
-            iterations: compressionResult.iterations
+            iterations: 0
           }
-          console.log('✅ Compresión exitosa')
+          // Compresión exitosa
         }
       } catch (compressionError) {
-        console.warn('⚠️ Error en compresión, usando archivo original:', compressionError)
+        // Error en compresión, usando archivo original
         // Continuar con el archivo original
       }
 
@@ -142,46 +134,67 @@ export function ImageUpload({
           : img
       ))
 
-      console.log('✅ Iniciando upload...')
+      // Iniciando upload a Supabase Storage
 
-      // Usar API route con FormData
-      const formData = new FormData()
-      formData.append('file', fileToUpload, imageFile.file.name)
+      // Obtener cliente de Supabase
+      const supabaseClient = getSupabaseClient()
+      const supabase = await supabaseClient.getClient()
       
-      console.log('📤 Enviando archivo:', imageFile.file.name, 'Tamaño:', fileToUpload.size)
-      
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: formData
-      })
-
-      console.log('📊 Response status:', response.status)
-      console.log('📊 Response headers:', Object.fromEntries(response.headers.entries()))
-
-      if (!response.ok) {
-        let errorMessage = `Error HTTP: ${response.status}`
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.error || errorMessage
-        } catch (e) {
-          console.warn('No se pudo parsear error response:', e)
-        }
-        throw new Error(errorMessage)
+      if (!supabase) {
+        throw new Error('No se pudo obtener el cliente de Supabase')
       }
 
-      const result = await response.json()
+      // Generar nombre único para el archivo
+      const timestamp = Date.now()
+      const fileExt = fileToUpload.name.split('.').pop() || 'jpg'
+      const uniqueFilename = `services/${timestamp}-${Math.random().toString(36).substring(2)}.${fileExt}`
+
+      // Subiendo archivo como
       
-      if (!result.url) {
-        throw new Error('No se recibió URL de la imagen subida')
+      // Simular progreso de upload
+      const progressInterval = setInterval(() => {
+        setImages(prev => prev.map(img => 
+          img.file === imageFile.file 
+            ? { ...img, progress: Math.min(img.progress + 10, 90) }
+            : img
+        ))
+      }, 200)
+
+      // Subir a Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('service-images') // Bucket para imágenes de servicios
+        .upload(uniqueFilename, fileToUpload, {
+          cacheControl: '3600',
+          upsert: false,
+        })
+
+      clearInterval(progressInterval)
+
+      if (uploadError) {
+throw new Error(uploadError.message)
       }
 
-      console.log('✅ Imagen subida exitosamente:', result.url)
-      return result.url
+      // Obtener URL pública
+      const { data: urlData } = supabase.storage
+        .from('service-images')
+        .getPublicUrl(uniqueFilename)
+
+      if (!urlData?.publicUrl) {
+        throw new Error('No se pudo obtener la URL pública de la imagen')
+      }
+
+      const publicUrl = urlData.publicUrl
+
+      // Actualizar progreso al 100%
+      setImages(prev => prev.map(img => 
+        img.file === imageFile.file 
+          ? { ...img, status: 'success' as const, progress: 100 }
+          : img
+      ))
+return publicUrl
       
     } catch (error) {
-      console.error('❌ Error subiendo imagen:', error)
-      
-      // Actualizar estado de error
+// Actualizar estado de error
       setImages(prev => prev.map(img => 
         img.file === imageFile.file 
           ? { 
@@ -192,9 +205,7 @@ export function ImageUpload({
           : img
       ))
       
-      // Usar función de manejo de errores mejorada
-      const errorMessage = getBlobErrorMessage(error)
-      throw new Error(errorMessage)
+      throw error
     }
   }, [compressImage, maxSizeMB])
 
@@ -220,8 +231,7 @@ export function ImageUpload({
       try {
         preview = URL.createObjectURL(file)
       } catch (error) {
-        console.error('Error al crear preview:', error)
-        errors.push(`${file.name}: Error al crear preview`)
+errors.push(`${file.name}: Error al crear preview`)
         continue
       }
       
@@ -244,7 +254,7 @@ export function ImageUpload({
     }
     
     // Verificar límite de imágenes
-    if (images.length + newImages.length > maxImages) {
+    if (totalImages + newImages.length > maxImages) {
       toast({
         title: "Límite excedido",
         description: `Máximo ${maxImages} imágenes permitidas`,
@@ -255,283 +265,311 @@ export function ImageUpload({
         try {
           URL.revokeObjectURL(img.preview)
         } catch (error) {
-          console.warn('Error al limpiar preview:', error)
-        }
+}
       })
       return
     }
     
+    // Agregar nuevas imágenes
     setImages(prev => [...prev, ...newImages])
-    event.target.value = ""
-  }, [images.length, maxImages, validateFile])
-
-  const processImages = useCallback(async () => {
-    if (images.length === 0) return
     
-    setIsProcessing(true)
+    // Limpiar input
+    event.target.value = ''
+  }, [images.length, maxImages, existingImages.length])
+
+  const handleUpload = useCallback(async () => {
+    if (uploading || totalImages === 0) return
+    
     const pendingImages = images.filter(img => img.status === 'pending')
+    if (pendingImages.length === 0) {
+      toast({
+        title: "No hay imágenes para subir",
+        description: "Todas las imágenes ya han sido procesadas",
+        variant: "default"
+      })
+      return
+    }
+    
+    setUploading(true)
+    const uploadedUrls: string[] = []
+    const errors: string[] = []
     
     try {
-      for (let i = 0; i < pendingImages.length; i++) {
-        const imageIndex = images.findIndex(img => img.file === pendingImages[i].file)
-        if (imageIndex === -1) continue
+      // Subir imágenes en paralelo (máximo 3 a la vez)
+      const batchSize = 3
+      for (let i = 0; i < pendingImages.length; i += batchSize) {
+        const batch = pendingImages.slice(i, i + batchSize)
         
-        // Actualizar estado a comprimiendo
-        setImages(prev => prev.map((img, idx) => 
-          idx === imageIndex ? { ...img, status: 'compressing', progress: 10 } : img
-        ))
+        const batchPromises = batch.map(async (imageFile) => {
+          try {
+            const url = await uploadImage(imageFile)
+            uploadedUrls.push(url)
+            return { success: true, url }
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
+            errors.push(`${imageFile.file.name}: ${errorMessage}`)
+            return { success: false, error: errorMessage }
+          }
+        })
         
-        // Simular progreso de compresión
-        await new Promise(resolve => setTimeout(resolve, 200))
-        setImages(prev => prev.map((img, idx) => 
-          idx === imageIndex ? { ...img, status: 'uploading', progress: 50 } : img
-        ))
-        
-        // Subir
-        console.log('📤 Iniciando subida de imagen:', pendingImages[i].file.name)
-        const url = await uploadImage(pendingImages[i])
-        console.log('✅ URL obtenida de uploadImage:', url)
-        
-        // Actualizar estado a éxito
-        setImages(prev => {
-          const updatedImages = prev.map((img, idx) => 
-            idx === imageIndex ? { ...img, status: 'success' as const, progress: 100, url } : img
-          )
-          console.log('🔄 Estado actualizado para imagen:', pendingImages[i].file.name, 'URL:', url)
-          return updatedImages
+        await Promise.all(batchPromises)
+      }
+      
+      // Mostrar resultados
+      if (uploadedUrls.length > 0) {
+onImagesUploaded(uploadedUrls)
+        toast({
+          title: "Subida completada",
+          description: `${uploadedUrls.length} imagen(es) subida(s) exitosamente`,
+          variant: "default"
         })
       }
       
-      // Simplificar la obtención de URLs
-      const uploadedUrls: string[] = []
-      
-      // Usar una función para obtener el estado actual de images
-      const getCurrentImages = () => {
-        return new Promise<string[]>((resolve) => {
-          setImages(currentImages => {
-            const urls: string[] = []
-            
-            for (const pendingImg of pendingImages) {
-              const updatedImg = currentImages.find(img => img.file === pendingImg.file)
-              if (updatedImg?.url && typeof updatedImg.url === 'string' && updatedImg.url.startsWith('http')) {
-                urls.push(updatedImg.url)
-                console.log('✅ URL válida encontrada:', updatedImg.url)
-              } else {
-                console.log('❌ URL no válida para:', pendingImg.file.name, 'URL:', updatedImg?.url)
-              }
-            }
-            
-            console.log('📊 Total de URLs válidas encontradas:', urls.length)
-            console.log('🛡️ URLs válidas:', urls)
-            
-            resolve(urls)
-            return currentImages
-          })
-        })
-      }
-      
-      const validUrls = await getCurrentImages()
-      
-      if (validUrls.length > 0) {
-        console.log('📤 Notificando URLs subidas:', validUrls)
-        onImagesUploaded(validUrls)
+      if (errors.length > 0) {
         toast({
-          title: "Imágenes subidas",
-          description: `${validUrls.length} imagen(es) subida(s) exitosamente`,
-        })
-      } else {
-        console.warn('⚠️ No se encontraron URLs válidas para notificar')
-        // Notificar array vacío en lugar de nada
-        onImagesUploaded([])
-        toast({
-          title: "Advertencia",
-          description: "No se pudieron procesar las imágenes correctamente",
+          title: "Algunas imágenes fallaron",
+          description: `${errors.length} error(es) durante la subida`,
           variant: "destructive"
         })
       }
       
     } catch (error) {
-      console.error('Error procesando imágenes:', error)
-      toast({
-        title: "Error",
-        description: `Error procesando imágenes: ${error instanceof Error ? error.message : 'Error desconocido'}`,
+toast({
+        title: "Error en la subida",
+        description: "Error desconocido al subir la imagen. Inténtalo de nuevo.",
         variant: "destructive"
       })
     } finally {
-      setIsProcessing(false)
+      setUploading(false)
     }
-  }, [images, uploadImage, onImagesUploaded])
+  }, [uploading, images, uploadImage, onImagesUploaded, totalImages])
 
-  const removeImage = useCallback((index: number) => {
-    setImages(prev => {
-      const newImages = prev.filter((_, i) => i !== index)
-      
-      // Liberar memoria del preview de forma segura
-      try {
-        if (prev[index] && prev[index].preview) {
-          URL.revokeObjectURL(prev[index].preview)
-        }
-      } catch (error) {
-        console.warn('Error al liberar URL del objeto:', error)
-      }
-      
-      return newImages
-    })
+  const removeImage = useCallback((imageFile: ImageFile) => {
+    setImages(prev => prev.filter(img => img.file !== imageFile.file))
+    
+    // Limpiar preview
+    try {
+      URL.revokeObjectURL(imageFile.preview)
+    } catch (error) {
+}
   }, [])
 
-  const getStatusIcon = (status: ImageFile['status']) => {
-    switch (status) {
-      case 'pending':
-        return <ImageIcon className="h-4 w-4 text-gray-400" />
-      case 'compressing':
-      case 'uploading':
-        return <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-      case 'success':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
-      case 'error':
-        return <AlertCircle className="h-4 w-4 text-red-500" />
-    }
-  }
+  const retryUpload = useCallback(async (imageFile: ImageFile) => {
+    try {
+      const url = await uploadImage(imageFile)
+      onImagesUploaded([url])
+      toast({
+        title: "Reintento exitoso",
+        description: "La imagen se subió correctamente",
+        variant: "default"
+      })
+            } catch {
+          toast({
+            title: "Error en reintento",
+            description: "No se pudo subir la imagen. Inténtalo de nuevo.",
+            variant: "destructive"
+          })
+        }
+  }, [uploadImage, onImagesUploaded])
 
-  const getStatusText = (status: ImageFile['status']) => {
-    switch (status) {
-      case 'pending':
-        return 'Pendiente'
-      case 'compressing':
-        return 'Comprimiendo...'
-      case 'uploading':
-        return 'Subiendo...'
-      case 'success':
-        return 'Completado'
-      case 'error':
-        return 'Error'
+  // Limpiar previews al desmontar
+  useEffect(() => {
+    return () => {
+      images.forEach(img => {
+        try {
+          URL.revokeObjectURL(img.preview)
+        } catch (error) {
+}
+      })
     }
-  }
+  }, [images])
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+  const pendingCount = images.filter(img => img.status === 'pending').length
+  const uploadingCount = images.filter(img => img.status === 'uploading').length
+  const successCount = images.filter(img => img.status === 'success').length
+  const errorCount = images.filter(img => img.status === 'error').length
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div>
-        <Label htmlFor="image-upload" className="cursor-pointer block border-2 border-dashed rounded-lg p-6 text-center hover:border-gray-400 transition-colors">
-          <Upload className="mx-auto h-12 w-12 text-gray-400 mb-2" />
-          <p className="text-sm text-gray-600">
-            Haz clic para seleccionar imágenes
-          </p>
-          <p className="text-xs text-gray-500 mt-1">
-            Máximo {maxImages} imágenes, {maxSizeMB}MB cada una
-          </p>
-          {showCompressionInfo && (
-            <p className="text-xs text-blue-500 mt-1">
-              Las imágenes se comprimirán automáticamente si superan {maxSizeMB}MB
-            </p>
-          )}
-        </Label>
+      {/* Input de archivos */}
+      <div className="space-y-2">
+        <Label htmlFor="image-upload">Imágenes del servicio</Label>
         <Input
           id="image-upload"
           type="file"
           multiple
           accept="image/*"
           onChange={handleFileSelect}
-          disabled={disabled || isProcessing}
-          className="hidden"
+          disabled={disabled || uploading}
+          className="cursor-pointer"
         />
+        <p className="text-xs text-gray-500">
+          Máximo {maxImages} imágenes, {maxSizeMB}MB cada una. Formatos: JPG, PNG, GIF, WebP
+        </p>
       </div>
 
-      {images.length > 0 && (
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-4">
-              <h4 className="font-medium">Imágenes seleccionadas ({images.length}/{maxImages})</h4>
-              <Button
-                onClick={processImages}
-                disabled={disabled || isProcessing || images.every(img => img.status === 'success')}
-                size="sm"
-              >
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Procesando...
-                  </>
-                ) : (
-                  'Procesar imágenes'
-                )}
-              </Button>
-            </div>
+      {/* Estadísticas */}
+      {totalImages > 0 && (
+        <div className="flex flex-wrap gap-2 text-sm">
+          {pendingCount > 0 && (
+            <Badge variant="secondary">{pendingCount} pendiente(s)</Badge>
+          )}
+          {uploadingCount > 0 && (
+            <Badge variant="default">{uploadingCount} subiendo</Badge>
+          )}
+          {successCount > 0 && (
+            <Badge variant="default" className="bg-green-100 text-green-800">
+              {successCount} exitosa(s)
+            </Badge>
+          )}
+          {errorCount > 0 && (
+            <Badge variant="destructive">{errorCount} error(es)</Badge>
+          )}
+        </div>
+      )}
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {images.map((image, index) => (
-                <div key={`${image.file.name}-${index}`} className="relative group">
-                  <div className="aspect-square relative overflow-hidden rounded-lg border">
-                    {image.preview && (
-                      <img
-                        src={image.preview}
-                        alt={`Imagen ${index + 1}`}
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          console.warn('Error al cargar imagen:', image.file.name)
-                          // Fallback a un placeholder
-                          e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjNmNGY2Ii8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNCIgZmlsbD0iIzk5YWFiYiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlbjwvdGV4dD48L3N2Zz4='
-                        }}
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    
-                    {/* Estado */}
-                    <div className="absolute top-2 left-2 flex items-center gap-1">
-                      {getStatusIcon(image.status)}
-                      <span className="text-xs text-white bg-black/50 px-1 rounded">
-                        {getStatusText(image.status)}
-                      </span>
-                    </div>
-                    
-                    {/* Progreso */}
-                    {image.status === 'compressing' || image.status === 'uploading' ? (
-                      <div className="absolute bottom-2 left-2 right-2">
-                        <Progress value={image.progress} className="h-1" />
+      {/* Grid de imágenes */}
+      {totalImages > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {/* Mostrar imágenes existentes */}
+          {existingImages.map((imageUrl, index) => (
+            <div key={`existing-${index}`} className="relative group">
+              <div className="aspect-square relative overflow-hidden rounded-lg border-2 border-gray-200 hover:border-blue-300 transition-colors">
+                <img
+                  src={imageUrl}
+                  alt={`Imagen existente ${index + 1}`}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                />
+                <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                {/* Badge de imagen existente */}
+                <div className="absolute top-2 left-2">
+                  <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+                    Existente
+                  </Badge>
+                </div>
+                
+                {/* Botón eliminar */}
+                {onImageRemove && (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                    onClick={() => onImageRemove(index)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {/* Mostrar imágenes nuevas */}
+          {images.map((imageFile, index) => (
+            <Card key={index} className="relative overflow-hidden">
+              <CardContent className="p-0">
+                {/* Preview de imagen */}
+                <div className="relative aspect-square">
+                  <img
+                    src={imageFile.preview}
+                    alt={`Preview ${index + 1}`}
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Overlay de estado */}
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                    {imageFile.status === 'pending' && (
+                      <div className="text-center text-white">
+                        <ImageIcon className="w-8 h-8 mx-auto mb-2" />
+                        <p className="text-sm">Pendiente</p>
                       </div>
-                    ) : null}
+                    )}
                     
-                    {/* Botón eliminar */}
-                    <Button
-                      type="button"
-                      variant="destructive"
-                      size="sm"
-                      className="absolute top-2 right-2 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={() => removeImage(index)}
-                      disabled={image.status === 'compressing' || image.status === 'uploading'}
-                    >
-                      <X className="h-3 w-3" />
-                    </Button>
+                    {imageFile.status === 'uploading' && (
+                      <div className="text-center text-white">
+                        <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin" />
+                        <p className="text-sm">Subiendo...</p>
+                        <Progress value={imageFile.progress} className="w-20 mx-auto mt-2" />
+                      </div>
+                    )}
+                    
+                    {imageFile.status === 'success' && (
+                      <div className="text-center text-white">
+                        <CheckCircle className="w-8 h-8 mx-auto mb-2 text-green-400" />
+                        <p className="text-sm">Completado</p>
+                      </div>
+                    )}
+                    
+                    {imageFile.status === 'error' && (
+                      <div className="text-center text-white">
+                        <AlertCircle className="w-8 h-8 mx-auto mb-2 text-red-400" />
+                        <p className="text-sm">Error</p>
+                        <p className="text-xs text-red-200">{imageFile.error}</p>
+                      </div>
+                    )}
                   </div>
                   
-                  {/* Información del archivo */}
-                  <div className="mt-1 text-xs text-gray-500">
-                    <p className="truncate">{image.file.name}</p>
-                    <p>{formatFileSize(image.file.size)}</p>
-                    
-                    {/* Información de compresión */}
-                    {showCompressionInfo && image.compressionRatio && image.compressionRatio < 1 && (
-                      <div className="mt-1 text-xs text-green-600">
-                        <p>Comprimido: {formatFileSize(image.compressedSize!)}</p>
-                        <p>Ahorro: {((1 - image.compressionRatio) * 100).toFixed(1)}%</p>
-                        {image.iterations && image.iterations > 0 && (
-                          <p>Iteraciones: {image.iterations}</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                  {/* Botón de eliminar */}
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="absolute top-2 right-2 w-6 h-6 p-0"
+                    onClick={() => removeImage(imageFile)}
+                    disabled={uploading}
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                
+                {/* Información de compresión */}
+                {showCompressionInfo && imageFile.compressionRatio && imageFile.compressionRatio < 1 && (
+                  <div className="p-2 bg-green-50 border-t">
+                    <p className="text-xs text-green-700">
+                      Comprimido: {Math.round((1 - imageFile.compressionRatio) * 100)}% más pequeño
+                    </p>
+                  </div>
+                )}
+                
+                {/* Botón de reintento para errores */}
+                {imageFile.status === 'error' && (
+                  <div className="p-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      onClick={() => retryUpload(imageFile)}
+                      disabled={uploading}
+                    >
+                      Reintentar
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Botón de subida */}
+      {pendingCount > 0 && (
+        <Button
+          onClick={handleUpload}
+          disabled={disabled || uploading}
+          className="w-full"
+        >
+          {uploading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Subiendo...
+            </>
+          ) : (
+            <>
+              <Upload className="w-4 h-4 mr-2" />
+              Subir {pendingCount} imagen(es)
+            </>
+          )}
+        </Button>
       )}
     </div>
   )

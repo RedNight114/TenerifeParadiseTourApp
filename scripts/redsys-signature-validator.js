@@ -248,7 +248,7 @@ function main() {
   console.log('y proporciona debugging detallado para identificar problemas.\n');
   
   let passedTests = 0;
-  let totalTests = TEST_CASES.length;
+  const totalTests = TEST_CASES.length;
   
   for (const testCase of TEST_CASES) {
     const result = runTestCase(testCase);

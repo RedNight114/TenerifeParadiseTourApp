@@ -117,8 +117,8 @@ function createRealFormButton() {
     
     console.log('💰 Cálculo del total:', {
       servicePrice: service.price,
-      guests: guests,
-      total: total,
+      guests,
+      total,
       calculation: `${service.price} * ${guests} = ${total}`
     });
     
@@ -132,7 +132,7 @@ function createRealFormButton() {
         service_id: service.id,
         reservation_date: reservationDate,
         reservation_time: reservationTime, // Ahora siempre tiene un valor válido
-        guests: guests,
+        guests,
         total_amount: total,
         status: "pendiente",
         payment_status: "pendiente",

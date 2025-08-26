@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/components/auth-provider-simple'
+import { useAuthContext } from '@/components/auth-provider'
 
 export function useNavigationRecovery() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { user, loading } = useAuthContext()
   const hasNavigated = useRef(false)
   const lastPath = useRef<string>('')
 

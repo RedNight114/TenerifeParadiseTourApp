@@ -4,6 +4,10 @@ import { GeistMono } from "geist/font/mono"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { AuthProvider } from "@/components/auth-provider"
+import { Toaster } from "sonner"
+import { ChatWidgetFloating } from "@/components/chat/chat-widget-floating"
+import "@/lib/disable-image-logs" // Bloquear logs de imágenes automáticamente
+import "@/lib/performance-optimizer" // Inicializar optimizador de rendimiento
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -34,8 +38,14 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {/* Contenido principal */}
             {children}
+            <ChatWidgetFloating />
+            <Toaster 
+              position="top-right"
+              richColors
+              closeButton
+              duration={5000}
+            />
           </AuthProvider>
         </ThemeProvider>
       </body>

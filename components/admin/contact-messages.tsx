@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { 
   Search, 
   Mail, 
@@ -25,18 +26,34 @@ import {
   User,
   MapPin
 } from "lucide-react"
-import { useContactMessages, type ContactMessage } from "@/hooks/use-contact-messages"
+import { useContactMessages } from "@/hooks/use-contact-messages"
+
+// Definir la interfaz localmente
+interface ContactMessage {
+  id: string
+  name: string
+  email: string
+  phone?: string
+  subject: string
+  message: string
+  service?: string
+  date?: string
+  guests?: number
+  admin_notes?: string
+  created_at: string
+  status: "pending" | "read" | "replied"
+}
 
 // Modal para ver detalles del mensaje
 interface MessageModalProps {
   message: ContactMessage | null
   isOpen: boolean
   onClose: () => void
-  onUpdateStatus: (id: string, status: string, notes?: string) => Promise<boolean>
+  onStatusChange: (messageId: string, status: ContactMessage["status"]) => void
 }
 
-function MessageModal({ message, isOpen, onClose, onUpdateStatus }: MessageModalProps) {
-  const [status, setStatus] = useState<string>(message?.status || 'new')
+function MessageModal({ message, isOpen, onClose, onStatusChange }: MessageModalProps) {
+  const [status, setStatus] = useState<ContactMessage["status"]>(message?.status || 'pending')
   const [adminNotes, setAdminNotes] = useState<string>(message?.admin_notes || '')
   const [isUpdating, setIsUpdating] = useState(false)
 
@@ -51,12 +68,10 @@ function MessageModal({ message, isOpen, onClose, onUpdateStatus }: MessageModal
     if (!message) return
     
     setIsUpdating(true)
-    const success = await onUpdateStatus(message.id, status, adminNotes)
+    onStatusChange(message.id, status)
     setIsUpdating(false)
     
-    if (success) {
-      onClose()
-    }
+    onClose()
   }
 
   if (!isOpen || !message) return null
@@ -171,10 +186,10 @@ function MessageModal({ message, isOpen, onClose, onUpdateStatus }: MessageModal
                   <label className="block text-sm font-medium mb-2">Estado</label>
                   <select
                     value={status}
-                    onChange={(e) => setStatus(e.target.value)}
+                    onChange={(e) => setStatus(e.target.value as ContactMessage["status"])}
                     className="w-full p-2 border border-gray-300 rounded-md bg-white"
                   >
-                    <option value="new">Nuevo</option>
+                    <option value="pending">Pendiente</option>
                     <option value="read">Leído</option>
                     <option value="replied">Respondido</option>
                     <option value="archived">Archivado</option>
@@ -214,45 +229,19 @@ function MessageModal({ message, isOpen, onClose, onUpdateStatus }: MessageModal
 }
 
 export function ContactMessages() {
-  const { 
-    messages, 
-    loading, 
-    error, 
-    totalCount,
-    fetchMessages, 
-    updateMessageStatus, 
-    deleteMessage,
-    getMessageStats 
-  } = useContactMessages()
-  
+  const { messages, loading, error, fetchMessages, markAsRead, deleteMessage } = useContactMessages()
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [stats, setStats] = useState({
-    total: 0,
-    new: 0,
-    read: 0,
-    replied: 0,
-    archived: 0,
-  })
-
-  // Cargar estadísticas
-  useEffect(() => {
-    const loadStats = async () => {
-      const messageStats = await getMessageStats()
-      setStats(messageStats)
-    }
-    loadStats()
-  }, [getMessageStats])
 
   // Filtrar mensajes
-  const filteredMessages = messages.filter((message) => {
+  const filteredMessages = messages.filter(message => {
     const matchesSearch = 
       message.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       message.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      message.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (message.service && message.service.toLowerCase().includes(searchTerm.toLowerCase()))
+      message.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      message.message.toLowerCase().includes(searchTerm.toLowerCase())
 
     const matchesStatus = statusFilter === "all" || message.status === statusFilter
 
@@ -264,36 +253,27 @@ export function ContactMessages() {
     setIsModalOpen(true)
   }
 
-  const handleUpdateStatus = async (id: string, status: string, notes?: string) => {
-    const success = await updateMessageStatus(id, status, notes)
-    if (success) {
-      // Recargar estadísticas
-      const messageStats = await getMessageStats()
-      setStats(messageStats)
-    }
-    return success
+  const handleUpdateStatus = async (id: string, status: ContactMessage["status"]) => {
+    await markAsRead(id)
+    // Recargar mensajes después de actualizar
+    await fetchMessages()
   }
 
   const handleDeleteMessage = async (id: string) => {
-    if (confirm("¿Estás seguro de que quieres eliminar este mensaje?")) {
-      const success = await deleteMessage(id)
-      if (success) {
-        // Recargar estadísticas
-        const messageStats = await getMessageStats()
-        setStats(messageStats)
-      }
-    }
+    await deleteMessage(id)
+    // Recargar mensajes después de eliminar
+    await fetchMessages()
   }
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: ContactMessage["status"]) => {
     const statusConfig = {
-      new: { color: "bg-red-100 text-red-800", text: "Nuevo" },
+      pending: { color: "bg-red-100 text-red-800", text: "Pendiente" },
       read: { color: "bg-blue-100 text-blue-800", text: "Leído" },
       replied: { color: "bg-green-100 text-green-800", text: "Respondido" },
       archived: { color: "bg-gray-100 text-gray-800", text: "Archivado" },
     }
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.new
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending
     return <Badge className={config.color}>{config.text}</Badge>
   }
 
@@ -320,7 +300,7 @@ export function ContactMessages() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+              <p className="text-2xl font-bold text-gray-900">{messages.length}</p>
               <p className="text-sm text-gray-600">Total</p>
             </div>
           </CardContent>
@@ -328,7 +308,7 @@ export function ContactMessages() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-red-600">{stats.new}</p>
+              <p className="text-2xl font-bold text-red-600">{messages.filter(m => m.status === 'pending').length}</p>
               <p className="text-sm text-gray-600">Nuevos</p>
             </div>
           </CardContent>
@@ -336,7 +316,7 @@ export function ContactMessages() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-blue-600">{stats.read}</p>
+              <p className="text-2xl font-bold text-blue-600">{messages.filter(m => m.status === 'read').length}</p>
               <p className="text-sm text-gray-600">Leídos</p>
             </div>
           </CardContent>
@@ -344,7 +324,7 @@ export function ContactMessages() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{stats.replied}</p>
+              <p className="text-2xl font-bold text-green-600">{messages.filter(m => m.status === 'replied').length}</p>
               <p className="text-sm text-gray-600">Respondidos</p>
             </div>
           </CardContent>
@@ -352,7 +332,7 @@ export function ContactMessages() {
         <Card>
           <CardContent className="p-4">
             <div className="text-center">
-              <p className="text-2xl font-bold text-gray-600">{stats.archived}</p>
+              <p className="text-2xl font-bold text-gray-600">0</p>
               <p className="text-sm text-gray-600">Archivados</p>
             </div>
           </CardContent>
@@ -390,7 +370,7 @@ export function ContactMessages() {
                 className="w-full p-2 border border-gray-300 rounded-md bg-white"
               >
                 <option value="all">Todos los estados</option>
-                <option value="new">Nuevos</option>
+                <option value="pending">Pendientes</option>
                 <option value="read">Leídos</option>
                 <option value="replied">Respondidos</option>
                 <option value="archived">Archivados</option>
@@ -463,25 +443,16 @@ export function ContactMessages() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-3">
-                      {message.phone && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Phone className="h-4 w-4" />
-                          {message.phone}
-                        </div>
-                      )}
-                      {message.service && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <MapPin className="h-4 w-4" />
-                          {message.service}
-                        </div>
-                      )}
-                      {message.guests && !isNaN(message.guests) && (
-                        <div className="flex items-center gap-2 text-sm text-gray-600">
-                          <Users className="h-4 w-4" />
-                          {message.guests} personas
-                        </div>
-                      )}
+                    {/* Información del mensaje */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <Label className="text-sm font-medium">Nombre</Label>
+                        <p className="text-sm text-gray-600">{message.name}</p>
+                      </div>
+                      <div>
+                        <Label className="text-sm font-medium">Email</Label>
+                        <p className="text-sm text-gray-600">{message.email}</p>
+                      </div>
                     </div>
                     
                     <p className="text-gray-700 line-clamp-2">
@@ -523,7 +494,7 @@ export function ContactMessages() {
           setIsModalOpen(false)
           setSelectedMessage(null)
         }}
-        onUpdateStatus={handleUpdateStatus}
+        onStatusChange={handleUpdateStatus}
       />
     </div>
   )

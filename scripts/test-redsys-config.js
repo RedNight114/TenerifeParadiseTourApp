@@ -30,7 +30,7 @@ console.log(`   Site URL: ${testConfig.NEXT_PUBLIC_SITE_URL}`);
 console.log(`   Secret Key: ${testConfig.REDSYS_SECRET_KEY ? '✅ Configurada' : '❌ No configurada'}`);
 
 // Validaciones
-let errors = [];
+const errors = [];
 
 // 1. Validar Merchant Code
 if (!testConfig.REDSYS_MERCHANT_CODE || testConfig.REDSYS_MERCHANT_CODE.length === 0) {

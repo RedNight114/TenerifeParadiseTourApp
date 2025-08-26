@@ -1,23 +1,25 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 import { getSupabaseClient } from "@/lib/supabase-optimized"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { AuditLogger } from "@/lib/audit-logger"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Calendar, Euro, Users, TrendingUp, Shield, LogOut, Loader2, Activity, Search, Filter, RefreshCw, AlertCircle, Clock, CheckCircle, X, MessageSquare, Database, User, TrendingDown, Minus } from "lucide-react"
+import { Calendar, Euro, Users, TrendingUp, Shield, LogOut, Loader2, Activity, Search, Filter, RefreshCw, AlertCircle, Clock, CheckCircle, X, MessageSquare, MessageCircle, Database, User, TrendingDown, Minus, Image } from "lucide-react"
 import { ReservationsManagement } from "@/components/admin/reservations-management"
 import { ServicesManagement } from "@/components/admin/services-management"
 import { AuditDashboard } from "@/components/admin/audit-dashboard"
-import { ContactMessages } from "@/components/admin/contact-messages"
+import { AdminChatDashboard } from "@/components/chat/admin-chat-dashboard"
+import { AgePricingManager } from "@/components/admin/age-pricing-manager"
 import { AdminGuard } from "@/components/admin/admin-guard"
 import { StatCard } from "@/components/admin/stat-card"
 import { StatusCard } from "@/components/admin/status-card"
+import { logError, logDashboard, logPerformance } from '@/lib/logger';
 
 interface DashboardStats {
   totalReservations: number
@@ -73,13 +75,13 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [activeTab, setActiveTab] = useState("reservations")
+  const [activeTab, setActiveTab] = useState("chat")
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [dataStatus, setDataStatus] = useState<'loading' | 'success' | 'error'>('loading')
 
-  const { user, profile, signOut } = useAuth()
+  const { user, profile, signOut } = useAuthContext()
 
-  const loadDashboardStats = async (isRefresh = false) => {
+  const loadDashboardStats = useCallback(async (isRefresh = false) => {
     try {
       if (isRefresh) {
         setRefreshing(true)
@@ -92,19 +94,26 @@ export default function AdminDashboard() {
       const currentDate = new Date()
       const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
 
-      console.log('🔄 Cargando estadísticas del dashboard...')
+      logDashboard('Cargando estadísticas del dashboard...');
       
       // Registrar acceso al dashboard
-      await AuditLogger.logAdminAction('dashboard_access', {
-        action: isRefresh ? 'refresh' : 'load',
-        timestamp: new Date().toISOString()
-      }, user?.id)
+      try {
+        await AuditLogger.logAdminAction('dashboard_access', {
+          action: isRefresh ? 'refresh' : 'load',
+          timestamp: new Date().toISOString()
+        }, user?.id)
+      } catch (auditError) {
+        // No fallar si el audit logger falla
+}
 
       // 1. Obtener reservas con información completa
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
       if (!client) {
         throw new Error('Cliente de Supabase no disponible')
       }
+
       const { data: reservations, error: reservationsError } = await client
         .from("reservations")
         .select(`
@@ -120,11 +129,11 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
 
       if (reservationsError) {
-        console.error('❌ Error al cargar reservas:', reservationsError)
+        logError('Error al cargar reservas', reservationsError);
         throw new Error(`Error al cargar reservas: ${reservationsError.message}`)
       }
 
-      console.log(`✅ Reservas cargadas: ${reservations?.length || 0}`)
+      logDashboard('Reservas cargadas', { count: reservations?.length || 0 });
 
       // 2. Obtener servicios con información completa - CORREGIDO: usar 'available' en lugar de 'status'
       const { data: services, error: servicesError } = await client
@@ -133,11 +142,11 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
 
       if (servicesError) {
-        console.error('❌ Error al cargar servicios:', servicesError)
+        logError('Error al cargar servicios', servicesError);
         throw new Error(`Error al cargar servicios: ${servicesError.message}`)
       }
 
-      console.log(`✅ Servicios cargados: ${services?.length || 0}`)
+      logDashboard('Servicios cargados', { count: services?.length || 0 });
 
       // 3. Obtener usuarios (perfiles)
       const { data: profiles, error: profilesError } = await client
@@ -146,11 +155,11 @@ export default function AdminDashboard() {
         .order('created_at', { ascending: false })
 
       if (profilesError) {
-        console.error('❌ Error al cargar perfiles:', profilesError)
+        logError('Error al cargar perfiles', profilesError);
         // No lanzamos error aquí, solo log
       }
 
-      console.log(`✅ Perfiles cargados: ${profiles?.length || 0}`)
+      logDashboard('Perfiles cargados', { count: profiles?.length || 0 });
 
       // 4. Calcular estadísticas detalladas
       const totalReservations = reservations?.length || 0
@@ -191,19 +200,21 @@ export default function AdminDashboard() {
       setDataStatus('success')
 
       // Log detallado para debugging
-      console.log('📊 Estadísticas del Dashboard Actualizadas:', {
-        totalReservations,
-        monthlyReservations,
-        totalRevenue: formatCurrency(totalRevenue),
-        monthlyRevenue: formatCurrency(monthlyRevenue),
-        totalServices,
-        activeServices,
-        pendingReservations,
-        confirmedReservations,
-        cancelledReservations,
-        totalUsers,
-        monthlyUsers
-      })
+      if (process.env.NODE_ENV === 'development') {
+        logDashboard('Estadísticas del Dashboard Actualizadas', {
+          reservas: totalReservations,
+          reservasMensuales: monthlyReservations,
+          ingresosTotales: formatCurrency(totalRevenue),
+          ingresosMensuales: formatCurrency(monthlyRevenue),
+          serviciosTotales: totalServices,
+          serviciosActivos: activeServices,
+          reservasPendientes: pendingReservations,
+          reservasConfirmadas: confirmedReservations,
+          reservasCanceladas: cancelledReservations,
+          usuariosTotales: totalUsers,
+          usuariosMensuales: monthlyUsers
+        });
+      }
 
       // Registrar estadísticas cargadas
       await AuditLogger.logAdminAction('dashboard_stats_loaded', {
@@ -222,25 +233,29 @@ export default function AdminDashboard() {
 
       // Verificar datos reales
       if (totalReservations > 0) {
-        console.log('📋 Ejemplo de reserva:', reservations?.[0])
+        if (process.env.NODE_ENV === 'development') {
+          logDashboard('Ejemplo de reserva', reservations?.[0]);
+        }
       }
       if (totalServices > 0) {
-        console.log('🔧 Ejemplo de servicio:', services?.[0])
+        if (process.env.NODE_ENV === 'development') {
+          logDashboard('Ejemplo de servicio', services?.[0]);
+        }
       }
 
     } catch (err) {
       const errorMessage = `Error al cargar estadísticas: ${(err as Error).message}`
       setError(errorMessage)
       setDataStatus('error')
-      console.error('❌ Error del Dashboard:', err)
+      logError('Error del Dashboard', err);
       
       // Registrar error
-      await AuditLogger.logError(err as Error, 'dashboard_stats_load', user?.id)
+      await AuditLogger.logError(err as Error, { context: 'dashboard_stats_load' }, user?.id)
     } finally {
       setLoading(false)
       setRefreshing(false)
     }
-  }
+  }, [user?.id]);
 
   const handleRefresh = () => {
     loadDashboardStats(true)
@@ -250,7 +265,7 @@ export default function AdminDashboard() {
     try {
       await signOut()
     } catch (error) {
-      console.error("Error al cerrar sesión:", error)
+      logError("Error al cerrar sesión", error);
     }
   }
 
@@ -325,7 +340,7 @@ export default function AdminDashboard() {
   // Cargar estadísticas al montar el componente
   useEffect(() => {
     loadDashboardStats()
-  }, [])
+  }, [loadDashboardStats])
 
   // Mostrar loading mientras se cargan los datos
   if (loading) {
@@ -371,23 +386,28 @@ export default function AdminDashboard() {
               </div>
 
                             {/* Información del Usuario y Acciones */}
-              <div className="flex items-center space-x-3 sm:space-x-6 lg:space-x-8">
-                <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6">
-                  <div className="relative group">
-                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 lg:h-16 lg:w-16 ring-2 sm:ring-3 lg:ring-4 ring-blue-400/30 shadow-lg sm:shadow-xl lg:shadow-2xl transform group-hover:scale-110 transition-all duration-300">
-                      <AvatarImage src={profile?.avatar_url || "/placeholder.svg"} alt={getUserName()} />
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 text-white text-sm sm:text-base lg:text-xl font-bold">
+              <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-6 xl:space-x-8">
+                <div className="flex items-center space-x-3 sm:space-x-4 lg:space-x-5 xl:space-x-6">
+                  <div className="relative group admin-avatar">
+                    <Avatar className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 xl:h-16 xl:w-16 admin-avatar-ring">
+                      <AvatarImage 
+                        src={profile?.avatar_url || "/placeholder.svg"} 
+                        alt={getUserName()}
+                        className="object-cover"
+                      />
+                      <AvatarFallback className="bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 text-white text-sm sm:text-base lg:text-lg xl:text-xl font-bold">
                         {getUserInitials(getUserName())}
                       </AvatarFallback>
                     </Avatar>
-                    <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 bg-green-500 rounded-full border-2 sm:border-3 border-white shadow-md sm:shadow-lg"></div>
+                    <div className="absolute -bottom-0.5 -right-0.5 sm:-bottom-1 sm:-right-1 lg:-bottom-1.5 lg:-right-1.5 xl:-bottom-2 xl:-right-2 w-3 h-3 sm:w-3.5 sm:h-3.5 lg:w-4 lg:h-4 xl:w-5 xl:h-5 bg-green-500 rounded-full border-2 sm:border-3 border-white shadow-md sm:shadow-lg admin-status-indicator"></div>
+                    <div className="absolute -top-0.5 -left-0.5 sm:-top-1 sm:-left-1 lg:-top-1.5 lg:-left-1.5 xl:-top-2 xl:-left-2 w-2 h-2 sm:w-2.5 sm:h-2.5 lg:w-3 lg:h-3 xl:w-4 xl:h-4 bg-blue-300 rounded-full opacity-60 animate-bounce"></div>
                   </div>
-                  <div className="hidden sm:block space-y-0.5 sm:space-y-1">
-                    <p className="text-sm sm:text-base lg:text-lg font-bold text-gray-900">{getUserName()}</p>
-                    <p className="text-xs sm:text-sm text-gray-600 font-medium truncate max-w-[150px] lg:max-w-none">{user?.email}</p>
-                    <div className="flex items-center space-x-1 sm:space-x-2">
-                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-xs text-green-600 font-medium">En línea</span>
+                  <div className="hidden sm:block space-y-0.5 sm:space-y-1 lg:space-y-1.5 admin-user-info">
+                    <p className="text-sm sm:text-base lg:text-lg xl:text-xl font-bold text-gray-900 leading-tight admin-user-name">{getUserName()}</p>
+                    <p className="text-xs sm:text-sm lg:text-base text-gray-600 font-medium truncate max-w-[160px] lg:max-w-[200px] xl:max-w-none admin-user-email">{user?.email}</p>
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 admin-online-status">
+                      <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 lg:w-2.5 lg:h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-xs sm:text-sm lg:text-base text-green-600 font-semibold">En línea</span>
                     </div>
                   </div>
                 </div>
@@ -395,9 +415,9 @@ export default function AdminDashboard() {
                   onClick={handleSignOut} 
                   variant="outline"
                   size="sm"
-                  className="border border-gray-200 sm:border-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 hover:border-red-300 hover:text-red-700 transition-all duration-300 shadow-sm sm:shadow-lg hover:shadow-xl transform hover:scale-105 px-3 py-2 sm:px-4 sm:py-2 lg:px-6 lg:py-3 text-xs sm:text-sm"
+                  className="border border-gray-200 sm:border-2 text-gray-700 hover:bg-gradient-to-r hover:from-red-50 hover:to-orange-50 hover:border-red-300 hover:text-red-700 transition-all duration-300 shadow-sm sm:shadow-lg hover:shadow-xl transform hover:scale-105 px-2 py-1.5 sm:px-3 sm:py-2 lg:px-4 lg:py-2 text-xs sm:text-sm"
                 >
-                  <LogOut className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5 mr-1 sm:mr-2 lg:mr-3" />
+                  <LogOut className="h-3 w-3 sm:h-4 sm:w-4 lg:h-4 lg:w-4 mr-1 sm:mr-1.5 lg:mr-2" />
                   <span className="hidden sm:inline">Cerrar Sesión</span>
                   <span className="sm:hidden">Salir</span>
                 </Button>
@@ -582,7 +602,7 @@ export default function AdminDashboard() {
 
                                     {/* Tabs de Gestión - Sin Fondo */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-12">
-          <TabsList className="grid w-full grid-cols-4 p-1 bg-gray-100/50 rounded-xl gap-2">
+          <TabsList className="grid w-full grid-cols-6 p-1 bg-gray-100/50 rounded-xl gap-2">
             <TabsTrigger 
               value="reservations" 
               className="relative group px-6 py-4 rounded-lg font-semibold text-base transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-500 data-[state=active]:to-blue-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 hover:scale-102 hover:bg-white/80"
@@ -606,6 +626,17 @@ export default function AdminDashboard() {
               </div>
             </TabsTrigger>
             <TabsTrigger 
+              value="images" 
+              className="relative group px-6 py-4 rounded-lg font-semibold text-base transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-pink-500 data-[state=active]:to-pink-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 hover:scale-102 hover:bg-white/80"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 rounded-lg bg-pink-100/50 data-[state=active]:bg-white/20">
+                  <Image className="h-5 w-5 text-pink-600 data-[state=active]:text-white" />
+                </div>
+                <span>Imágenes</span>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger 
               value="audit" 
               className="relative group px-6 py-4 rounded-lg font-semibold text-base transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-purple-500 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 hover:scale-102 hover:bg-white/80"
             >
@@ -617,14 +648,25 @@ export default function AdminDashboard() {
               </div>
             </TabsTrigger>
             <TabsTrigger 
-              value="messages" 
+              value="pricing" 
+              className="relative group px-6 py-4 rounded-lg font-semibold text-base transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-indigo-500 data-[state=active]:to-indigo-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 hover:scale-102 hover:bg-white/80"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="p-1.5 rounded-lg bg-indigo-100/50 data-[state=active]:bg-white/20">
+                  <Euro className="h-5 w-5 text-indigo-600 data-[state=active]:text-white" />
+                </div>
+                <span>Precios</span>
+              </div>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="chat" 
               className="relative group px-6 py-4 rounded-lg font-semibold text-base transition-all duration-300 data-[state=active]:bg-gradient-to-r data-[state=active]:from-orange-500 data-[state=active]:to-orange-600 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:scale-105 hover:scale-102 hover:bg-white/80"
             >
               <div className="flex items-center space-x-3">
                 <div className="p-1.5 rounded-lg bg-orange-100/50 data-[state=active]:bg-white/20">
-                  <MessageSquare className="h-5 w-5 text-orange-600 data-[state=active]:text-white" />
+                  <MessageCircle className="h-5 w-5 text-orange-600 data-[state=active]:text-white" />
                 </div>
-                <span>Mensajes</span>
+                <span>Chat de Soporte</span>
               </div>
             </TabsTrigger>
           </TabsList>
@@ -638,12 +680,75 @@ export default function AdminDashboard() {
             <ServicesManagement />
           </TabsContent>
 
+          <TabsContent value="images" className="space-y-8 pt-8">
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Gestión de Imágenes</h2>
+                <p className="text-gray-600">
+                  Administra el almacenamiento de imágenes y limpia archivos huérfanos
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Image className="h-5 w-5 text-pink-600" />
+                      Acceso Rápido
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <p className="text-sm text-gray-600">
+                      Accede a la gestión completa de imágenes del sistema
+                    </p>
+                    <Button 
+                      onClick={() => window.open('/admin/image-management', '_blank')}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      Abrir Gestión de Imágenes
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Database className="h-5 w-5 text-blue-600" />
+                      Información del Sistema
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Bucket:</span>
+                        <Badge variant="secondary">service-images</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Compresión:</span>
+                        <Badge variant="outline" className="text-green-600">Activada</Badge>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Formato:</span>
+                        <Badge variant="secondary">JPG, PNG, WebP</Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </TabsContent>
+
+                      <TabsContent value="pricing" className="space-y-8 pt-8">
+            <AgePricingManager />
+          </TabsContent>
+
                       <TabsContent value="audit" className="space-y-8 pt-8">
             <AuditDashboard />
           </TabsContent>
 
-                      <TabsContent value="messages" className="space-y-8 pt-8">
-            <ContactMessages />
+                      <TabsContent value="chat" className="space-y-8 pt-8">
+            <AdminChatDashboard showHeader={false} showNavbar={false} />
           </TabsContent>
         </Tabs>
       </div>
@@ -651,3 +756,4 @@ export default function AdminDashboard() {
     </AdminGuard>
   )
 }
+

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { verifyRedsysSignatureV2Original } from '@/lib/redsys/signature-v2';
 import { createClient } from '@supabase/supabase-js';
 
@@ -10,43 +10,31 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 export async function POST(req: NextRequest) {
   try {
-    console.log('🔔 WEBHOOK REDSYS RECIBIDO');
-    console.log('Headers:', Object.fromEntries(req.headers.entries()));
+    console.log('Webhook Redsys recibido:', new Date().toISOString());
     
     const form = await req.formData();
     const merchantParametersBase64 = form.get('Ds_MerchantParameters') as string;
     const signature = form.get('Ds_Signature') as string;
 
-    console.log('Datos recibidos:');
-    console.log('- merchantParametersBase64:', merchantParametersBase64);
-    console.log('- signature:', signature);
 
-    if (!merchantParametersBase64 || !signature) {
-      console.error('❌ Faltan parámetros de Redsys');
-      return NextResponse.json({ error: 'Faltan parámetros de Redsys' }, { status: 400 });
+if (!merchantParametersBase64 || !signature) {
+return NextResponse.json({ error: 'Faltan parámetros de Redsys' }, { status: 400 });
     }
 
     // Decodificar merchantParameters
     const merchantParams = JSON.parse(Buffer.from(merchantParametersBase64, 'base64').toString('utf8'));
     const orderNumber = merchantParams.DS_MERCHANT_ORDER || merchantParams.Ds_Merchant_Order;
 
-    console.log('Parámetros decodificados:', merchantParams);
-    console.log('Order number:', orderNumber);
-
     // 🔥 CORRECCIÓN CRÍTICA: Agregar Ds_Order a los parámetros para validación
     const paramsForValidation = {
       ...merchantParams,
       Ds_Order: orderNumber // Campo requerido para validación de firma
     };
-
-    console.log('Parámetros para validación (con Ds_Order):', paramsForValidation);
+    console.log('Parámetros para validación:', paramsForValidation);
 
     // Verificar firma con la nueva implementación CBC
     const isValid = verifyRedsysSignatureV2Original(SECRET_KEY, orderNumber, paramsForValidation, signature, { debug: true });
-    
-    console.log('Verificación de firma:', isValid ? '✅ VÁLIDA' : '❌ INVÁLIDA');
-
-    if (!isValid) {
+if (!isValid) {
       // Registrar error en la base de datos para debug
       await supabase.from('payments').insert({
         order_number: orderNumber,
@@ -57,9 +45,7 @@ export async function POST(req: NextRequest) {
         merchant_parameters: merchantParametersBase64,
         created_at: new Date().toISOString()
       });
-      
-      console.error('❌ Firma inválida - Error registrado en BD');
-      return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
+return NextResponse.json({ error: 'Firma inválida' }, { status: 400 });
     }
 
     // Extraer información del pago
@@ -68,13 +54,10 @@ export async function POST(req: NextRequest) {
     const authCode = merchantParams.DS_AUTHORISATIONCODE || merchantParams.Ds_AuthorisationCode;
     const amount = merchantParams.DS_MERCHANT_AMOUNT || merchantParams.Ds_Merchant_Amount;
 
-    console.log('Información del pago:');
-    console.log('- Response Code:', responseCode);
-    console.log('- Response Text:', responseText);
-    console.log('- Auth Code:', authCode);
-    console.log('- Amount:', amount);
 
-    // Determinar estado del pago
+
+
+// Determinar estado del pago
     let paymentStatus = 'pending';
     if (responseCode === '0000') {
       paymentStatus = 'confirmed';
@@ -94,9 +77,7 @@ export async function POST(req: NextRequest) {
     }).eq('order_number', orderNumber);
 
     if (updateError) {
-      console.error('❌ Error actualizando pago:', updateError);
-      
-      // Intentar insertar si no existe
+// Intentar insertar si no existe
       await supabase.from('payments').insert({
         order_number: orderNumber,
         status: paymentStatus,
@@ -119,33 +100,26 @@ export async function POST(req: NextRequest) {
         .single();
 
       if (findError) {
-        console.log('⚠️ No se encontró reserva con order_number:', orderNumber);
-        console.log('Esto es normal para pruebas con datos ficticios');
-      } else {
+
+} else {
         const { error: reservationError } = await supabase.from('reservations').update({
           payment_status: 'pagado',
           updated_at: new Date().toISOString()
         }).eq('id', reservation.id);
 
         if (reservationError) {
-          console.error('❌ Error actualizando reserva:', reservationError);
-        } else {
-          console.log('✅ Reserva actualizada correctamente');
-        }
+} else {
+}
       }
     }
-
-    console.log('✅ Webhook procesado correctamente');
-    return NextResponse.json({ 
+return NextResponse.json({ 
       ok: true, 
       status: paymentStatus,
       response_code: responseCode 
     });
 
   } catch (error) {
-    console.error('❌ ERROR EN WEBHOOK:', error);
-    
-    // Registrar error para debug
+// Registrar error para debug
     try {
       await supabase.from('payments').insert({
         status: 'error',
@@ -154,8 +128,7 @@ export async function POST(req: NextRequest) {
         created_at: new Date().toISOString()
       });
     } catch (dbError) {
-      console.error('❌ Error guardando error en BD:', dbError);
-    }
+}
     
     return NextResponse.json({ 
       error: 'Error interno en notificación', 

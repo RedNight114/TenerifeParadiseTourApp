@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import React from 'react'
 import { Button } from './button'
@@ -26,9 +26,7 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('🚨 Error Boundary capturó un error:', error, errorInfo)
-    
-    // Aquí podrías enviar el error a un servicio de logging
+// Aquí podrías enviar el error a un servicio de logging
     // logErrorToService(error, errorInfo)
     
     this.setState({
@@ -126,8 +124,7 @@ export function useErrorHandler() {
   const [error, setError] = React.useState<Error | null>(null)
 
   const handleError = React.useCallback((error: Error) => {
-    console.error('🚨 Error capturado por useErrorHandler:', error)
-    setError(error)
+setError(error)
   }, [])
 
   const resetError = React.useCallback(() => {

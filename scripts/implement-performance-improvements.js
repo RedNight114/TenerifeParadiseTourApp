@@ -192,7 +192,7 @@ import { Suspense, lazy } from 'react'
 import { Skeleton, ServiceCardSkeleton, ServicesGridSkeleton } from './skeleton'
 
 // Lazy loading de componentes pesados
-export const LazyServiceCard = lazy(() => import('../service-card').then(module => ({ default: module.ServiceCard })))
+export const LazyServiceCard = lazy(() => import('../optimized-service-card').then(module => ({ default: module.OptimizedServiceCard })))
 export const LazyAdminDashboard = lazy(() => import('../admin/dashboard').then(module => ({ default: module.default })))
 export const LazyBookingForm = lazy(() => import('../booking-form').then(module => ({ default: module.default })))
 

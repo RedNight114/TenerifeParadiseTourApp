@@ -1,0 +1,33 @@
+{
+  "timestamp": "2025-08-26T18:33:13.967Z",
+  "patterns": [
+    "Eliminando console.log",
+    "Eliminando console.warn",
+    "Eliminando console.error",
+    "Eliminando console.info",
+    "Eliminando console.debug",
+    "Reemplazando any por unknown",
+    "Reemplazando any[] por unknown[]",
+    "Comentando variables no utilizadas",
+    "Comentando imports no utilizados",
+    "Corrigiendo any en parámetros de función"
+  ],
+  "directories": [
+    "components",
+    "hooks",
+    "lib",
+    "app"
+  ],
+  "priorityFiles": [
+    "lib/chat-service.ts",
+    "lib/advanced-logger.ts",
+    "lib/supabase-client.ts",
+    "lib/supabase-optimized.ts",
+    "hooks/use-chat.ts",
+    "hooks/use-services-optimized.ts",
+    "components/ui/image-upload.tsx",
+    "components/ui/optimized-image.tsx"
+  ],
+  "totalFiles": 0,
+  "modifiedFiles": 0
+}

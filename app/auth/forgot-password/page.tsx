@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { ArrowLeft, Mail, CheckCircle, AlertCircle, Loader2, Shield, Sparkles, Phone, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -37,12 +38,19 @@ export default function ForgotPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        toast.error("No se pudo obtener el cliente de Supabase")
+        setLoading(false)
+        return
+      }
+      const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
 
       if (error) {
-        if (error.message.includes("Email rate limit exceeded")) {
+        if (error.message && error.message.includes("Email rate limit exceeded")) {
           toast.error("Has solicitado demasiados resets. Espera unos minutos e inténtalo de nuevo.")
         } else {
           toast.error("Error al enviar el correo de recuperación. Inténtalo de nuevo.")
@@ -51,8 +59,8 @@ export default function ForgotPasswordPage() {
         toast.success("¡Correo enviado! Revisa tu bandeja de entrada y spam.")
         setEmail("")
       }
-    } catch (err) {
-      toast.error("Error inesperado. Por favor inténtalo de nuevo.")
+    } catch (err: any) {
+      toast.error(err.message || "Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }

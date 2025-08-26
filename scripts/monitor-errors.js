@@ -122,7 +122,7 @@ function suggestSolution(error) {
 }
 
 // Función para mostrar estadísticas
-let errorStats = {
+const errorStats = {
   total: 0,
   byType: {},
   bySeverity: {}
@@ -181,7 +181,7 @@ function startDevServer() {
     const solutions = suggestSolution(analyzedError);
     solutions.forEach(solution => console.log(solution));
     
-    console.log('\n' + '='.repeat(50) + '\n');
+    console.log(`\n${  '='.repeat(50)  }\n`);
   });
   
   // Manejar cierre del proceso

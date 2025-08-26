@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
+import { createClient } from '@supabase/supabase-js'
 
 export function useSupabaseConnection() {
   const [isConnected, setIsConnected] = useState<boolean>(false)
@@ -14,10 +14,17 @@ export function useSupabaseConnection() {
     setError(null)
     
     try {
-      const supabase = getSupabaseClient()
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (!url || !key) {
+        throw new Error("Variables de entorno de Supabase no configuradas")
+      }
+      
+      const client = createClient(url, key)
       
       // Verificar conexión básica
-      const { data, error: connectionError } = await supabase
+      const { data, error: connectionError } = await client
         .from('profiles')
         .select('id')
         .limit(1)

@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, Loader2, Shield, Sparkles, Key, Check, X } from "lucide-react"
 import { toast } from "sonner"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -51,7 +52,14 @@ export default function ResetPasswordPage() {
     // Set the session with the tokens
     const setSession = async () => {
       try {
-        const { error } = await supabase.auth.setSession({
+        const supabaseClient = getSupabaseClient()
+        const client = await supabaseClient.getClient()
+        if (!client) {
+          setValidToken(false)
+          toast.error("No se pudo obtener el cliente de Supabase")
+          return
+        }
+        const { error } = await client.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
         })
@@ -62,9 +70,9 @@ export default function ResetPasswordPage() {
         } else {
           setValidToken(true)
         }
-      } catch (err) {
+      } catch (err: any) {
         setValidToken(false)
-        toast.error("Error al validar el enlace de recuperación")
+        toast.error(err.message || "Error al validar el enlace de recuperación")
       }
     }
 
@@ -95,8 +103,16 @@ export default function ResetPasswordPage() {
     }
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password,
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        toast.error("No se pudo obtener el cliente de Supabase")
+        setLoading(false)
+        return
+      }
+
+      const { error } = await client.auth.updateUser({
+        password,
       })
 
       if (error) {
@@ -107,8 +123,8 @@ export default function ResetPasswordPage() {
           router.push("/auth/login")
         }, 2000)
       }
-    } catch (err) {
-      toast.error("Error inesperado. Por favor inténtalo de nuevo.")
+    } catch (err: any) {
+      toast.error(err.message || "Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }

@@ -1,10 +1,17 @@
-import { getSupabaseClient } from "./supabase-optimized"
+﻿import { createClient } from '@supabase/supabase-js'
 
 // Cliente API para llamadas autenticadas
 export class ApiClient {
   private static async getAuthHeaders() {
     try {
-      const supabase = getSupabaseClient()
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
+      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      
+      if (!url || !key) {
+        throw new Error('Variables de entorno de Supabase no configuradas')
+      }
+      
+      const supabase = createClient(url, key)
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {
@@ -16,8 +23,7 @@ export class ApiClient {
         'Content-Type': 'application/json',
       }
     } catch (error) {
-      console.error('Error obteniendo token de autorización:', error)
-      throw error
+throw error
     }
   }
 
@@ -41,8 +47,7 @@ export class ApiClient {
 
       return await response.json()
     } catch (error) {
-      console.error('Error en GET request:', error)
-      throw error
+throw error
     }
   }
 
@@ -67,8 +72,7 @@ export class ApiClient {
 
       return await response.json()
     } catch (error) {
-      console.error('Error en POST request:', error)
-      throw error
+throw error
     }
   }
 
@@ -93,8 +97,7 @@ export class ApiClient {
 
       return await response.json()
     } catch (error) {
-      console.error('Error en PUT request:', error)
-      throw error
+throw error
     }
   }
 
@@ -118,8 +121,7 @@ export class ApiClient {
 
       return await response.json()
     } catch (error) {
-      console.error('Error en DELETE request:', error)
-      throw error
+throw error
     }
   }
 }

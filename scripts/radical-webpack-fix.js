@@ -125,7 +125,7 @@ const problematicFiles = [
 problematicFiles.forEach(file => {
   const filePath = path.join(process.cwd(), file);
   if (fs.existsSync(filePath)) {
-    let content = fs.readFileSync(filePath, 'utf8');
+    const content = fs.readFileSync(filePath, 'utf8');
     
     // Verificar si hay imports dinámicos problemáticos
     if (content.includes('dynamic(') || content.includes('lazy(')) {

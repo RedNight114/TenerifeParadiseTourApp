@@ -137,7 +137,12 @@ export function AuditDashboard() {
 
   const fetchLogs = async () => {
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
       
       let query = client
         .from('audit_logs')
@@ -207,7 +212,13 @@ export function AuditDashboard() {
 
   const exportLogs = async (format: 'json' | 'csv' = 'json') => {
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+      
       const { data: logsData, error } = await client
         .from('audit_logs')
         .select('*')

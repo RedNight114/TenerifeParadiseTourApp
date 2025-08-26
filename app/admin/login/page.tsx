@@ -1,10 +1,10 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,20 +22,17 @@ export default function AdminLoginPage() {
   const [logoError, setLogoError] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
 
-  const { signIn, user, profile, loading: authLoading } = useAuth()
+  const { signIn, user, profile, loading: authLoading } = useAuthContext()
   const router = useRouter()
 
   // Verificar si ya está autenticado y es admin
   useEffect(() => {
     if (!authLoading && user && profile) {
-      console.log('🔍 Verificando permisos de administrador...', { user: user.email, role: profile.role })
-      if (profile.role === "admin") {
-        console.log('✅ Usuario es admin, redirigiendo al dashboard...')
-        setRedirecting(true)
+if (profile.role === "admin") {
+setRedirecting(true)
         router.push("/admin/dashboard")
       } else {
-        console.log('❌ Usuario no es admin')
-        toast.error("No tienes permisos de administrador")
+toast.error("No tienes permisos de administrador")
         router.push("/")
       }
     }
@@ -44,10 +41,7 @@ export default function AdminLoginPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
-
-    console.log('🚀 Iniciando proceso de login...', { email })
-
-    // Validaciones
+// Validaciones
     if (!email.trim() || !password.trim()) {
       toast.error("Por favor completa todos los campos")
       setLoading(false)
@@ -61,8 +55,7 @@ export default function AdminLoginPage() {
     }
 
     try {
-      console.log('🔐 Intentando autenticación...')
-      const { error: signInError, data } = await signIn(email.trim(), password)
+const { error: signInError, data } = await signIn(email.trim(), password)
 
       if (signInError) {
         // Manejar error de login
@@ -83,31 +76,26 @@ export default function AdminLoginPage() {
         
         toast.error(errorMessage)
       } else {
-        console.log('✅ Autenticación exitosa, verificando perfil...')
-        toast.success("Verificando permisos de administrador...")
+toast.success("Verificando permisos de administrador...")
         
-        // El perfil se cargará automáticamente en useAuth
+        // El perfil se cargará automáticamente en useAuthContext
         // Solo necesitamos esperar un momento para que se actualice
         setTimeout(() => {
           if (profile && profile.role === 'admin') {
-            console.log('✅ Usuario confirmado como admin, redirigiendo...')
-            toast.success("Acceso confirmado. Redirigiendo al dashboard...")
+toast.success("Acceso confirmado. Redirigiendo al dashboard...")
             setRedirecting(true)
             router.push("/admin/dashboard")
           } else if (profile && profile.role !== 'admin') {
-            console.log('❌ Usuario no es admin')
-            toast.error("No tienes permisos de administrador")
+toast.error("No tienes permisos de administrador")
             router.push("/")
           } else {
-            console.log('❌ Perfil no disponible')
-            toast.error("Error al verificar permisos")
+toast.error("Error al verificar permisos")
             router.push("/")
           }
         }, 1000)
       }
     } catch (err) {
-      console.log('❌ Error inesperado:', err)
-      toast.error("Error inesperado. Por favor inténtalo de nuevo.")
+toast.error("Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }
@@ -389,3 +377,4 @@ export default function AdminLoginPage() {
     </div>
   )
 }
+

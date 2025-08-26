@@ -248,17 +248,18 @@ export class AuditMiddleware {
     // Registrar el evento
     await auditLogger.log({
       action: `${method} ${path}`,
-      category,
+      category: "system",
       level,
       user_id,
-      user_email,
-      details,
-      ip_address: requestInfo.ip_address,
-      user_agent: requestInfo.user_agent,
-      resource_type: 'api_endpoint',
-      resource_id: path,
-      success,
-      error_message: error?.message
+      details: {
+        method,
+        path,
+        ip: requestInfo.ip_address,
+        user_agent: requestInfo.user_agent,
+        user_email,
+        status_code: statusCode,
+        response_time: Date.now() - startTime,
+      },
     })
   }
 
@@ -304,20 +305,22 @@ export async function auditAuthEvent(
   details: Record<string, any> = {},
   error_message?: string
 ): Promise<void> {
-  const requestInfo = getRequestInfo(request)
+  const requestInfo = await getRequestInfo(request)
   
-  await auditLogger.logAuthentication(
+  await auditLogger.log({
     action,
+    category: "authentication",
+    level: success ? "info" : "error",
     user_id,
-    user_email,
-    success,
-    {
+    details: {
       ...details,
-      ip_address: requestInfo.ip_address,
-      user_agent: requestInfo.user_agent
+      success,
+      user_email,
+      ip: requestInfo.ip_address,
+      user_agent: requestInfo.user_agent,
+      error_message,
     },
-    error_message
-  )
+  })
 }
 
 // Middleware específico para pagos
@@ -332,22 +335,24 @@ export async function auditPaymentEvent(
   details: Record<string, any> = {},
   error_message?: string
 ): Promise<void> {
-  const requestInfo = getRequestInfo(request)
+  const requestInfo = await getRequestInfo(request)
   
-  await auditLogger.logPayment(
+  await auditLogger.log({
     action,
+    category: "payment",
+    level: success ? "info" : "error",
     user_id,
-    user_email,
-    payment_id,
-    amount,
-    success,
-    {
+    details: {
       ...details,
-      ip_address: requestInfo.ip_address,
-      user_agent: requestInfo.user_agent
+      payment_id,
+      amount,
+      success,
+      user_email,
+      ip: requestInfo.ip_address,
+      user_agent: requestInfo.user_agent,
+      error_message,
     },
-    error_message
-  )
+  })
 }
 
 // Middleware específico para acciones de admin
@@ -360,18 +365,20 @@ export async function auditAdminEvent(
   request: NextRequest,
   details: Record<string, any> = {}
 ): Promise<void> {
-  const requestInfo = getRequestInfo(request)
+  const requestInfo = await getRequestInfo(request)
   
-  await auditLogger.logAdminAction(
+  await auditLogger.log({
     action,
-    admin_id,
-    admin_email,
-    target_type,
-    target_id,
-    {
+    category: "admin_action",
+    level: "info",
+    user_id: admin_id,
+    details: {
       ...details,
-      ip_address: requestInfo.ip_address,
-      user_agent: requestInfo.user_agent
-    }
-  )
+      admin_email,
+      target_type,
+      target_id,
+      ip: requestInfo.ip_address,
+      user_agent: requestInfo.user_agent,
+    },
+  })
 } 

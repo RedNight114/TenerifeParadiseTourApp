@@ -1,77 +1,140 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { supabase } from "@/lib/supabase"
-import type { Category, Subcategory } from "@/lib/supabase"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
+
+interface Category {
+  id: string
+  name: string
+  description?: string
+  created_at: string
+}
+
+interface Subcategory {
+  id: string
+  name: string
+  description?: string
+  category_id: string
+  created_at: string
+}
+
+// Cache global para evitar múltiples peticiones
+const globalCategoriesCache = {
+  categories: [] as Category[],
+  subcategories: [] as Subcategory[],
+  lastFetch: 0,
+  isFetching: false,
+  promise: null as Promise<void> | null
+}
+
+const CACHE_TTL = 10 * 60 * 1000 // 10 minutos
 
 export function useCategories() {
-  const [categories, setCategories] = useState<Category[]>([])
-  const [subcategories, setSubcategories] = useState<Subcategory[]>([])
-  const [loadingCategories, setLoadingCategories] = useState(false)
-  const [loadingSubcategories, setLoadingSubcategories] = useState(false)
+  const [categories, setCategories] = useState<Category[]>(globalCategoriesCache.categories)
+  const [subcategories, setSubcategories] = useState<Subcategory[]>(globalCategoriesCache.subcategories)
+  const [loading, setLoading] = useState(globalCategoriesCache.categories.length === 0)
   const [error, setError] = useState<string | null>(null)
 
-  const fetchCategories = useCallback(async () => {
+  const loadCategories = useCallback(async (forceRefresh = false) => {
+    // Evitar múltiples peticiones simultáneas
+    if (globalCategoriesCache.isFetching && !forceRefresh) {
+      if (globalCategoriesCache.promise) {
+        await globalCategoriesCache.promise
+      }
+      return
+    }
+
+    // Usar cache si está disponible y fresco
+    const now = Date.now()
+    const cacheAge = now - globalCategoriesCache.lastFetch
+    
+    if (!forceRefresh && 
+        globalCategoriesCache.categories.length > 0 && 
+        globalCategoriesCache.subcategories.length > 0 && 
+        cacheAge < CACHE_TTL) {
+      setCategories(globalCategoriesCache.categories)
+      setSubcategories(globalCategoriesCache.subcategories)
+      setLoading(false)
+      setError(null)
+      return
+    }
+
+    // Marcar como fetching
+    globalCategoriesCache.isFetching = true
+    
     try {
-      setLoadingCategories(true)
+      setLoading(true)
       setError(null)
 
-      const { data, error } = await supabase.from("categories").select("*").order("name")
+      // Crear promesa global para evitar duplicados
+      globalCategoriesCache.promise = (async () => {
+        const supabaseClient = getSupabaseClient()
+        const client = await supabaseClient.getClient()
+        
+        if (!client) {
+          throw new Error("No se pudo obtener el cliente de Supabase")
+        }
 
-      if (error) throw error
+        const { data: categoriesData, error: categoriesError } = await client
+          .from("categories")
+          .select("*")
+          .order("name")
 
-      setCategories((data || []).map((cat: any) => ({
-        id: String(cat.id),
-        name: String(cat.name),
-        description: cat.description ? String(cat.description) : undefined,
-        created_at: String(cat.created_at)
-      })))
-      } catch (error) {
-      setError(error instanceof Error ? error.message : "Error al cargar categorías")
-    } finally {
-      setLoadingCategories(false)
+        if (categoriesError) throw categoriesError
+
+        const { data: subcategoriesData, error: subcategoriesError } = await client
+          .from("subcategories")
+          .select("*")
+          .order("name")
+
+        if (subcategoriesError) throw subcategoriesError
+
+        // Actualizar cache global
+        globalCategoriesCache.categories = (categoriesData || []) as unknown as Category[]
+        globalCategoriesCache.subcategories = (subcategoriesData || []) as unknown as Subcategory[]
+        globalCategoriesCache.lastFetch = Date.now()
+        globalCategoriesCache.isFetching = false
+        globalCategoriesCache.promise = null
+
+        // Actualizar estado local
+        setCategories(globalCategoriesCache.categories)
+        setSubcategories(globalCategoriesCache.subcategories)
+        setLoading(false)
+        setError(null)
+      })()
+
+      await globalCategoriesCache.promise
+
+    } catch (err) {
+      globalCategoriesCache.isFetching = false
+      globalCategoriesCache.promise = null
+      
+      const errorMessage = err instanceof Error ? err.message : "Error al cargar categorías"
+      setError(errorMessage)
+      setLoading(false)
+      
+      // Solo log en desarrollo
+      if (process.env.NODE_ENV === 'development') {
+}
     }
   }, [])
 
-  const fetchSubcategories = useCallback(async (categoryId: string) => {
-    try {
-      setLoadingSubcategories(true)
-      setError(null)
+  const getSubcategoriesByCategory = useCallback((categoryId: string) => {
+    return subcategories.filter(sub => sub.category_id === categoryId)
+  }, [subcategories])
 
-      const { data, error } = await supabase
-        .from("subcategories")
-        .select("*")
-        .eq("category_id", categoryId)
-        .order("name")
-
-      if (error) throw error
-
-      setSubcategories((data || []).map((sub: any) => ({
-        id: String(sub.id),
-        name: String(sub.name),
-        description: sub.description ? String(sub.description) : undefined,
-        category_id: String(sub.category_id),
-        created_at: String(sub.created_at)
-      })))
-      } catch (error) {
-      setError(error instanceof Error ? error.message : "Error al cargar subcategorías")
-    } finally {
-      setLoadingSubcategories(false)
-    }
-  }, [])
-
+  // Carga inicial - solo una vez
   useEffect(() => {
-    fetchCategories()
-  }, [fetchCategories])
+    loadCategories()
+  }, [loadCategories])
 
   return {
     categories,
     subcategories,
-    setSubcategories,
-    loadingCategories,
-    loadingSubcategories,
+    loading,
     error,
-    fetchCategories,
-    fetchSubcategories,
+    loadCategories: () => loadCategories(true), // Siempre force refresh para el usuario
+    getSubcategoriesByCategory,
   }
 }
+

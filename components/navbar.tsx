@@ -1,11 +1,11 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { useProfileSync } from "@/hooks/use-profile-sync"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,14 +14,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Menu, X, User, Settings, LogOut, Calendar, MonitorSmartphone, LogIn } from "lucide-react"
+import { Menu, X, User, Settings, LogOut, Calendar, MonitorSmartphone, LogIn, MessageCircle } from "lucide-react"
 
 export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [logoError, setLogoError] = useState(false)
-  const { user, signOut } = useAuth()
-  const [profile, setProfile] = useState<any>(null)
+  const { user, signOut } = useAuthContext()
+  
+  // ✅ NUEVO: Usar el hook de sincronización de perfil
+  const { profile, loading: profileLoading, error: profileError } = useProfileSync()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -32,43 +34,11 @@ export function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  // Cargar perfil cuando el usuario esté disponible
-  useEffect(() => {
-    if (user?.id) {
-      loadProfile()
-    }
-  }, [user?.id])
-
-  const loadProfile = async () => {
-    if (!user?.id) return
-
-    try {
-      const client = getSupabaseClient()
-      const { data, error } = await client
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      if (error) {
-        console.error("Error cargando perfil en navbar:", error)
-        return
-      }
-
-      if (data) {
-        setProfile(data)
-      }
-    } catch (error) {
-      console.error("Error cargando perfil en navbar:", error)
-    }
-  }
-
   const handleSignOut = async () => {
     try {
       await signOut()
     } catch (error) {
-      console.error("Error al cerrar sesión:", error)
-    }
+}
   }
 
   const getUserInitials = (rawName?: unknown) => {
@@ -84,9 +54,17 @@ export function Navbar() {
       .slice(0, 2)
   }
 
-  // Obtener la imagen de perfil del usuario
+  // ✅ MEJORADO: Obtener la imagen de perfil del usuario con mejor manejo de errores
   const getUserAvatar = () => {
-    return profile?.avatar_url || "/placeholder.svg"
+    const avatarUrl = profile?.avatar_url
+    
+    // Si hay avatar_url y es válido, usarlo
+    if (avatarUrl && avatarUrl.trim() !== '') {
+      return avatarUrl
+    }
+    
+    // Si no hay avatar, usar placeholder
+    return "/images/placeholder.svg"
   }
 
   const getUserName = () => {
@@ -189,8 +167,8 @@ export function Navbar() {
                 </div>
               )}
             </div>
-            {/* Texto del logo - oculto en dispositivos móviles, visible en grandes */}
-            <div className="text-center min-w-0 flex-shrink overflow-hidden hidden md:block">
+            {/* Texto del logo - completamente oculto para evitar superposición */}
+            <div className="hidden">
               <h1
                 className={`font-bold text-sm xs:text-base sm:text-lg md:text-xl lg:text-2xl xl:text-3xl transition-all duration-300 leading-tight truncate ${
                   isScrolled ? "text-[#0061A8]" : "text-white drop-shadow-lg"
@@ -221,7 +199,7 @@ export function Navbar() {
                   >
                     <Avatar className="h-5 w-5 xs:h-7 xs:w-7 sm:h-9 sm:w-9 md:h-11 md:w-11 lg:h-13 lg:w-13 ring-1 ring-white/30 shadow-lg">
                       <AvatarImage
-                        src={getUserAvatar() || "/placeholder.svg"}
+                        src={getUserAvatar() || "/images/placeholder.svg"}
                         alt={getUserName()}
                         className="object-cover"
                       />
@@ -235,7 +213,7 @@ export function Navbar() {
                   <div className="flex items-center justify-start gap-3 p-3 rounded-lg bg-gray-50">
                     <Avatar className="h-10 w-10 flex-shrink-0">
                       <AvatarImage
-                        src={getUserAvatar() || "/placeholder.svg"}
+                        src={getUserAvatar() || "/images/placeholder.svg"}
                         alt={getUserName()}
                         className="object-cover"
                       />
@@ -260,6 +238,12 @@ export function Navbar() {
                       <Link href="/reservations" className="flex items-center w-full">
                         <Calendar className="mr-3 h-4 w-4 text-gray-600" />
                         <span className="font-medium">Mis Reservas</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="rounded-lg p-3 hover:bg-gray-100 transition-colors">
+                      <Link href="/chat" className="flex items-center w-full">
+                        <MessageCircle className="mr-3 h-4 w-4 text-gray-600" />
+                        <span className="font-medium">Chat de Soporte</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem className="rounded-lg p-3 hover:bg-gray-50 transition-colors cursor-not-allowed opacity-60">
@@ -382,6 +366,13 @@ export function Navbar() {
               >
                 Contacto
               </Link>
+              <Link
+                href="/chat"
+                className="block px-4 xs:px-6 sm:px-8 py-4 sm:py-5 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100 rounded-lg font-medium transition-colors text-sm sm:text-base"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                Chat
+              </Link>
 
               {user ? (
                 <>
@@ -389,7 +380,7 @@ export function Navbar() {
                     <div className="flex items-center px-4 xs:px-6 sm:px-8 py-4 sm:py-5 bg-gray-50 rounded-lg">
                       <Avatar className="h-12 w-12 sm:h-14 sm:w-14 mr-4 sm:mr-5 flex-shrink-0">
                         <AvatarImage
-                          src={getUserAvatar() || "/placeholder.svg"}
+                          src={getUserAvatar() || "/images/placeholder.svg"}
                           alt={getUserName()}
                           className="object-cover"
                         />
@@ -410,13 +401,20 @@ export function Navbar() {
                       >
                         Mi Perfil
                       </Link>
-                      <Link
-                        href="/reservations"
-                        className="block px-6 xs:px-8 sm:px-10 py-5 sm:py-6 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base font-medium"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                      >
-                        Mis Reservas
-                      </Link>
+                                             <Link
+                         href="/reservations"
+                         className="block px-6 xs:px-8 sm:px-10 py-5 sm:py-6 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base font-medium"
+                         onClick={() => setIsMobileMenuOpen(false)}
+                       >
+                         Mis Reservas
+                       </Link>
+                       <Link
+                         href="/chat"
+                         className="block px-6 xs:px-8 sm:px-10 py-5 sm:py-6 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100 rounded-lg transition-colors text-sm sm:text-base font-medium"
+                         onClick={() => setIsMobileMenuOpen(false)}
+                       >
+                         Chat de Soporte
+                       </Link>
                       {profile?.role === 'admin' && (
                         <Link
                           href="/admin/dashboard"
@@ -459,3 +457,4 @@ export function Navbar() {
     </nav>
   )
 }
+

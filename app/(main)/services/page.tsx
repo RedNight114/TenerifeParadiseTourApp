@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ServicesGrid } from "@/components/services-grid"
-import { useServices } from "@/hooks/use-services"
+import { useOptimizedData } from "@/hooks/use-optimized-data"
 import { AdvancedLoading, SectionLoading, TableLoading } from "@/components/advanced-loading"
 import { AdvancedError } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
@@ -18,13 +18,10 @@ import { toast } from "sonner"
 
 export default function ServicesPage() {
   const {
-    services,
-    loading,
-    error,
-    refreshServices,
-    featuredServices,
-    servicesByCategory
-  } = useServices()
+    data: { services, categories, subcategories, loading, error },
+    refreshData: refreshServices,
+    isInitialized
+  } = useOptimizedData()
 
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -57,17 +54,7 @@ export default function ServicesPage() {
       setSelectedDate(date)
     }
 
-    // Mostrar toast si hay parámetros de búsqueda
-    if (query || location || date) {
-      const searchTerms = []
-      if (query) searchTerms.push(`"${query}"`)
-      if (location && location !== "todas") searchTerms.push(location)
-      if (date) searchTerms.push(new Date(date).toLocaleDateString('es-ES'))
-      
-      if (searchTerms.length > 0) {
-        toast.success(`Buscando: ${searchTerms.join(", ")}`)
-      }
-    }
+
   }, [searchParams])
 
   // Debounce para la búsqueda
@@ -80,14 +67,23 @@ export default function ServicesPage() {
   }, [searchQuery])
 
   useEffect(() => {
-    setIsFiltering(true)
-    applyFilters()
-    // Simular un pequeño delay para mostrar el estado de filtrado
-    const timer = setTimeout(() => setIsFiltering(false), 200)
-    return () => clearTimeout(timer)
-  }, [services, debouncedSearchQuery, selectedCategory, selectedLocation, selectedDate, sortBy])
+    // Solo aplicar filtros si tenemos servicios y categorías cargadas
+    if (services.length > 0 && categories && categories.length > 0) {
+      setIsFiltering(true)
+      applyFilters()
+      // Simular un pequeño delay para mostrar el estado de filtrado
+      const timer = setTimeout(() => setIsFiltering(false), 200)
+      return () => clearTimeout(timer)
+    }
+  }, [services, categories, debouncedSearchQuery, selectedCategory, selectedLocation, selectedDate, sortBy])
 
   const applyFilters = () => {
+    // Validar que tenemos los datos necesarios
+    if (!categories || categories.length === 0) {
+      setFilteredServices(services)
+      return
+    }
+
     let filtered = [...services]
 
     // Filtrar por categoría
@@ -236,8 +232,77 @@ export default function ServicesPage() {
   }
 
   // Mostrar loading mientras se cargan los servicios
-  if (loading) {
+  if (loading && !isInitialized) {
     return <AdvancedLoading isLoading={true} />
+  }
+
+  // Si no hay servicios después de un tiempo, mostrar mensaje de ayuda
+  if (!loading && services.length === 0 && isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="h-8 w-8 text-blue-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              No se encontraron servicios
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Parece que no hay servicios disponibles en este momento. 
+              Intenta recargar la página o contactar con soporte.
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => refreshServices()} 
+                className="w-full bg-blue-600 hover:bg-blue-700"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reintentar
+              </Button>
+                              <Button 
+                  onClick={() => router.push('/')} 
+                  variant="outline" 
+                  className="w-full"
+                >
+                  Volver al Inicio
+                </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ✅ NUEVO: Mostrar estado cuando las categorías no están cargadas
+  if (!loading && services.length > 0 && (!categories || categories.length === 0)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md mx-auto px-4">
+          <div className="bg-white rounded-lg shadow-lg p-8">
+            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Search className="h-8 w-8 text-yellow-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">
+              Cargando categorías
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Los servicios están disponibles pero las categorías aún se están cargando. 
+              Por favor, espera un momento.
+            </p>
+            <div className="space-y-3">
+              <Button 
+                onClick={() => refreshServices()} 
+                className="w-full bg-yellow-600 hover:bg-yellow-700"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Reintentar
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   // Mostrar error si hay algún problema
@@ -249,7 +314,7 @@ export default function ServicesPage() {
         timestamp: new Date(),
         retryCount: 0
       }} 
-      onRetry={refreshServices} 
+      onRetry={() => refreshServices()} 
     />
   }
 
@@ -299,6 +364,55 @@ export default function ServicesPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card className="shadow-lg">
           <CardContent className="p-6">
+                        {/* ✅ NUEVO: Resumen de categorías */}
+            <div className="mb-6 pb-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-lg font-semibold text-gray-900">Filtros de búsqueda</h3>
+                <div className="text-sm text-gray-600">
+                  {services.length} servicios disponibles
+                </div>
+              </div>
+              
+              {!categories || categories.length === 0 ? (
+                <div className="text-center py-4">
+                  <div className="flex items-center justify-center space-x-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                    <span className="text-sm text-gray-500">Cargando categorías...</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => handleCategoryChange('all')}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      selectedCategory === 'all'
+                        ? 'bg-[#0061A8] text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    Todas ({services.length})
+                  </button>
+                  {categories.map((category) => {
+                    const count = services.filter(s => s.category_id === category.id).length
+                    const isActive = selectedCategory === category.id
+                    return (
+                      <button
+                        key={category.id}
+                        onClick={() => handleCategoryChange(category.id)}
+                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                          isActive 
+                            ? 'bg-[#0061A8] text-white' 
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {category.name} ({count})
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+            
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Search Input */}
               <div className="relative">
@@ -313,17 +427,35 @@ export default function ServicesPage() {
               </div>
 
               {/* Category Filter */}
-              <Select value={selectedCategory} onValueChange={handleCategoryChange}>
-                <SelectTrigger className="border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]">
-                  <SelectValue placeholder="Categoría" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas las Categorías</SelectItem>
-                  <SelectItem value="tours">Tours y Excursiones</SelectItem>
-                  <SelectItem value="vehicles">Alquiler de Vehículos</SelectItem>
-                  <SelectItem value="gastronomy">Gastronomía</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <Select 
+                  value={selectedCategory} 
+                  onValueChange={handleCategoryChange}
+                  disabled={!categories || categories.length === 0}
+                >
+                  <SelectTrigger className="border-gray-200 focus:border-[#0061A8] focus:ring-[#0061A8]">
+                    <SelectValue placeholder={!categories ? "Cargando..." : "Categoría"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">
+                      Todas las Categorías ({services.length})
+                    </SelectItem>
+                    {categories && categories.map((category) => {
+                      const count = services.filter(s => s.category_id === category.id).length
+                      return (
+                        <SelectItem key={category.id} value={category.id}>
+                          {category.name} ({count})
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                {!categories && (
+                  <div className="absolute inset-0 bg-gray-100/50 rounded-md flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-400"></div>
+                  </div>
+                )}
+              </div>
 
               {/* Location Filter */}
               <div className="relative">
@@ -416,39 +548,71 @@ export default function ServicesPage() {
 
       {/* Results Section */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
-        {isFiltering ? (
-          <SectionLoading />
-        ) : (
+        {/* ✅ NUEVO: Indicador de estado de carga */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0061A8] mx-auto mb-4"></div>
+            <p className="text-gray-600">Cargando servicios...</p>
+            <p className="text-sm text-gray-500 mt-2">
+              {services.length > 0 ? `${services.length} servicios cargados` : 'Inicializando...'}
+            </p>
+          </div>
+        )}
+        
+        {!loading && (
           <>
-            {/* Results Count */}
-            <div className="mb-6">
-              <p className="text-gray-600">
-                {filteredServices.length === 0 ? (
-                  "No se encontraron experiencias"
-                ) : (
-                  `${filteredServices.length} experiencia${filteredServices.length !== 1 ? 's' : ''} encontrada${filteredServices.length !== 1 ? 's' : ''}`
-                )}
-              </p>
-            </div>
 
-            {/* Services Grid */}
-            {filteredServices.length > 0 ? (
-              <ServicesGrid services={filteredServices} />
+
+            {isFiltering ? (
+              <SectionLoading />
             ) : (
-              <div className="text-center py-12">
-                <div className="max-w-md mx-auto">
-                  <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">
-                    No se encontraron experiencias
-                  </h3>
-                  <p className="text-gray-600 mb-6">
-                    Intenta ajustar tus filtros de búsqueda o explorar todas nuestras experiencias.
+              <>
+                {/* Results Count */}
+                <div className="mb-6">
+                  <p className="text-gray-600">
+                    {filteredServices.length === 0 ? (
+                      "No se encontraron experiencias"
+                    ) : (
+                      `${filteredServices.length} experiencia${filteredServices.length !== 1 ? 's' : ''} encontrada${filteredServices.length !== 1 ? 's' : ''}`
+                    )}
                   </p>
-                  <Button onClick={clearAllFilters} variant="outline">
-                    Ver todas las experiencias
-                  </Button>
                 </div>
-              </div>
+
+                {/* Services Grid */}
+                {filteredServices.length > 0 ? (
+                  <ServicesGrid services={filteredServices} />
+                ) : (
+                  <div className="text-center py-12">
+                    <div className="max-w-md mx-auto">
+                      <Search className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">
+                        No se encontraron experiencias
+                      </h3>
+                      <p className="text-gray-600 mb-6">
+                        {selectedCategory !== 'all' ? (
+                          `No hay servicios disponibles en la categoría "${categories?.find(c => c.id === selectedCategory)?.name || selectedCategory}".`
+                        ) : (
+                          'Intenta ajustar tus filtros de búsqueda o explorar todas nuestras experiencias.'
+                        )}
+                      </p>
+                      <div className="space-y-3">
+                        <Button onClick={clearAllFilters} variant="outline" className="w-full">
+                          Ver todas las experiencias
+                        </Button>
+                        {selectedCategory !== 'all' && (
+                          <Button 
+                            onClick={() => handleCategoryChange('all')} 
+                            variant="outline" 
+                            className="w-full"
+                          >
+                            Ver otras categorías
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

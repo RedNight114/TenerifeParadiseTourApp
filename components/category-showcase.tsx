@@ -1,17 +1,23 @@
-"use client"
+﻿"use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Activity, Car, Utensils } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useCategories } from "@/hooks/use-categories"
+import { useOptimizedData } from "@/hooks/use-optimized-data"
 
 interface CategoryShowcaseProps {
   onCategorySelect: (categoryId: string) => void
 }
 
 export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
-  const { categories, subcategories, loadingCategories } = useCategories()
+  const { data: { services, categories, subcategories, loading: loadingServices } } = useOptimizedData()
+  
+  const loadingCategories = loadingServices
+  
+  // Debug logs solo en desarrollo
+  if (process.env.NODE_ENV === 'development') {
+}
 
   const getCategoryIcon = (categoryId: string) => {
     switch (categoryId) {
@@ -50,6 +56,24 @@ export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0061A8] mx-auto"></div>
             <p className="mt-4 text-gray-600">Cargando categorías...</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  // Si no hay categorías, mostrar mensaje de debug
+  if (!loadingCategories && categories.length === 0) {
+    return (
+      <section className="py-20 bg-gradient-to-b from-gray-50 to-white">
+        <div className="container mx-auto px-4">
+          <div className="text-center">
+            <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+              <p className="font-bold">Debug: No se encontraron categorías</p>
+              <p>Servicios encontrados: {services.length}</p>
+              <p>Categorías encontradas: {categories.length}</p>
+              <p>Subcategorías encontradas: {subcategories.length}</p>
+            </div>
           </div>
         </div>
       </section>
@@ -116,3 +140,4 @@ export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
     </section>
   )
 }
+

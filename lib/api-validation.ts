@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { z, ZodSchema } from "zod"
 import { validateData } from "./validation-schemas"
 
@@ -61,8 +61,7 @@ export function withValidation(config: ValidationConfig) {
         // Llamar al handler con los datos validados
         return await handler(request, validatedData)
       } catch (error) {
-        console.error("Error en validación de API:", error)
-        return NextResponse.json({
+return NextResponse.json({
           error: "Error interno del servidor"
         }, { status: 500 })
       }

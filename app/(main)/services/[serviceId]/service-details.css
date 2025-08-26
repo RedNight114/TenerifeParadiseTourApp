@@ -1,7 +1,6 @@
-/* Estilos simplificados para la página de detalles de servicio */
+/* Estilos corregidos para la página de detalles de servicio */
 
-/* Ocultar Navbar y Footer del layout principal */
-.service-details-page nav:first-of-type,
+/* Ocultar solo el Footer del layout principal */
 .service-details-page footer:first-of-type {
   display: none !important;
 }
@@ -9,6 +8,30 @@
 /* Asegurar que el contenido ocupe toda la pantalla */
 .service-details-page {
   min-height: 100vh;
+  padding-top: 0; /* Eliminar padding superior que causa montaje */
+}
+
+/* Contenedor principal con padding adecuado para navbar principal */
+.service-details-page .max-w-7xl {
+  padding-top: 2rem; /* Reducir padding superior ya que ahora tenemos hero */
+}
+
+/* Ajustar la navegación de "Volver a Servicios" */
+.service-details-page .mb-6 {
+  margin-bottom: 1.5rem;
+  padding-top: 0.5rem;
+}
+
+/* Ajustar el grid principal para evitar montaje */
+.service-details-page .grid {
+  gap: 2rem;
+  margin-top: 0.5rem;
+}
+
+/* Ajustar la galería para que no se monte */
+.service-details-page .flex.justify-center {
+  padding-top: 0;
+  margin-top: 0;
 }
 
 /* Mejoras de legibilidad */
@@ -29,12 +52,116 @@
 
 /* Mejoras para móviles */
 @media (max-width: 768px) {
-  .service-details-page .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
+  .service-details-page .max-w-7xl {
+    padding-top: 1rem; /* Reducir padding en móviles */
+  }
+  
+  .service-details-page .grid {
+    gap: 1.5rem;
+    margin-top: 0.25rem;
   }
   
   .service-details-page .card {
     margin-bottom: 1rem;
+  }
+
+  /* Ajustar espaciado en móviles */
+  .service-details-page .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+
+  /* Ajustar grid de información detallada en móviles */
+  .service-details-page .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  /* Ajustar grid de políticas en móviles */
+  .service-details-page .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4 {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Mejoras para tablets */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .service-details-page .max-w-7xl {
+    padding-top: 1.5rem; /* Ajuste intermedio para tablets */
+  }
+
+  .service-details-page .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-3.xl\\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+
+  .service-details-page .grid-cols-1.sm\\:grid-cols-2.lg\\:grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+  }
+}
+
+/* Asegurar que no haya elementos flotantes o posicionados absolutamente que causen montaje */
+.service-details-page .relative {
+  position: relative;
+}
+
+.service-details-page .absolute {
+  position: absolute;
+}
+
+/* Eliminar cualquier margen negativo que pueda causar montaje */
+.service-details-page * {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.service-details-page .space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+.service-details-page .space-y-3 > * + * {
+  margin-top: 0.75rem;
+}
+
+/* Mejoras para la responsividad de las tarjetas */
+.service-details-page .card {
+  overflow: hidden;
+}
+
+.service-details-page .card-content {
+  word-wrap: break-word;
+}
+
+/* Asegurar que los textos largos no rompan el layout */
+.service-details-page .truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.service-details-page .break-words {
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Mejoras para el espaciado de la galería */
+.service-details-page .space-y-6 > * + * {
+  margin-top: 1.5rem;
+}
+
+/* Ajustar el tamaño de las imágenes en diferentes dispositivos */
+@media (max-width: 640px) {
+  .service-details-page .h-80 {
+    height: 16rem; /* 256px */
+  }
+  
+  .service-details-page .h-20 {
+    height: 4rem; /* 64px */
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .service-details-page .h-80 {
+    height: 20rem; /* 320px */
   }
 } 

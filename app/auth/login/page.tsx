@@ -1,12 +1,14 @@
-"use client"
+﻿"use client"
 
-import type React from "react"
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
+import { AuthPageWrapper } from "@/components/auth/auth-page-wrapper"
 import { EmailVerificationNotice } from "@/components/auth/email-verification-notice"
+import { LegalModal } from "@/components/legal-modals"
+import { LoginRedirect } from "@/components/auth/login-redirect"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -17,22 +19,27 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle, AlertCircle, Chrome, Facebook, RefreshCw, Shield, Sparkles, Star, MapPin, Clock, Phone } from "lucide-react"
 import { toast } from "sonner"
 
-export default function LoginPage() {
+function LoginPageContent() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [logoError, setLogoError] = useState(false)
+  const [showRedirect, setShowRedirect] = useState(false)
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'terms' | 'cookies' | null }>({
+    isOpen: false,
+    type: null
+  })
 
-  const { signIn, signOut, user, profile, loading, authError: error } = useAuth()
+  const { signIn, signOut, user, profile, loading, error } = useAuthContext()
   const router = useRouter()
   const searchParams = useSearchParams()
 
   // Mostrar opción de cerrar sesión si ya está autenticado
   useEffect(() => {
     if (user && profile && !loading) {
-      console.log('👤 Usuario ya autenticado:', user.email, 'Rol:', profile.role)
+setShowRedirect(true)
     }
   }, [user, profile, loading])
 
@@ -40,80 +47,83 @@ export default function LoginPage() {
   useEffect(() => {
     const message = searchParams.get("message")
     if (message === "registration-success") {
-      toast.success("¡Registro exitoso! Ahora puedes iniciar sesión con tu cuenta verificada.")
+      toast.success("¡Registro exitoso!", {
+        description: "Ahora puedes iniciar sesión con tu cuenta verificada.",
+        duration: 5000,
+        icon: "🎉"
+      })
     } else if (message === "email-verified") {
-      toast.success("¡Email verificado exitosamente! Ya puedes iniciar sesión.")
+      toast.success("¡Email verificado!", {
+        description: "Tu cuenta ha sido confirmada exitosamente. Ya puedes iniciar sesión.",
+        duration: 5000,
+        icon: "✅"
+      })
     }
   }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("🚀 Iniciando proceso de login...")
-    setIsSubmitting(true)
+setIsSubmitting(true)
 
     // Validaciones del cliente
     if (!email || !password) {
-      console.log("❌ Validación fallida: campos vacíos")
-      toast.error("Por favor completa todos los campos")
+toast.error("Campos incompletos", {
+        description: "Por favor completa todos los campos requeridos.",
+        duration: 4000,
+        icon: "⚠️"
+      })
       setIsSubmitting(false)
       return
     }
 
     if (!email.includes("@")) {
-      console.log("❌ Validación fallida: email inválido")
-      toast.error("Por favor ingresa un email válido")
+toast.error("Email inválido", {
+        description: "Por favor ingresa un formato de email válido.",
+        duration: 4000,
+        icon: "📧"
+      })
       setIsSubmitting(false)
       return
     }
-
-    console.log("✅ Validaciones pasadas, llamando a signIn...")
-
-    try {
-      console.log("📞 Llamando a signIn con:", { email, password: "***" })
-      const result = await signIn(email, password)
-      console.log("📥 Resultado de signIn:", { success: result.success, hasError: !!result.error })
-
-      if (!result.success) {
-        console.log("❌ Login fallido:", result.error)
-        // Manejar error de login
+try {
+const result = await signIn(email, password)
+if (result.error) {
+// Manejar error de login
         let errorMessage = "Error al iniciar sesión"
         
         if (result.error && typeof result.error === 'object' && 'message' in result.error) {
           const errorMsg = (result.error as any).message
           if (errorMsg?.includes("Invalid login credentials")) {
-            errorMessage = "Email o contraseña incorrectos"
+            errorMessage = "Credenciales incorrectas"
           } else if (errorMsg?.includes("Email not confirmed")) {
-            errorMessage = "Por favor confirma tu email antes de iniciar sesión"
+            errorMessage = "Email no confirmado"
           } else if (errorMsg?.includes("Too many requests")) {
-            errorMessage = "Demasiados intentos. Espera unos minutos"
+            errorMessage = "Demasiados intentos"
           } else {
             errorMessage = errorMsg
           }
         }
-        
-        console.log("🚨 Mostrando error:", errorMessage)
-        toast.error(errorMessage)
+toast.error("Error de autenticación", {
+          description: errorMessage,
+          duration: 5000,
+          icon: "🔐"
+        })
       } else {
-        console.log("✅ Login exitoso, preparando redirección...")
-        toast.success("¡Inicio de sesión exitoso! Redirigiendo...")
-        
-        // Redirección después de login exitoso
-        const redirectPath = searchParams.get("redirect") || "/profile"
-        console.log("🎯 Redirigiendo a:", redirectPath)
-        
-        // Usar window.location.href para redirección más confiable
-        setTimeout(() => {
-          console.log("🔄 Ejecutando redirección...")
-          window.location.href = redirectPath
-        }, 1000)
+setShowRedirect(true)
       }
     } catch (error) {
-      console.error("💥 Error en login:", error)
-      toast.error("Error al iniciar sesión. Por favor intenta de nuevo.")
+toast.error("Error al iniciar sesión. Por favor intenta de nuevo.")
     } finally {
-      console.log("🏁 Finalizando proceso de login")
-      setIsSubmitting(false)
+setIsSubmitting(false)
     }
+  }
+
+  const openLegalModal = (type: 'privacy' | 'terms' | 'cookies') => {
+    setLegalModal({ isOpen: true, type })
+  }
+
+  const closeLegalModal = () => {
+    setLegalModal({ isOpen: false, type: null })
   }
 
   // Mostrar error de conexión
@@ -145,11 +155,11 @@ export default function LoginPage() {
                 Volver al Inicio
               </Button>
             </div>
-          </div>
-        </div>
+                  </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0061A8] via-[#1E40AF] to-[#F4C762] flex items-center justify-center p-3 sm:p-4 md:p-6 relative overflow-hidden font-sans">
@@ -306,9 +316,7 @@ export default function LoginPage() {
               
               <CardContent className="space-y-4">
                 {/* Notificación de verificación de email */}
-                <EmailVerificationNotice 
-                  type={searchParams.get("message") === "email-verified" ? "success" : "info"}
-                />
+                <EmailVerificationNotice />
                 
                 {/* Aviso si ya está autenticado */}
                 {user && profile && !loading && (
@@ -320,8 +328,7 @@ export default function LoginPage() {
                     <div className="mt-3 space-y-2">
                       <Button
                         onClick={async () => {
-                          console.log("🚪 Cerrando sesión...")
-                          await signOut()
+await signOut()
                           toast.success("Sesión cerrada. Puedes iniciar sesión nuevamente.")
                         }}
                         variant="outline"
@@ -458,19 +465,52 @@ export default function LoginPage() {
                 </div>
                 <div className="text-center text-xs text-gray-500">
                   Al continuar, aceptas nuestros{" "}
-                  <Link href="/terms" className="text-[#0061A8] hover:underline">
+                  <button
+                    onClick={() => openLegalModal('terms')}
+                    className="text-[#0061A8] hover:underline"
+                  >
                     Términos de Servicio
-                  </Link>{" "}
+                  </button>{" "}
                   y{" "}
-                  <Link href="/privacy-policy" className="text-[#0061A8] hover:underline">
+                  <button
+                    onClick={() => openLegalModal('privacy')}
+                    className="text-[#0061A8] hover:underline"
+                  >
                     Política de Privacidad
-                  </Link>
+                  </button>
                 </div>
               </CardFooter>
             </Card>
           </div>
         </div>
       </div>
+      
+      {/* Componente de redirección post-login */}
+      {showRedirect && user && profile && (
+        <LoginRedirect 
+          user={user} 
+          profile={profile} 
+          redirectPath={searchParams.get("redirect") || undefined}
+        />
+      )}
+
+      {/* Legal Modals */}
+      {legalModal.isOpen && legalModal.type && (
+        <LegalModal 
+          isOpen={legalModal.isOpen}
+          type={legalModal.type}
+          onClose={closeLegalModal}
+        />
+      )}
     </div>
   )
 }
+
+export default function LoginPage() {
+  return (
+    <AuthPageWrapper>
+      <LoginPageContent />
+    </AuthPageWrapper>
+  )
+}
+

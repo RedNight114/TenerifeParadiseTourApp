@@ -117,7 +117,7 @@ function interceptFormSubmission() {
       }
     } catch (error) {
       console.error('❌ Error al verificar sesión en submit:', error);
-      alert('❌ Error al verificar sesión: ' + error.message);
+      alert(`❌ Error al verificar sesión: ${  error.message}`);
     }
   });
   

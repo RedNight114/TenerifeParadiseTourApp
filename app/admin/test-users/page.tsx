@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { useAuth } from "@/components/auth-provider-simple"
-import { supabase } from "@/lib/supabase"
+import { useAuthContext } from "@/components/auth-provider"
+import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -30,7 +30,7 @@ export default function TestUsersPage() {
   const [testPassword, setTestPassword] = useState("test123456")
   const [testName, setTestName] = useState("Usuario de Prueba")
 
-  const { user, profile } = useAuth()
+  const { user, profile } = useAuthContext()
 
   // Verificar que es admin
   if (!user || profile?.role !== "admin") {
@@ -50,15 +50,21 @@ export default function TestUsersPage() {
       setLoading(true)
       setError("")
 
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+
       // Obtener usuarios de auth.users (requiere RLS policy especial)
-      const { data: authUsers, error: authError } = await supabase
+      const { data: authUsers, error: authError } = await client
         .from("auth.users")
         .select("id, email, email_confirmed_at, confirmed_at, created_at")
         .order("created_at", { ascending: false })
 
       if (authError) {
         // Si no podemos acceder a auth.users, usar profiles
-        const { data: profiles, error: profilesError } = await supabase
+        const { data: profiles, error: profilesError } = await client
           .from("profiles")
           .select("id, email, role, created_at")
           .order("created_at", { ascending: false })
@@ -104,8 +110,14 @@ export default function TestUsersPage() {
       setError("")
       setSuccess("")
 
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+
       // Crear usuario de prueba
-      const { data, error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await client.auth.signUp({
         email: testEmail,
         password: testPassword,
         options: {
@@ -137,8 +149,14 @@ export default function TestUsersPage() {
       setConfirmLoading(userId)
       setError("")
 
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+
       // Llamar a la función SQL para confirmar usuario
-      const { error } = await supabase.rpc("confirm_test_user", {
+      const { error } = await client.rpc("confirm_test_user", {
         user_email: email,
       })
 

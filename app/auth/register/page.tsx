@@ -1,11 +1,13 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
+import { AuthPageWrapper } from "@/components/auth/auth-page-wrapper"
+import { LegalModal } from "@/components/legal-modals"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,10 +15,10 @@ import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle, AlertCircle, Chrome, Facebook, RefreshCw, Shield, Sparkles, Gift, Award, Users, Clock, Send, ExternalLink } from "lucide-react"
+import { Loader2, Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle, AlertCircle, Chrome, Facebook, RefreshCw, Shield, Sparkles, Star, MapPin, Clock, Phone, Send, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 
-export default function RegisterPage() {
+function RegisterPageContent() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -28,8 +30,12 @@ export default function RegisterPage() {
   const [logoError, setLogoError] = useState(false)
   const [registrationSuccess, setRegistrationSuccess] = useState(false)
   const [registeredEmail, setRegisteredEmail] = useState("")
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'terms' | 'cookies' | null }>({
+    isOpen: false,
+    type: null
+  })
 
-  const { signUp, signInWithProvider, resendVerificationEmail, isAuthenticated, loading, authError } = useAuth()
+  const { signUp, signInWithProvider, resendVerificationEmail, isAuthenticated, loading, error: authError } = useAuthContext()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -43,48 +49,66 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+
+setIsSubmitting(true)
 
     // Validaciones del cliente
     if (!fullName || !email || !password || !confirmPassword) {
-      toast.error("Por favor completa todos los campos")
+toast.error("Campos incompletos", {
+        description: "Por favor completa todos los campos requeridos.",
+        duration: 4000,
+        icon: "⚠️"
+      })
       setIsSubmitting(false)
       return
     }
 
     if (!email.includes("@")) {
-      toast.error("Por favor ingresa un email válido")
+toast.error("Email inválido", {
+        description: "Por favor ingresa un formato de email válido.",
+        duration: 4000,
+        icon: "📧"
+      })
       setIsSubmitting(false)
       return
     }
 
     if (password.length < 6) {
-      toast.error("La contraseña debe tener al menos 6 caracteres")
+toast.error("Contraseña muy corta", {
+        description: "La contraseña debe tener al menos 6 caracteres.",
+        duration: 4000,
+        icon: "🔒"
+      })
       setIsSubmitting(false)
       return
     }
 
     if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden")
+toast.error("Contraseñas no coinciden", {
+        description: "Asegúrate de que ambas contraseñas sean iguales.",
+        duration: 4000,
+        icon: "🔐"
+      })
       setIsSubmitting(false)
       return
     }
 
     if (!acceptTerms) {
-      toast.error("Debes aceptar los términos y condiciones")
+toast.error("Términos no aceptados", {
+        description: "Debes aceptar los términos y condiciones para continuar.",
+        duration: 4000,
+        icon: "📋"
+      })
       setIsSubmitting(false)
       return
     }
-
-    try {
-      const { data, error } = await signUp(email, password, fullName)
-
-      if (error) {
-        // Mensajes de error más amigables
+try {
+const result = await signUp(email, password, fullName)
+if (result.error) {
+// Mensajes de error más amigables
         let errorMessage = "Error en el registro"
-        const errorMsg = error instanceof Error ? error.message : String(error)
-        
-        if (errorMsg.includes("User already registered")) {
+        const errorMsg = result.error || "Error desconocido"
+if (errorMsg.includes("User already registered")) {
           errorMessage = "Este email ya está registrado. Por favor inicia sesión."
         } else if (errorMsg.includes("Password should be at least")) {
           errorMessage = "La contraseña debe tener al menos 6 caracteres."
@@ -92,60 +116,127 @@ export default function RegisterPage() {
           errorMessage = "Por favor ingresa un email válido."
         } else if (errorMsg.includes("Too many requests")) {
           errorMessage = "Demasiados intentos. Por favor espera unos minutos antes de intentar de nuevo."
+        } else if (errorMsg.includes("Unable to validate email address")) {
+          errorMessage = "El formato del email no es válido."
+        } else if (errorMsg.includes("Signup disabled")) {
+          errorMessage = "El registro está temporalmente deshabilitado. Por favor intenta más tarde."
         } else {
           errorMessage = errorMsg
         }
-        
-        toast.error(errorMessage)
+toast.error("Error en el registro", {
+          description: errorMessage,
+          duration: 5000,
+          icon: "❌"
+        })
       } else {
-        // Registro exitoso - mostrar pantalla de verificación
+// Registro exitoso - mostrar pantalla de verificación
         setRegistrationSuccess(true)
         setRegisteredEmail(email)
-        toast.success("¡Registro exitoso! Por favor verifica tu email para confirmar tu cuenta.")
+        toast.success("¡Cuenta creada exitosamente!", {
+          description: "Hemos enviado un email de confirmación. Por favor revisa tu bandeja de entrada y confirma tu cuenta para poder iniciar sesión.",
+          duration: 8000,
+          icon: "📧"
+        })
       }
     } catch (error) {
-      console.error("Error en registro:", error)
-      toast.error("Error inesperado. Por favor intenta de nuevo.")
+const errorMessage = error instanceof Error ? error.message : "Error inesperado"
+      toast.error("Error inesperado", {
+        description: `${errorMessage}. Por favor intenta de nuevo.`,
+        duration: 5000,
+        icon: "💥"
+      })
     } finally {
-      setIsSubmitting(false)
+setIsSubmitting(false)
     }
   }
 
-  const handleSocialRegister = async (provider: "google" | "facebook") => {
+  const handleSocialRegister = async (provider: "google" | "github") => {
     try {
-      console.log(`Registrándote con ${provider}...`)
-      toast.info(`Registrándote con ${provider}...`)
+toast.info(`Conectando con ${provider}...`, {
+        description: `Preparando la autenticación con ${provider}.`,
+        duration: 3000,
+        icon: "🔗"
+      })
       
-      const { error } = await signInWithProvider(provider)
-      
-      if (error) {
-        toast.error(`Error al registrarse con ${provider}: ${error}`)
+      if (signInWithProvider) {
+        try {
+          await signInWithProvider(provider)
+          toast.success(`Redirigiendo...`, {
+            description: `Conectando con ${provider} para completar el registro.`,
+            duration: 3000,
+            icon: "🔄"
+          })
+        } catch (error) {
+          toast.error(`Error con ${provider}`, {
+            description: `No se pudo conectar con ${provider}. Intenta de nuevo.`,
+            duration: 5000,
+            icon: "❌"
+          })
+        }
       } else {
-        toast.success(`Redirigiendo a ${provider}...`)
+        toast.error("Servicio no disponible", {
+          description: "No se puede iniciar sesión con proveedor en este momento.",
+          duration: 5000,
+          icon: "⚠️"
+        })
       }
     } catch (error) {
-      console.error(`Error en registro con ${provider}:`, error)
-      toast.error(`Error al registrarse con ${provider}`)
+toast.error(`Error con ${provider}`, {
+        description: `Error al registrarse con ${provider}. Intenta de nuevo.`,
+        duration: 5000,
+        icon: "💥"
+      })
     }
   }
 
   const handleResendVerification = async () => {
     try {
-      toast.info("Enviando email de verificación...")
-      const { success, error } = await resendVerificationEmail(registeredEmail)
-      
-      if (success) {
-        toast.success("Email de verificación enviado. Revisa tu bandeja de entrada.")
+      toast.info("Enviando email de verificación...", {
+        description: "Preparando el envío del email de confirmación.",
+        duration: 3000,
+        icon: "📤"
+      })
+      if (resendVerificationEmail) {
+        const { error } = await resendVerificationEmail()
+        if (!error) {
+          toast.success("Email enviado", {
+            description: "El email de verificación ha sido enviado. Revisa tu bandeja de entrada.",
+            duration: 5000,
+            icon: "✅"
+          })
+        } else {
+          toast.error("Error al enviar email", {
+            description: error || "No se pudo enviar el email de verificación.",
+            duration: 5000,
+            icon: "❌"
+          })
+        }
       } else {
-        toast.error(`Error al enviar el email: ${error}`)
+        toast.error("Servicio no disponible", {
+          description: "No se puede reenviar el email de verificación en este momento.",
+          duration: 5000,
+          icon: "⚠️"
+        })
       }
     } catch (error) {
-      toast.error("Error al enviar el email de verificación")
+      toast.error("Error inesperado", {
+        description: "Error al enviar el email de verificación. Intenta de nuevo.",
+        duration: 5000,
+        icon: "💥"
+      })
     }
   }
 
   const openGmail = () => {
     window.open("https://mail.google.com", "_blank")
+  }
+
+  const openLegalModal = (type: 'privacy' | 'terms' | 'cookies') => {
+    setLegalModal({ isOpen: true, type })
+  }
+
+  const closeLegalModal = () => {
+    setLegalModal({ isOpen: false, type: null })
   }
 
   // Mostrar loading mientras verifica autenticación
@@ -203,11 +294,11 @@ export default function RegisterPage() {
                 Volver al Inicio
               </Button>
             </div>
-          </div>
-        </div>
+                  </div>
       </div>
-    )
-  }
+    </div>
+  )
+}
 
   // Pantalla de verificación de email
   if (registrationSuccess) {
@@ -303,12 +394,12 @@ export default function RegisterPage() {
       <div className="absolute top-1/2 left-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg animate-pulse delay-500"></div>
       <div className="absolute top-1/3 right-1/4 w-10 h-10 bg-[#F4C762]/15 rounded-full blur-md animate-pulse delay-1500"></div>
 
-      <div className="w-full max-w-5xl relative z-10">
+      <div className="w-full max-w-6xl relative z-10">
         {/* Sección de bienvenida - Siempre visible, encima del formulario en móviles/tablets */}
-        <div className="xl:hidden text-white text-center mb-4 sm:mb-6 lg:mb-8 px-3 sm:px-4 md:px-6">
-          <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-            <div className="flex items-center justify-center space-x-2 sm:space-x-3">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 relative flex-shrink-0">
+        <div className="lg:hidden text-white text-center mb-6 sm:mb-8 px-3 sm:px-4">
+          <div className="space-y-4 sm:space-y-6">
+            <div className="flex items-center justify-center space-x-3 sm:space-x-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 relative flex-shrink-0">
                 {!logoError ? (
                   <Image
                     src="/images/logo-tenerife.png"
@@ -318,36 +409,36 @@ export default function RegisterPage() {
                     onError={() => setLogoError(true)}
                   />
                 ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-[#F4C762] to-[#EAB308] rounded-lg flex items-center justify-center shadow-2xl relative">
-                    <span className="text-white font-bold text-base sm:text-lg lg:text-xl">TP</span>
-                    <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-[#0061A8] animate-pulse" />
+                  <div className="w-full h-full bg-gradient-to-r from-[#0061A8] to-[#F4C762] rounded-lg flex items-center justify-center shadow-2xl relative">
+                    <span className="text-white font-bold text-base sm:text-lg">TP</span>
+                    <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-[#F4C762] animate-pulse" />
                   </div>
                 )}
               </div>
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm sm:text-base lg:text-lg xl:text-xl font-bold leading-tight">Tenerife Paradise</h2>
-                <p className="text-[#F4C762] font-medium text-xs sm:text-sm lg:text-base xl:text-lg">Tours & Excursions</p>
+              <div className="min-w-0 flex-1 text-center">
+                <h2 className="text-base sm:text-lg font-bold leading-tight">Tenerife Paradise</h2>
+                <p className="text-[#F4C762] font-medium text-sm sm:text-base">Tours & Excursions</p>
               </div>
             </div>
             
-            <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-              <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl xl:text-5xl font-bold leading-tight tracking-tight">
+            <div className="space-y-3 sm:space-y-4">
+              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight tracking-tight">
                 ¡Únete a la aventura!
               </h1>
-              <p className="text-sm sm:text-base lg:text-lg xl:text-xl leading-relaxed text-white/90 max-w-md lg:max-w-lg mx-auto">
+              <p className="text-base sm:text-lg leading-relaxed text-white/90 max-w-lg mx-auto">
                 Crea tu cuenta y descubre increíbles experiencias en Tenerife que te cambiarán la vida
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 xl:gap-8 items-center min-h-[320px] xl:min-h-[400px]">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 items-center">
           {/* Lado izquierdo - Información (solo en desktop) */}
-          <div className="hidden xl:block text-white space-y-3 sm:space-y-4 lg:space-y-6 order-2 xl:order-1 px-3 sm:px-4 md:px-6">
+          <div className="hidden lg:block text-white space-y-6 lg:space-y-8 order-2 lg:order-1 px-3 sm:px-4">
             {/* Logo y título - Solo en desktop */}
-            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <div className="flex items-center space-x-2 sm:space-x-3">
-                <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 relative flex-shrink-0">
+            <div className="space-y-6 lg:space-y-8">
+              <div className="flex items-center space-x-3 sm:space-x-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 relative flex-shrink-0">
                   {!logoError ? (
                     <Image
                       src="/images/logo-tenerife.png"
@@ -357,348 +448,303 @@ export default function RegisterPage() {
                       onError={() => setLogoError(true)}
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-[#F4C762] to-[#EAB308] rounded-lg flex items-center justify-center shadow-2xl relative">
+                    <div className="w-full h-full bg-gradient-to-r from-[#0061A8] to-[#F4C762] rounded-lg flex items-center justify-center shadow-2xl relative">
                       <span className="text-white font-bold text-sm sm:text-base lg:text-lg">TP</span>
-                      <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-[#0061A8] animate-pulse" />
+                      <Sparkles className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 text-[#F4C762] animate-pulse" />
                     </div>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h2 className="text-xs sm:text-sm lg:text-base xl:text-lg font-bold leading-tight">Tenerife Paradise</h2>
-                  <p className="text-[#F4C762] font-medium text-xs sm:text-sm lg:text-base xl:text-lg">Tours & Excursions</p>
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight">Tenerife Paradise</h2>
+                  <p className="text-[#F4C762] font-medium text-base sm:text-lg lg:text-xl">Tours & Excursions</p>
                 </div>
               </div>
               
-              <div className="space-y-2 sm:space-y-3 lg:space-y-4">
-                <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold leading-tight tracking-tight">
+              <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
                   ¡Únete a la aventura!
                 </h1>
-                <p className="text-xs sm:text-sm lg:text-base xl:text-lg leading-relaxed text-white/90 max-w-md lg:max-w-lg">
+                <p className="text-lg sm:text-xl lg:text-2xl leading-relaxed text-white/90 max-w-lg lg:max-w-xl">
                   Crea tu cuenta y descubre increíbles experiencias en Tenerife que te cambiarán la vida
                 </p>
               </div>
             </div>
 
-            {/* Beneficios destacados - Solo en desktop */}
-            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <h3 className="text-xs sm:text-sm lg:text-base xl:text-lg font-bold text-[#F4C762]">Beneficios exclusivos</h3>
-              <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-                <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                    <Gift className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-[#F4C762]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-xs sm:text-sm lg:text-base xl:text-lg mb-1">Ofertas Exclusivas</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Descuentos especiales solo para miembros</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                    <Award className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-[#F4C762]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-xs sm:text-sm lg:text-base xl:text-lg mb-1">Experiencias Premium</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Acceso a tours y actividades exclusivas</p>
+            {/* Características destacadas */}
+            <div className="space-y-4 sm:space-y-6">
+              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-[#F4C762]">
+                Beneficios exclusivos
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                <div className="flex items-start space-x-3">
+                  <Star className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-sm sm:text-base">Ofertas Exclusivas</h4>
+                    <p className="text-white/80 text-xs sm:text-sm">Descuentos especiales solo para miembros</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                    <Users className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-[#F4C762]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-xs sm:text-sm lg:text-base xl:text-lg mb-1">Comunidad Activa</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Conecta con otros viajeros</p>
+                <div className="flex items-start space-x-3">
+                  <Shield className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-sm sm:text-base">Experiencias Premium</h4>
+                    <p className="text-white/80 text-xs sm:text-sm">Acceso a tours y actividades exclusivas</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-2 sm:space-x-3 lg:space-x-4">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-1">
-                    <Clock className="w-3 h-3 sm:w-4 sm:h-4 lg:w-5 lg:h-5 text-[#F4C762]" />
+                <div className="flex items-start space-x-3">
+                  <MapPin className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-sm sm:text-base">Comunidad Activa</h4>
+                    <p className="text-white/80 text-xs sm:text-sm">Conecta con otros viajeros</p>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-xs sm:text-sm lg:text-base xl:text-lg mb-1">Soporte Prioritario</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Atención personalizada 24/7</p>
+                </div>
+                <div className="flex items-start space-x-3">
+                  <Clock className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
+                  <div>
+                    <h4 className="font-semibold text-sm sm:text-base">Soporte Prioritario</h4>
+                    <p className="text-white/80 text-xs sm:text-sm">Atención personalizada 24/7</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Contacto - Solo en desktop */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 lg:p-6 border border-white/20">
-              <div className="flex items-center space-x-2 sm:space-x-3 mb-2 sm:mb-3">
-                <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-[#F4C762] flex-shrink-0" />
-                <span className="font-semibold text-xs sm:text-sm lg:text-base">¿Tienes preguntas?</span>
+            {/* Información de contacto */}
+            <div className="space-y-3 sm:space-y-4">
+              <div className="flex items-center space-x-3">
+                <Phone className="w-4 h-4 text-[#F4C762]" />
+                <span className="text-sm sm:text-base">+34 617 30 39 29</span>
               </div>
-              <p className="text-white/80 text-xs sm:text-sm lg:text-base mb-2 sm:mb-3 leading-relaxed">
-                Nuestro equipo está aquí para ayudarte con el proceso de registro
-              </p>
-              <a 
-                href="tel:+34617303929" 
-                className="text-[#F4C762] font-bold hover:underline transition-colors text-xs sm:text-sm lg:text-base"
-              >
-                +34 617 30 39 29
-              </a>
+              <div className="flex items-center space-x-3">
+                <Mail className="w-4 h-4 text-[#F4C762]" />
+                <span className="text-sm sm:text-base break-all">Tenerifeparadisetoursandexcursions@hotmail.com</span>
+              </div>
+              <div className="flex items-center space-x-3">
+                <MapPin className="w-4 h-4 text-[#F4C762]" />
+                <span className="text-sm sm:text-base">Santa Cruz de Tenerife, Islas Canarias</span>
+              </div>
             </div>
           </div>
 
-          {/* Formulario - Centrado en móviles/tablets, lado derecho en desktop */}
-          <div className="flex justify-center xl:order-2 px-3 sm:px-4 md:px-6">
-            <Card className="w-full max-w-sm sm:max-w-md lg:max-w-lg xl:w-[1120px] shadow-2xl border-0 bg-white/95 backdrop-blur-sm rounded-xl">
-              <CardHeader className="text-center pb-2 sm:pb-3 pt-3 sm:pt-4 px-3 sm:px-4">
-                <div className="mx-auto mb-2 sm:mb-3 w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 bg-gradient-to-r from-[#F4C762] to-[#EAB308] rounded-lg flex items-center justify-center shadow-lg">
-                  <Shield className="w-4 h-4 sm:w-5 sm:h-5 lg:w-6 lg:h-6 text-white" />
-                </div>
-                <CardTitle className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 mb-1 sm:mb-2 leading-tight">Crear Cuenta</CardTitle>
-                <CardDescription className="text-gray-600 text-xs sm:text-sm lg:text-base leading-relaxed max-w-xs mx-auto">
+          {/* Lado derecho - Formulario de registro */}
+          <div className="order-1 lg:order-2">
+            <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">
+                  Crear Cuenta
+                </CardTitle>
+                <CardDescription className="text-gray-600">
                   Únete a Tenerife Paradise y descubre increíbles experiencias
                 </CardDescription>
               </CardHeader>
-
-              <CardContent className="space-y-2 sm:space-y-3 px-3 sm:px-4">
-                <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="fullName" className="text-xs sm:text-sm lg:text-base font-semibold text-gray-700">
+              
+              <CardContent className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fullName" className="text-sm font-medium text-gray-700">
                       Nombre Completo
                     </Label>
-                    <div className="relative group">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4 group-focus-within:text-[#F4C762] transition-colors" />
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="fullName"
                         type="text"
                         placeholder="Tu nombre completo"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="pl-10 h-8 sm:h-10 lg:h-12 border-2 focus:border-[#F4C762] focus:ring-2 focus:ring-[#F4C762]/20 transition-all duration-300 text-xs sm:text-sm lg:text-base rounded-lg bg-white/50 backdrop-blur-sm"
+                        className="pl-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="email" className="text-xs sm:text-sm lg:text-base font-semibold text-gray-700">
-                      Correo Electrónico
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-sm font-medium text-gray-700">
+                      Email
                     </Label>
-                    <div className="relative group">
-                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4 group-focus-within:text-[#F4C762] transition-colors" />
+                    <div className="relative">
+                      <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="email"
                         type="email"
                         placeholder="tu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 h-8 sm:h-10 lg:h-12 border-2 focus:border-[#F4C762] focus:ring-2 focus:ring-[#F4C762]/20 transition-all duration-300 text-xs sm:text-sm lg:text-base rounded-lg bg-white/50 backdrop-blur-sm"
+                        className="pl-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
                     </div>
                   </div>
-
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="password" className="text-xs sm:text-sm lg:text-base font-semibold text-gray-700">
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                       Contraseña
                     </Label>
-                    <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4 group-focus-within:text-[#F4C762] transition-colors" />
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 h-8 sm:h-10 lg:h-12 border-2 focus:border-[#F4C762] focus:ring-2 focus:ring-[#F4C762]/20 transition-all duration-300 text-xs sm:text-sm lg:text-base rounded-lg bg-white/50 backdrop-blur-sm"
+                        className="pl-10 pr-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        {showPassword ? <EyeOff className="w-3 h-3 sm:w-4 sm:h-4" /> : <Eye className="w-3 h-3 sm:w-4 sm:h-4" />}
-                      </button>
+                        {showPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2">
-                    <Label htmlFor="confirmPassword" className="text-xs sm:text-sm lg:text-base font-semibold text-gray-700">
+                  <div className="space-y-2">
+                    <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
                       Confirmar Contraseña
                     </Label>
-                    <div className="relative group">
-                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-3 h-3 sm:w-4 sm:h-4 group-focus-within:text-[#F4C762] transition-colors" />
+                    <div className="relative">
+                      <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
                         id="confirmPassword"
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="••••••••"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="pl-10 pr-10 h-8 sm:h-10 lg:h-12 border-2 focus:border-[#F4C762] focus:ring-2 focus:ring-[#F4C762]/20 transition-all duration-300 text-xs sm:text-sm lg:text-base rounded-lg bg-white/50 backdrop-blur-sm"
+                        className="pl-10 pr-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                       >
-                        {showConfirmPassword ? <EyeOff className="w-3 h-3 sm:w-4 sm:h-4" /> : <Eye className="w-3 h-3 sm:w-4 sm:h-4" />}
-                      </button>
+                        {showConfirmPassword ? (
+                          <EyeOff className="h-4 w-4 text-gray-400" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-gray-400" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-
+                  
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="terms"
                       checked={acceptTerms}
                       onCheckedChange={(checked) => setAcceptTerms(checked as boolean)}
-                      className="border-2 data-[state=checked]:bg-[#F4C762] data-[state=checked]:border-[#F4C762] w-3 h-3 sm:w-4 sm:h-4 mt-1"
-                      required
+                      className="mt-1"
                     />
-                    <Label htmlFor="terms" className="text-xs sm:text-sm lg:text-base text-gray-600 cursor-pointer leading-relaxed">
+                    <Label htmlFor="terms" className="text-sm text-gray-600 cursor-pointer leading-relaxed">
                       Acepto los{" "}
-                      <Link href="/terms" target="_blank" className="text-[#0061A8] hover:text-[#0061A8]/80 underline font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => openLegalModal('terms')}
+                        className="text-[#0061A8] hover:text-[#0061A8]/80 underline font-semibold"
+                      >
                         términos y condiciones
-                      </Link>{" "}
+                      </button>{" "}
                       y la{" "}
-                      <Link href="/privacy-policy" target="_blank" className="text-[#0061A8] hover:text-[#0061A8]/80 underline font-semibold">
+                      <button
+                        type="button"
+                        onClick={() => openLegalModal('privacy')}
+                        className="text-[#0061A8] hover:text-[#0061A8]/80 underline font-semibold"
+                      >
                         política de privacidad
-                      </Link>
+                      </button>
                     </Label>
                   </div>
-
+                  
                   <Button
                     type="submit"
-                    className="w-full h-8 sm:h-10 lg:h-12 bg-gradient-to-r from-[#F4C762] to-[#EAB308] hover:from-[#EAB308] hover:to-[#CA8A04] text-white font-bold text-xs sm:text-sm lg:text-base shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none rounded-lg group"
                     disabled={isSubmitting}
+                    className="w-full bg-gradient-to-r from-[#0061A8] to-[#1E40AF] hover:from-[#004A87] hover:to-[#1E3A8A] text-white font-semibold py-3 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 mr-2 animate-spin" />
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creando cuenta...
                       </>
                     ) : (
                       <>
                         Crear Cuenta
-                        <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 ml-2 transition-transform group-hover:translate-x-1" />
+                        <ArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}
                   </Button>
                 </form>
-
+                
                 <div className="relative">
                   <div className="absolute inset-0 flex items-center">
-                    <Separator className="w-full" />
+                    <span className="w-full border-t border-gray-300" />
                   </div>
-                  <div className="relative flex justify-center text-xs sm:text-sm lg:text-base uppercase">
-                    <span className="bg-white px-3 sm:px-4 text-gray-500 font-semibold">O regístrate con (Próximamente)</span>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-white/95 px-2 text-gray-500">O regístrate con (Próximamente)</span>
                   </div>
                 </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <Button
-                    variant="outline"
-                    disabled
-                    className="w-full h-8 sm:h-10 lg:h-12 border-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded-lg font-medium opacity-60"
-                  >
-                    <Chrome className="mr-2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                    Continuar con Google (Próximamente)
-                  </Button>
-                  <Button
-                    variant="outline"
-                    disabled
-                    className="w-full h-8 sm:h-10 lg:h-12 border-2 bg-gray-100 text-gray-400 cursor-not-allowed rounded-lg font-medium opacity-60"
-                  >
-                    <Facebook className="mr-2 h-3 w-3 sm:h-4 sm:w-4 text-gray-400" />
-                    Continuar con Facebook (Próximamente)
-                  </Button>
+                
+                <div className="text-center text-sm text-gray-500 py-2">
+                  Los registros sociales estarán disponibles próximamente
                 </div>
               </CardContent>
-
-              <CardFooter className="flex flex-col space-y-3 sm:space-y-4 pb-4 sm:pb-6 px-3 sm:px-4">
-                <div className="text-center">
-                  <p className="text-xs sm:text-sm lg:text-base text-gray-600">
-                    ¿Ya tienes una cuenta?{" "}
-                    <Link
-                      href="/auth/login"
-                      className="text-[#0061A8] hover:text-[#0061A8]/80 font-bold transition-colors hover:underline"
-                    >
-                      Inicia sesión aquí
-                    </Link>
-                  </p>
-                </div>
-                <div className="text-center">
+              
+              <CardFooter className="flex flex-col space-y-3">
+                <div className="text-center text-sm text-gray-600">
+                  ¿Ya tienes una cuenta?{" "}
                   <Link
-                    href="/"
-                    className="text-xs sm:text-sm lg:text-base text-gray-500 hover:text-[#0061A8] transition-colors font-medium"
+                    href="/auth/login"
+                    className="text-[#0061A8] hover:text-[#004A87] font-medium"
                   >
-                    ← Volver al Inicio
+                    Inicia sesión aquí
                   </Link>
+                </div>
+                <div className="text-center text-xs text-gray-500">
+                  Al continuar, aceptas nuestros{" "}
+                  <button
+                    onClick={() => openLegalModal('terms')}
+                    className="text-[#0061A8] hover:underline"
+                  >
+                    Términos de Servicio
+                  </button>{" "}
+                  y{" "}
+                  <button
+                    onClick={() => openLegalModal('privacy')}
+                    className="text-[#0061A8] hover:underline"
+                  >
+                    Política de Privacidad
+                  </button>
                 </div>
               </CardFooter>
             </Card>
           </div>
         </div>
-
-        {/* Sección de beneficios y contacto para móviles y tablets */}
-        <div className="xl:hidden mt-6 sm:mt-8 lg:mt-12 px-3 sm:px-4 md:px-6">
-          <div className="text-white space-y-4 sm:space-y-6 lg:space-y-8">
-            {/* Beneficios destacados */}
-            <div className="space-y-3 sm:space-y-4 lg:space-y-6">
-              <h3 className="text-sm sm:text-base lg:text-lg font-bold text-[#F4C762] text-center">Beneficios exclusivos</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3 sm:gap-4 lg:gap-6">
-                <div className="flex flex-col items-center text-center space-y-2 sm:space-y-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Gift className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-[#F4C762]" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base lg:text-lg mb-1">Ofertas Exclusivas</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Descuentos especiales solo para miembros</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center space-y-2 sm:space-y-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Award className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-[#F4C762]" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base lg:text-lg mb-1">Experiencias Premium</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Acceso a tours y actividades exclusivas</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center space-y-2 sm:space-y-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Users className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-[#F4C762]" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base lg:text-lg mb-1">Comunidad Activa</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Conecta con otros viajeros</p>
-                  </div>
-                </div>
-                <div className="flex flex-col items-center text-center space-y-2 sm:space-y-3">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Clock className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-[#F4C762]" />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base lg:text-lg mb-1">Soporte Prioritario</h4>
-                    <p className="text-white/80 text-xs sm:text-sm lg:text-base leading-relaxed">Atención personalizada 24/7</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Contacto */}
-            <div className="bg-white/10 backdrop-blur-sm rounded-lg p-3 sm:p-4 lg:p-6 border border-white/20 text-center">
-              <div className="flex items-center justify-center space-x-2 sm:space-x-3 mb-2 sm:mb-3">
-                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#F4C762] flex-shrink-0" />
-                <span className="font-semibold text-sm sm:text-base lg:text-lg">¿Tienes preguntas?</span>
-              </div>
-              <p className="text-white/80 text-xs sm:text-sm lg:text-base mb-3 sm:mb-4 leading-relaxed max-w-sm mx-auto">
-                Nuestro equipo está aquí para ayudarte con el proceso de registro
-              </p>
-              <a 
-                href="tel:+34617303929" 
-                className="text-[#F4C762] font-bold hover:underline transition-colors text-sm sm:text-base lg:text-lg"
-              >
-                +34 617 30 39 29
-              </a>
-            </div>
-          </div>
-        </div>
       </div>
+
+      {/* Legal Modals */}
+      {legalModal.isOpen && legalModal.type && (
+        <LegalModal 
+          isOpen={legalModal.isOpen}
+          type={legalModal.type}
+          onClose={closeLegalModal}
+        />
+      )}
     </div>
   )
 }
+
+export default function RegisterPage() {
+  return (
+    <AuthPageWrapper>
+      <RegisterPageContent />
+    </AuthPageWrapper>
+  )
+}
+

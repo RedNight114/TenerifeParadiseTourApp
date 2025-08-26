@@ -125,10 +125,8 @@ export function generateRedsysSignatureV2(
     debugInfo.secretKeyLength = secretKey.length;
 
     if (debug) {
-      console.log('🔍 PASO 2 - Clave secreta:');
-      console.log(`  - Base64: ${secretKeyBase64}`);
-      console.log(`  - Longitud: ${secretKey.length} bytes`);
-      console.log(`  - Hex: ${secretKey.toString('hex')}`);
+      // PASO 2 - Clave secreta
+      // Base64, Longitud y Hex disponibles para debug
     }
 
     // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
@@ -144,12 +142,8 @@ export function generateRedsysSignatureV2(
     debugInfo.derivedKeyBase64 = encryptedOrder.toString('base64');
 
     if (debug) {
-      console.log('🔍 PASO 3 - Cifrado 3DES ECB:');
-      console.log(`  - Order original: ${orderNumber}`);
-      console.log(`  - Order length: ${orderNumber.length} caracteres`);
-      console.log(`  - Cifrado (hex): ${encryptedOrder.toString('hex')}`);
-      console.log(`  - Cifrado (base64): ${encryptedOrder.toString('base64')}`);
-      console.log(`  - Longitud cifrado: ${encryptedOrder.length} bytes`);
+      // PASO 3 - Cifrado 3DES ECB
+      // Order original, length, cifrado hex/base64 y longitud disponibles para debug
     }
 
     // 🔍 PASO 4: ORDENAR PARÁMETROS ALFABÉTICAMENTE (ESTÁNDAR REDSYS)
@@ -158,8 +152,8 @@ export function generateRedsysSignatureV2(
     );
 
     if (debug) {
-      console.log('🔍 PASO 4 - Parámetros ordenados alfabéticamente:');
-      console.log(JSON.stringify(orderedParams, null, 2));
+      // PASO 4 - Parámetros ordenados alfabéticamente
+      // JSON.stringify(orderedParams, null, 2) disponible para debug
     }
 
     // 🔍 PASO 5: SERIALIZAR A JSON Y CODIFICAR
@@ -171,10 +165,8 @@ export function generateRedsysSignatureV2(
     debugInfo.merchantParamsBase64 = merchantParamsBase64;
 
     if (debug) {
-      console.log('🔍 PASO 5 - Serialización:');
-      console.log(`  - JSON length: ${merchantParamsJson.length} caracteres`);
-      console.log(`  - JSON: ${merchantParamsJson}`);
-      console.log(`  - Base64: ${merchantParamsBase64}`);
+      // PASO 5 - Serialización
+      // JSON length, JSON y Base64 disponibles para debug
     }
 
     // 🔍 PASO 6: CALCULAR HMAC-SHA256
@@ -183,10 +175,8 @@ export function generateRedsysSignatureV2(
     const signature = hmac.digest('base64');
 
     if (debug) {
-      console.log('🔍 PASO 6 - Firma HMAC:');
-      console.log(`  - Clave derivada (hex): ${encryptedOrder.toString('hex')}`);
-      console.log(`  - Datos a firmar: ${merchantParamsBase64}`);
-      console.log(`  - Firma final: ${signature}`);
+      // PASO 6 - Firma HMAC
+      // Clave derivada hex, datos a firmar y firma final disponibles para debug
     }
 
     return {
@@ -195,8 +185,7 @@ export function generateRedsysSignatureV2(
     };
 
   } catch (error) {
-    console.error('❌ ERROR EN GENERACIÓN DE FIRMA REDSYS:');
-    console.error(error);
+    // ERROR EN GENERACIÓN DE FIRMA REDSYS
     throw error;
   }
 }
@@ -215,8 +204,7 @@ export function verifyRedsysSignatureV2(
     const result = generateRedsysSignatureV2(secretKeyBase64, orderNumber, merchantParams, options);
     return result.signature === signature;
   } catch (error) {
-    console.error('❌ ERROR EN VERIFICACIÓN DE FIRMA:');
-    console.error(error);
+    // ERROR EN VERIFICACIÓN DE FIRMA
     return false;
   }
 }
@@ -281,10 +269,8 @@ export function verifyRedsysSignatureV2Original(
     const secretKey = Buffer.from(secretKeyBase64, 'base64');
 
     if (debug) {
-      console.log('🔍 PASO 2 - Clave secreta:');
-      console.log(`  - Base64: ${secretKeyBase64}`);
-      console.log(`  - Longitud: ${secretKey.length} bytes`);
-      console.log(`  - Hex: ${secretKey.toString('hex')}`);
+      // PASO 2 - Clave secreta
+      // Base64, Longitud y Hex disponibles para debug
     }
 
     // 🔍 PASO 3: CIFRAR NÚMERO DE ORDEN CON 3DES ECB
@@ -295,20 +281,16 @@ export function verifyRedsysSignatureV2Original(
     encryptedOrder = Buffer.concat([encryptedOrder, cipher.final()]);
 
     if (debug) {
-      console.log('🔍 PASO 3 - Cifrado 3DES ECB:');
-      console.log(`  - Order original: ${orderNumber}`);
-      console.log(`  - Order length: ${orderNumber.length} caracteres`);
-      console.log(`  - Cifrado (hex): ${encryptedOrder.toString('hex')}`);
-      console.log(`  - Cifrado (base64): ${encryptedOrder.toString('base64')}`);
-      console.log(`  - Longitud cifrado: ${encryptedOrder.length} bytes`);
+      // PASO 3 - Cifrado 3DES ECB
+      // Order original, length, cifrado hex/base64 y longitud disponibles para debug
     }
 
     // 🔍 PASO 4: MANTENER ORDEN ORIGINAL (NO ORDENAR)
     const orderedParams = merchantParams; // Mantener orden original para verificación
 
     if (debug) {
-      console.log('🔍 PASO 4 - Parámetros (orden original):');
-      console.log(JSON.stringify(orderedParams, null, 2));
+      // PASO 4 - Parámetros (orden original)
+      // JSON.stringify(orderedParams, null, 2) disponible para debug
     }
 
     // 🔍 PASO 5: SERIALIZAR A JSON Y BASE64 (ORDEN ORIGINAL)
@@ -316,10 +298,8 @@ export function verifyRedsysSignatureV2Original(
     const merchantParamsBase64 = Buffer.from(merchantParamsJson, 'utf8').toString('base64');
 
     if (debug) {
-      console.log('🔍 PASO 5 - Serialización (orden original):');
-      console.log(`  - JSON length: ${merchantParamsJson.length} caracteres`);
-      console.log(`  - JSON: ${merchantParamsJson}`);
-      console.log(`  - Base64: ${merchantParamsBase64}`);
+      // PASO 5 - Serialización (orden original)
+      // JSON length, JSON y Base64 disponibles para debug
     }
 
     // 🔍 PASO 6: CALCULAR HMAC-SHA256
@@ -328,17 +308,13 @@ export function verifyRedsysSignatureV2Original(
     const calculatedSignature = hmac.digest('base64');
 
     if (debug) {
-      console.log('🔍 PASO 6 - Firma HMAC:');
-      console.log(`  - Clave derivada (hex): ${encryptedOrder.toString('hex')}`);
-      console.log(`  - Datos a firmar: ${merchantParamsBase64}`);
-      console.log(`  - Firma calculada: ${calculatedSignature}`);
-      console.log(`  - Firma recibida: ${signature}`);
+      // PASO 6 - Firma HMAC
+      // Clave derivada hex, datos a firmar, firma calculada y recibida disponibles para debug
     }
 
     return calculatedSignature === signature;
   } catch (error) {
-    console.error('❌ ERROR EN VERIFICACIÓN DE FIRMA (ORDEN ORIGINAL):');
-    console.error(error);
+    // ERROR EN VERIFICACIÓN DE FIRMA (ORDEN ORIGINAL)
     return false;
   }
 } 

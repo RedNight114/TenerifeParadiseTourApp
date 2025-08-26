@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect, useCallback } from "react"
 
@@ -49,8 +49,7 @@ export function useCookies(): UseCookiesReturn {
           setHasConsent(true)
           applyPreferences(savedPreferences)
         } catch (error) {
-          console.error('Error parsing saved cookie preferences:', error)
-        }
+}
       }
     }
   }, [])

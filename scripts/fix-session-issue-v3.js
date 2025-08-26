@@ -419,7 +419,7 @@ function createSimpleTestButton() {
     const token = await getSessionToken();
     
     if (token) {
-      console.log('✅ Token encontrado:', token.substring(0, 20) + '...');
+      console.log('✅ Token encontrado:', `${token.substring(0, 20)  }...`);
       
       const response = await fetch('/api/auth/session', {
         method: 'GET',

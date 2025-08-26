@@ -27,7 +27,7 @@ async function getSessionToken() {
           const parsed = JSON.parse(value);
           if (parsed.access_token) {
             console.log('✅ TOKEN ENCONTRADO en localStorage:', key);
-            console.log('🔑 Token:', parsed.access_token.substring(0, 50) + '...');
+            console.log('🔑 Token:', `${parsed.access_token.substring(0, 50)  }...`);
             return parsed.access_token;
           }
         }
@@ -366,7 +366,7 @@ function createSimpleTestButton() {
     const token = await getSessionToken();
     
     if (token) {
-      console.log('✅ Token encontrado:', token.substring(0, 50) + '...');
+      console.log('✅ Token encontrado:', `${token.substring(0, 50)  }...`);
       
       const response = await fetch('/api/auth/session', {
         method: 'GET',

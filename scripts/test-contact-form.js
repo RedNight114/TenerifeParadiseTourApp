@@ -68,7 +68,7 @@ async function testContactForm() {
           console.log('Fecha:', msg.date, typeof msg.date)
           console.log('Personas:', msg.guests, typeof msg.guests)
           console.log('Estado:', msg.status, typeof msg.status)
-          console.log('Mensaje:', msg.message ? msg.message.substring(0, 100) + '...' : 'null', typeof msg.message)
+          console.log('Mensaje:', msg.message ? `${msg.message.substring(0, 100)  }...` : 'null', typeof msg.message)
           
           // Verificar problemas específicos
           if (msg.guests && isNaN(msg.guests)) {

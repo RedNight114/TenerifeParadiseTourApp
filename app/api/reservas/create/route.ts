@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { generateRedsysSignatureV2 } from '@/lib/redsys/signature-v2';
 
@@ -47,8 +47,7 @@ export async function POST(req: NextRequest) {
       .single();
 
     if (reservationError) {
-      console.error('Error creando reserva:', reservationError);
-      return new NextResponse('Error al crear la reserva', { status: 500 });
+return new NextResponse('Error al crear la reserva', { status: 500 });
     }
 
     // 🔥 CONFIGURACIÓN REDSYS CORREGIDA PARA EVITAR SIS0042
@@ -104,22 +103,11 @@ export async function POST(req: NextRequest) {
     const ENVIRONMENT = process.env.REDSYS_ENVIRONMENT!;
     
     // LOG DETALLADO PARA DEPURACIÓN
-    console.log('🔍 REDSYS DEBUG DATOS REALES');
-    console.log('Reservation ID:', reservation.id);
-    console.log('order:', order);
-    console.log('amountCents:', amountCents);
-    console.log('total_amount:', total_amount);
-    console.log('merchantParams (original):', merchantParams);
-    console.log('orderedParams (para firma):', orderedParams);
-    console.log('merchantParametersJson (ordenado):', merchantParametersJson);
-    console.log('merchantParametersBase64:', merchantParametersBase64);
-    console.log('signature:', signature);
-    console.log('MERCHANT_CODE:', MERCHANT_CODE);
-    console.log('TERMINAL:', TERMINAL);
-    console.log('SECRET_KEY (base64):', SECRET_KEY);
-    console.log('ENVIRONMENT:', ENVIRONMENT);
-
-    // 🔥 CORRECCIÓN: Formulario con solo parámetros obligatorios
+    console.log('Parámetros del comerciante:', merchantParams);
+    console.log('Parámetros ordenados:', orderedParams);
+    console.log('JSON de parámetros:', merchantParametersJson);
+    console.log('Clave secreta (primeros 10 chars):', SECRET_KEY.substring(0, 10));
+// 🔥 CORRECCIÓN: Formulario con solo parámetros obligatorios
     const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
@@ -145,7 +133,6 @@ export async function POST(req: NextRequest) {
       headers: { 'Content-Type': 'text/html' },
     });
   } catch (error) {
-    console.error('Error en create reservation:', error);
-    return new NextResponse('Error interno en la reserva', { status: 500 });
+return new NextResponse('Error interno en la reserva', { status: 500 });
   }
 } 

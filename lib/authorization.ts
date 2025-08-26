@@ -1,5 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { getSupabaseClient } from "./supabase-optimized"
+import { logAuth, logError } from "./logger"
 
 // Tipos para autorización
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
@@ -20,8 +21,48 @@ export interface AuthorizationConfig {
   resourceUserIdField?: string
 }
 
-// Cliente de Supabase para autorización
-const supabase = getSupabaseClient()
+// Tipos para datos de usuario
+export interface UserData {
+  user: {
+    id: string
+    email?: string
+  }
+  profile: {
+    id: string
+    full_name?: string
+    role: UserRole
+    email?: string
+  }
+}
+
+// Tipo para el handler de autorización
+export type AuthorizationHandler = (req: NextRequest, userData: UserData) => Promise<NextResponse>
+
+export async function verifyAuthToken(authHeader: string): Promise<string | null> {
+  try {
+    if (!authHeader.startsWith('Bearer ')) {
+      return null
+    }
+
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      throw new Error("No se pudo obtener el cliente de Supabase")
+    }
+
+    const token = authHeader.substring(7)
+    const { data: { user }, error } = await client.auth.getUser(token)
+
+    if (error || !user) {
+      return null
+    }
+
+    return user.id
+  } catch (error) {
+    logError('Error verifying auth token', { error, context: 'AUTH' })
+    return null
+  }
+}
 
 // Función para obtener el perfil del usuario desde el token
 async function getUserProfile(request: NextRequest) {
@@ -31,15 +72,21 @@ async function getUserProfile(request: NextRequest) {
       return null
     }
 
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      throw new Error("No se pudo obtener el cliente de Supabase")
+    }
+
     const token = authHeader.substring(7)
-    const { data: { user }, error } = await supabase.auth.getUser(token)
+    const { data: { user }, error } = await client.auth.getUser(token)
     
     if (error || !user) {
       return null
     }
 
     // Obtener el perfil del usuario
-    const { data: profile, error: profileError } = await supabase
+    const { data: profile, error: profileError } = await client
       .from('profiles')
       .select('*')
       .eq('id', user.id)
@@ -51,7 +98,7 @@ async function getUserProfile(request: NextRequest) {
 
     return { user, profile }
   } catch (error) {
-    console.error('Error obteniendo perfil de usuario:', error)
+    logError('Error obteniendo perfil de usuario', { error, context: 'AUTH' })
     return null
   }
 }
@@ -59,7 +106,13 @@ async function getUserProfile(request: NextRequest) {
 // Función para verificar si el usuario tiene un rol específico
 async function hasRole(userId: string, requiredRole: UserRole): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      throw new Error("No se pudo obtener el cliente de Supabase")
+    }
+
+    const { data, error } = await client
       .from('profiles')
       .select('role')
       .eq('id', userId)
@@ -83,7 +136,7 @@ async function hasRole(userId: string, requiredRole: UserRole): Promise<boolean>
 
     return userRoleLevel >= requiredRoleLevel
   } catch (error) {
-    console.error('Error verificando rol:', error)
+    logError('Error verificando rol', { error, context: 'AUTH' })
     return false
   }
 }
@@ -91,7 +144,13 @@ async function hasRole(userId: string, requiredRole: UserRole): Promise<boolean>
 // Función para verificar si el usuario tiene un permiso específico
 async function hasPermission(userId: string, permissionName: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      throw new Error("No se pudo obtener el cliente de Supabase")
+    }
+
+    const { data, error } = await client
       .from('user_permissions')
       .select('permission_name')
       .eq('user_id', userId)
@@ -100,7 +159,7 @@ async function hasPermission(userId: string, permissionName: string): Promise<bo
 
     return !error && !!data
   } catch (error) {
-    console.error('Error verificando permiso:', error)
+    logError('Error verificando permiso', { error, context: 'AUTH' })
     return false
   }
 }
@@ -108,7 +167,13 @@ async function hasPermission(userId: string, permissionName: string): Promise<bo
 // Función para verificar si el usuario puede acceder a un recurso específico
 async function canAccessResource(userId: string, resource: string, action: string): Promise<boolean> {
   try {
-    const { data, error } = await supabase
+    const supabaseClient = getSupabaseClient()
+    const client = await supabaseClient.getClient()
+    if (!client) {
+      throw new Error("No se pudo obtener el cliente de Supabase")
+    }
+
+    const { data, error } = await client
       .from('user_permissions')
       .select('permission_name')
       .eq('user_id', userId)
@@ -118,7 +183,7 @@ async function canAccessResource(userId: string, resource: string, action: strin
 
     return !error && !!data
   } catch (error) {
-    console.error('Error verificando acceso a recurso:', error)
+    logError('Error verificando acceso a recurso', { error, context: 'AUTH' })
     return false
   }
 }
@@ -141,42 +206,35 @@ async function canAccessOwnResource(
 
 // Middleware de autorización principal
 export function withAuthorization(config: AuthorizationConfig) {
-  return function(handler: (req: NextRequest, userData: any) => Promise<NextResponse>) {
+  return function(handler: AuthorizationHandler) {
     return async function(request: NextRequest): Promise<NextResponse> {
       try {
         // Obtener perfil del usuario
         const userData = await getUserProfile(request)
         
         if (!userData) {
-          console.error('Usuario no autenticado')
+          logAuth('Usuario no autenticado')
           return NextResponse.json(
             { error: "No autorizado - Usuario no autenticado" },
             { status: 401 }
           )
         }
 
-        const { user, profile } = userData
+        const { user } = userData
         const userId = user.id
 
-        console.log('Verificando autorización para usuario:', {
+        logAuth('Verificando autorización para usuario', {
           userId,
-          role: profile.role,
-          requiredRole: config.requiredRole,
-          requiredPermission: config.requiredPermission,
+          action: 'verify_authorization',
           resource: config.resource,
-          action: config.action
+          success: true
         })
 
         // Verificar rol requerido
         if (config.requiredRole) {
           const hasRequiredRole = await hasRole(userId, config.requiredRole)
           if (!hasRequiredRole) {
-            console.error('Usuario no tiene el rol requerido:', {
-              userId,
-              userRole: profile.role,
-              requiredRole: config.requiredRole
-            })
-            return NextResponse.json(
+return NextResponse.json(
               { error: "No autorizado - Rol insuficiente" },
               { status: 403 }
             )
@@ -187,12 +245,7 @@ export function withAuthorization(config: AuthorizationConfig) {
         if (config.requiredPermission) {
           const hasRequiredPermission = await hasPermission(userId, config.requiredPermission)
           if (!hasRequiredPermission) {
-            console.error('Usuario no tiene el permiso requerido:', {
-              userId,
-              userRole: profile.role,
-              requiredPermission: config.requiredPermission
-            })
-            return NextResponse.json(
+return NextResponse.json(
               { error: "No autorizado - Permiso insuficiente" },
               { status: 403 }
             )
@@ -205,8 +258,8 @@ export function withAuthorization(config: AuthorizationConfig) {
 
           if (config.allowOwnResource && config.resourceUserIdField) {
             // Obtener el ID del usuario del recurso desde el body o params
-            const body = await request.json().catch(() => ({}))
-            const resourceUserId = body[config.resourceUserIdField]
+                    const body = await request.json().catch(() => ({})) as Record<string, unknown>
+        const resourceUserId = body[config.resourceUserIdField] as string
             
             if (resourceUserId) {
               canAccess = await canAccessOwnResource(userId, config.resource, config.action, resourceUserId)
@@ -218,26 +271,16 @@ export function withAuthorization(config: AuthorizationConfig) {
           }
 
           if (!canAccess) {
-            console.error('Usuario no puede acceder al recurso:', {
-              userId,
-              userRole: profile.role,
-              resource: config.resource,
-              action: config.action
-            })
-            return NextResponse.json(
+return NextResponse.json(
               { error: "No autorizado - Acceso denegado al recurso" },
               { status: 403 }
             )
           }
         }
-
-        console.log('Autorización exitosa para usuario:', userId)
-
-        // Llamar al handler con los datos del usuario
+// Llamar al handler con los datos del usuario
         return await handler(request, userData)
       } catch (error) {
-        console.error('Error en autorización:', error)
-        return NextResponse.json(
+return NextResponse.json(
           { error: "Error interno del servidor" },
           { status: 500 }
         )
@@ -290,7 +333,7 @@ export function createAuthorizationErrorResponse(message: string = "No autorizad
 export async function checkAuthorization(
   request: NextRequest, 
   config: AuthorizationConfig
-): Promise<{ authorized: boolean; userData?: any; error?: string }> {
+): Promise<{ authorized: boolean; userData?: UserData; error?: string }> {
   try {
     const userData = await getUserProfile(request)
     
@@ -298,7 +341,7 @@ export async function checkAuthorization(
       return { authorized: false, error: "Usuario no autenticado" }
     }
 
-    const { user, profile } = userData
+    const { user } = userData
     const userId = user.id
 
     // Verificar rol requerido
@@ -327,7 +370,6 @@ export async function checkAuthorization(
 
     return { authorized: true, userData }
   } catch (error) {
-    console.error('Error verificando autorización:', error)
-    return { authorized: false, error: "Error interno" }
+return { authorized: false, error: "Error interno" }
   }
 } 

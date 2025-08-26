@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -12,10 +12,11 @@ import { User, Mail, Calendar, Shield, Save, Loader2, CheckCircle, AlertCircle }
 import { useRouter } from "next/navigation"
 import { getSupabaseClient } from "@/lib/supabase-optimized"
 import { AvatarUpload } from "@/components/avatar-upload"
+import { Profile } from "@/lib/supabase"
 
 export default function ProfilePage() {
-  const { user, loading, isAuthenticated } = useAuth()
-  const [profile, setProfile] = useState<any>(null)
+  const { user, loading, isAuthenticated } = useAuthContext()
+  const [profile, setProfile] = useState<Profile | null>(null)
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
@@ -28,8 +29,7 @@ export default function ProfilePage() {
   // Redirigir si no está autenticado
   useEffect(() => {
     if (!loading && !isAuthenticated) {
-      console.log("🔄 Perfil: No autenticado, redirigiendo al login")
-      window.location.href = '/auth/login'
+window.location.href = '/auth/login'
     }
   }, [loading, isAuthenticated])
 
@@ -44,7 +44,13 @@ export default function ProfilePage() {
     if (!user?.id) return
 
     try {
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+return
+      }
+      
       const { data, error } = await client
         .from("profiles")
         .select("*")
@@ -52,20 +58,19 @@ export default function ProfilePage() {
         .maybeSingle()
 
       if (error) {
-        console.error("Error cargando perfil:", error)
-        return
+return
       }
 
       if (data) {
-        setProfile(data)
+        const profileData = data as unknown as Profile
+        setProfile(profileData)
         setFormData({
-          full_name: data.full_name || "",
-          email: data.email || "",
+          full_name: profileData.full_name || "",
+          email: profileData.email || "",
         })
       }
     } catch (error) {
-      console.error("Error cargando perfil:", error)
-    }
+}
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -94,7 +99,13 @@ export default function ProfilePage() {
         email: formData.email,
       }
 
-      const client = getSupabaseClient()
+      const supabaseClient = getSupabaseClient()
+      const client = await supabaseClient.getClient()
+      
+      if (!client) {
+        throw new Error("No se pudo obtener el cliente de Supabase")
+      }
+      
       const { error: profileError } = await client.from("profiles").update(updateData).eq("id", user.id)
 
       if (profileError) throw profileError
@@ -344,3 +355,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+

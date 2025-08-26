@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+﻿import { type NextRequest, NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import { 
   createReservationSchema, 
@@ -32,8 +32,7 @@ async function getAuthenticatedUser(request: NextRequest) {
 
     return user
   } catch (error) {
-    console.error('Error obteniendo usuario autenticado:', error)
-    return null
+return null
   }
 }
 
@@ -52,13 +51,9 @@ export async function POST(request: NextRequest) {
     // Obtener y validar el body
     const body = await request.json().catch(() => ({}))
     
-    console.log("Datos recibidos en la API:", JSON.stringify(body, null, 2))
-    
     const validation = validateData(createReservationSchema, body)
 
     if (!validation.success) {
-      console.error("Error de validación en creación de reserva:", validation.errors)
-      console.error("Datos que causaron el error:", JSON.stringify(body, null, 2))
       return createValidationErrorResponse(validation.errors)
     }
 
@@ -66,10 +61,6 @@ export async function POST(request: NextRequest) {
 
     // Asegurar que el usuario solo puede crear reservas para sí mismo
     if (validatedData.user_id !== user.id) {
-      console.error("Usuario intentando crear reserva para otro usuario:", {
-        userId: user.id,
-        requestedUserId: validatedData.user_id
-      })
       return NextResponse.json(
         { error: "No autorizado - Solo puede crear reservas para sí mismo" },
         { status: 403 }
@@ -77,19 +68,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Sanitizar los datos antes de procesarlos
-    console.log("Datos antes de sanitizar:", JSON.stringify(validatedData, null, 2))
     const sanitizedData = sanitizeObject(validatedData)
-    console.log("Datos después de sanitizar:", JSON.stringify(sanitizedData, null, 2))
-
-    console.log("Creando reserva con datos validados:", {
-      user_id: sanitizedData.user_id,
-      service_id: sanitizedData.service_id,
-      reservation_date: sanitizedData.reservation_date,
-      guests: sanitizedData.guests,
-      total_amount: sanitizedData.total_amount
-    })
-
-    // Crear un cliente de Supabase autenticado con el token del usuario
+// Crear un cliente de Supabase autenticado con el token del usuario
     const authHeader = request.headers.get('authorization')
     const token = authHeader?.substring(7)
     
@@ -128,18 +108,14 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-      console.error("Error al crear la reserva en Supabase:", error)
-      console.error("Código de error:", error.code)
-      console.error("Mensaje de error:", error.message)
-      console.error("Detalles de error:", error.details)
-      return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
-    }
 
-    console.log("Reserva creada exitosamente:", data.id)
-    return NextResponse.json(data)
+
+
+return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
+    }
+return NextResponse.json(data)
   } catch (error) {
-    console.error("Error interno en creación de reserva:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
@@ -172,12 +148,7 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (profile?.role !== 'admin') {
-        console.error("Usuario intentando ver reservas de otro usuario sin ser admin:", {
-          userId: user.id,
-          targetUserId,
-          userRole: profile?.role
-        })
-        return NextResponse.json(
+return NextResponse.json(
           { error: "No autorizado - No puede ver reservas de otros usuarios" },
           { status: 403 }
         )
@@ -191,18 +162,11 @@ export async function GET(request: NextRequest) {
     const queryValidation = validateData(getReservationsQuerySchema, { userId: targetUserId })
     
     if (!queryValidation.success) {
-      console.error("Error de validación en consulta de reservas:", queryValidation.errors)
-      return createValidationErrorResponse(queryValidation.errors)
+return createValidationErrorResponse(queryValidation.errors)
     }
 
     const validatedQuery = queryValidation.data
-
-    console.log("Consultando reservas para usuario:", {
-      requestingUserId: user.id,
-      targetUserId: validatedQuery.userId
-    })
-
-    const { data, error } = await supabase
+const { data, error } = await supabase
       .from("reservations")
       .select(`
         *,
@@ -217,14 +181,11 @@ export async function GET(request: NextRequest) {
       .order("created_at", { ascending: false })
 
     if (error) {
-      console.error("Error al obtener las reservas de Supabase:", error)
-      return NextResponse.json({ error: "Error al obtener las reservas" }, { status: 500 })
+return NextResponse.json({ error: "Error al obtener las reservas" }, { status: 500 })
     }
-
-    console.log(`Reservas obtenidas exitosamente: ${data?.length || 0} reservas`)
-    return NextResponse.json(data)
+return NextResponse.json(data)
   } catch (error) {
-    console.error("Error interno en consulta de reservas:", error)
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
+

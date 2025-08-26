@@ -19,7 +19,7 @@ function processFile(filePath) {
     let modified = false;
     
     // Eliminar console.log, console.warn, console.error, console.info
-    let newContent = content
+    const newContent = content
       .replace(/console\.log\([^)]*\);?\s*/g, '')
       .replace(/console\.warn\([^)]*\);?\s*/g, '')
       .replace(/console\.error\([^)]*\);?\s*/g, '')

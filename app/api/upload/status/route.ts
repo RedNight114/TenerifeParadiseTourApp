@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+﻿import { NextResponse } from "next/server"
 import { vercelBlobConfig } from "@/lib/vercel-blob-config"
 
 export async function GET() {
@@ -11,9 +11,7 @@ export async function GET() {
       environment: process.env.NODE_ENV
     })
   } catch (error) {
-    console.error("Error verificando estado de Vercel Blob:", error)
-    
-    return NextResponse.json({
+return NextResponse.json({
       configured: false,
       error: "Error al verificar la configuración",
       timestamp: new Date().toISOString(),

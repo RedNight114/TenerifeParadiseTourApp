@@ -14,6 +14,13 @@ export function Footer() {
     type: null
   })
 
+  // Categorías estáticas para el footer
+  const staticCategories = [
+    { id: 'actividades', name: 'Actividades & Aventuras', count: 23 },
+    { id: 'renting', name: 'Alquiler de Vehículos', count: 1 },
+    { id: 'gastronomia', name: 'Experiencias Gastronómicas', count: 0 }
+  ]
+
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -124,22 +131,18 @@ export function Footer() {
                 <div className="absolute -bottom-2 left-0 w-8 h-0.5 bg-gradient-to-r from-[#F4C762] to-[#FFD700]"></div>
               </h4>
               <ul className="space-y-3">
-                {[
-                  { href: "/services?category=activities", label: "Actividades & Aventuras", count: "26" },
-                  { href: "/services?category=renting", label: "Alquiler de Vehículos", count: "16" },
-                  { href: "/services?category=gastronomy", label: "Experiencias Gastronómicas", count: "13" },
-                ].map((link) => (
-                  <li key={link.href}>
+                {staticCategories.map((category) => (
+                  <li key={category.id}>
                     <Link
-                      href={link.href}
+                      href={`/services?category=${category.id}`}
                       className="text-gray-300 hover:text-[#F4C762] transition-all duration-200 text-sm flex items-center justify-between group"
                     >
                       <div className="flex items-center">
                         <span className="w-0 h-0.5 bg-[#F4C762] group-hover:w-4 transition-all duration-300 mr-2"></span>
-                        {link.label}
+                        {category.name}
                       </div>
                       <span className="text-xs text-gray-500 group-hover:text-[#F4C762] transition-colors">
-                        {link.count}
+                        {category.count}
                       </span>
                     </Link>
                   </li>
@@ -209,24 +212,24 @@ export function Footer() {
               
               {/* Legal Links with Cookie Settings */}
               <div className="flex flex-wrap justify-center gap-6 text-sm">
-                <Link
-                  href="/privacy-policy"
-                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                <button
+                  onClick={() => openLegalModal('privacy')}
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline cursor-pointer"
                 >
                   Política de Privacidad
-                </Link>
-                <Link
-                  href="/terms"
-                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                </button>
+                <button
+                  onClick={() => openLegalModal('terms')}
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline cursor-pointer"
                 >
                   Términos y Condiciones
-                </Link>
-                <Link
-                  href="/cookies-policy"
-                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline"
+                </button>
+                <button
+                  onClick={() => openLegalModal('cookies')}
+                  className="text-gray-400 hover:text-[#F4C762] transition-colors duration-200 hover:underline cursor-pointer"
                 >
                   Política de Cookies
-                </Link>
+                </button>
                 <span
                   onClick={() => setIsCookieModalOpen(true)}
                   className="text-gray-500 hover:text-gray-400 cursor-pointer transition-colors duration-200 hover:underline"

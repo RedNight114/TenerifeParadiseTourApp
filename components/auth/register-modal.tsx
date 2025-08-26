@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useAuth } from "@/components/auth-provider-simple"
+import { useAuthContext } from "@/components/auth-provider"
 import { useAuthModals } from "@/hooks/use-auth-modals"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
@@ -32,7 +32,7 @@ export function RegisterModal({ isOpen, onClose }: RegisterModalProps) {
   const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  const { signUp } = useAuth()
+  const { signUp } = useAuthContext()
   const { switchToLogin } = useAuthModals()
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -69,7 +69,7 @@ export function RegisterModal({ isOpen, onClose }: RegisterModalProps) {
       const { error: signUpError } = await signUp(formData.email, formData.password, formData.fullName.trim())
 
       if (signUpError) {
-        const errorMessage = signUpError instanceof Error ? signUpError.message : String(signUpError)
+        const errorMessage = signUpError || "Error desconocido"
         
         if (errorMessage.includes("User already registered")) {
           setError("Este email ya está registrado")
