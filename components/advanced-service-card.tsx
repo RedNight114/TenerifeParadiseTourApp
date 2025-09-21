@@ -160,7 +160,7 @@ const AdvancedServiceImage = memo(({
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
       
       {/* Badges superpuestos reorganizados */}
-      <div className="absolute top-4 left-4 flex flex-wrap gap-2 max-w-[60%]">
+      <div className="absolute top-4 left-4 flex flex-wrap gap-2 max-w-[50%]">
         {service.featured && (
           <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white text-xs font-semibold shadow-lg border-0">
             <Star className="w-3 h-3 mr-1" />
@@ -206,42 +206,43 @@ const AdvancedServiceImage = memo(({
             <ChevronRight className="h-4 w-4" />
           </button>
           
-          {/* Indicadores de imagen con animaciones */}
-          <div className={`absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/20 transition-all duration-300 ${
-            isHovered ? 'opacity-100' : 'opacity-80'
-          }`}>
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={(e) => handleIndicatorClick(index, e)}
-                className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                  index === currentImageIndex 
-                    ? 'bg-green-400 scale-125 shadow-lg shadow-green-400/50 ring-2 ring-green-300/50' 
-                    : 'bg-white/60 hover:bg-white/90 hover:scale-110 hover:shadow-md'
-                }`}
-                aria-label={`Ir a imagen ${index + 1}`}
-              />
-            ))}
-          </div>
-
-          {/* Control de auto-play */}
+          {/* Indicadores de imagen y controles reorganizados */}
           {isHovered && images.length > 1 && (
-            <div className="absolute bottom-4 right-4 flex gap-2">
-              <button
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setIsAutoPlaying(!isAutoPlaying)
-                }}
-                className="bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-full text-xs border border-white/20 hover:bg-black/80 transition-colors"
-                aria-label={isAutoPlaying ? "Pausar auto-play" : "Activar auto-play"}
-              >
-                {isAutoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
-              </button>
-              <div className="bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-full text-xs border border-white/20">
-                <div className="flex items-center gap-1">
-                  <div className={`w-1.5 h-1.5 rounded-full ${isAutoPlaying ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
-                  <span>Auto</span>
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3">
+              {/* Indicadores de imagen */}
+              <div className="flex gap-2 bg-black/60 backdrop-blur-md rounded-full px-4 py-2 border border-white/20">
+                {images.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={(e) => handleIndicatorClick(index, e)}
+                    className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                      index === currentImageIndex 
+                        ? 'bg-green-400 scale-125 shadow-lg shadow-green-400/50 ring-2 ring-green-300/50' 
+                        : 'bg-white/60 hover:bg-white/90 hover:scale-110 hover:shadow-md'
+                    }`}
+                    aria-label={`Ir a imagen ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Control de auto-play */}
+              <div className="flex gap-2">
+                <button
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    setIsAutoPlaying(!isAutoPlaying)
+                  }}
+                  className="bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-full text-xs border border-white/20 hover:bg-black/80 transition-colors"
+                  aria-label={isAutoPlaying ? "Pausar auto-play" : "Activar auto-play"}
+                >
+                  {isAutoPlaying ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                </button>
+                <div className="bg-black/60 backdrop-blur-md text-white px-2 py-1 rounded-full text-xs border border-white/20">
+                  <div className="flex items-center gap-1">
+                    <div className={`w-1.5 h-1.5 rounded-full ${isAutoPlaying ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`}></div>
+                    <span>Auto</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -250,10 +251,10 @@ const AdvancedServiceImage = memo(({
       )}
 
       {/* Botones de acción reorganizados horizontalmente */}
-      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+      <div className="absolute top-4 right-4 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-all duration-300">
         {/* Botón de favoritos */}
         <button
-          className="bg-black/70 hover:bg-red-500/90 text-white p-2 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-red-500/50"
+          className="bg-black/70 hover:bg-red-500/90 text-white p-1.5 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-red-500/50"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -261,12 +262,12 @@ const AdvancedServiceImage = memo(({
           }}
           aria-label="Agregar a favoritos"
         >
-          <Heart className="h-3.5 w-3.5" />
+          <Heart className="h-3 w-3" />
         </button>
 
         {/* Botón de compartir */}
         <button
-          className="bg-black/70 hover:bg-blue-500/90 text-white p-2 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/50"
+          className="bg-black/70 hover:bg-blue-500/90 text-white p-1.5 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-blue-500/50"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -274,12 +275,12 @@ const AdvancedServiceImage = memo(({
           }}
           aria-label="Compartir servicio"
         >
-          <Share2 className="h-3.5 w-3.5" />
+          <Share2 className="h-3 w-3" />
         </button>
 
         {/* Botón de zoom */}
         <button
-          className="bg-black/70 hover:bg-green-500/90 text-white p-2 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-green-500/50"
+          className="bg-black/70 hover:bg-green-500/90 text-white p-1.5 rounded-full transition-all duration-300 backdrop-blur-md border border-white/30 hover:scale-110 hover:shadow-lg hover:shadow-green-500/50"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
@@ -287,7 +288,7 @@ const AdvancedServiceImage = memo(({
           }}
           aria-label="Ver imagen en grande"
         >
-          <Eye className="h-3.5 w-3.5" />
+          <Eye className="h-3 w-3" />
         </button>
       </div>
     </div>

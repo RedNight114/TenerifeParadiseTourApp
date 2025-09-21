@@ -1,32 +1,36 @@
+/**
+ * Script para reiniciar el servidor de desarrollo con polyfills
+ */
 
-#!/usr/bin/env node
+const { spawn } = require('child_process')
+const path = require('path')
 
-const { execSync } = require('child_process')
+console.log('🔄 Reiniciando servidor de desarrollo con polyfills...')
 
-console.log('🔄 Reiniciando servidor de desarrollo...')
+// Matar procesos existentes de Next.js
+const { exec } = require('child_process')
 
-try {
-  // Detener procesos en puerto 3000
-  console.log('🛑 Deteniendo procesos en puerto 3000...')
-  execSync('npx kill-port 3000', { stdio: 'inherit' })
-  console.log('✅ Puerto 3000 liberado')
+exec('taskkill /F /IM node.exe', (error) => {
+  if (error && !error.message.includes('not found')) {
+    console.log('⚠️ No se pudieron matar procesos existentes:', error.message)
+  }
   
-  // Limpiar cache de Next.js
-  console.log('🧹 Limpiando cache de Next.js...')
-  execSync('npx next clean', { stdio: 'inherit' })
-  console.log('✅ Cache limpiado')
-  
-  // Limpiar node_modules (opcional, solo si hay problemas)
-  // console.log('🗑️ Limpiando node_modules...')
-  // execSync('rm -rf node_modules', { stdio: 'inherit' })
-  // execSync('npm install', { stdio: 'inherit' })
-  
-  // Reiniciar servidor
-  console.log('🚀 Reiniciando servidor...')
-  execSync('npm run dev', { stdio: 'inherit' })
-} catch (error) {
-  console.error('❌ Error reiniciando servidor:', error.message)
-  console.log('\n🔧 Intentando reinicio manual...')
-  console.log('1. Detén el servidor manualmente (Ctrl+C)')
-  console.log('2. Ejecuta: npm run dev')
-}
+  // Esperar un momento y luego iniciar el servidor
+  setTimeout(() => {
+    console.log('🚀 Iniciando servidor de desarrollo...')
+    
+    const devProcess = spawn('npm', ['run', 'dev'], {
+      cwd: path.resolve(__dirname, '..'),
+      stdio: 'inherit',
+      shell: true
+    })
+    
+    devProcess.on('close', (code) => {
+      console.log(`Servidor cerrado con código ${code}`)
+    })
+    
+    devProcess.on('error', (error) => {
+      console.error('Error iniciando servidor:', error)
+    })
+  }, 2000)
+})

@@ -20,7 +20,15 @@ if (typeof window === 'undefined') {
       assign: () => {},
       replace: () => {},
       reload: () => {},
-      toString: () => 'https://localhost:3000/'
+      toString: () => 'https://localhost:3000/',
+      // Propiedades adicionales que Next.js puede necesitar
+      username: '',
+      password: '',
+      searchParams: new URLSearchParams(),
+      // Métodos adicionales
+      replace: () => {},
+      assign: () => {},
+      reload: () => {}
     },
     navigator: {
       userAgent: 'Next.js Server'

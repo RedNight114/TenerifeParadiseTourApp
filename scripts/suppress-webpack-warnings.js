@@ -1,4 +1,7 @@
 // Script para suprimir warnings específicos de webpack durante el desarrollo
+// Importar polyfills para Next.js antes de cualquier otra cosa
+require('../lib/nextjs-polyfills')
+
 const originalConsoleWarn = console.warn
 const originalConsoleError = console.error
 
@@ -8,7 +11,18 @@ const suppressedMessages = [
   'impacts deserialization performance',
   'consider using Buffer instead',
   'Cannot destructure property \'protocol\' of \'window.location\'',
-  'window.location\' as it is undefined'
+  'window.location\' as it is undefined',
+  'TypeError: Cannot destructure property \'protocol\' of \'window.location\' as it is undefined',
+  'at getLocationOrigin',
+  'at parseRelativeUrl',
+  'at parseUrl',
+  'at DevServer.handleRequestImpl',
+  'at async DevServer.handleRequest',
+  'at async handleRoute',
+  'at async resolveRoutes',
+  'at async handleRequest',
+  'at async requestHandlerImpl',
+  'at async Server.requestListener'
 ]
 
 function shouldSuppressMessage(message) {
