@@ -48,16 +48,42 @@ export function useAuth() {
         if (error) {
           logAuth('Error refrescando sesión', { error: error.message })
           
-          // Manejar error de token inválido
+          // Detectar errores específicos de refresh token
+          const isInvalidRefreshToken = 
+            error.message.includes('Invalid Refresh Token') || 
+            error.message.includes('Refresh Token Not Found') ||
+            error.message.includes('refresh_token_not_found') ||
+            error.code === 'refresh_token_not_found'
+          
+          if (isInvalidRefreshToken) {
+            logAuth('Token de refresco inválido detectado, limpiando sesión...')
+            
+            // Limpiar sesión completamente
+            await supabase.auth.signOut()
+            
+            // Limpiar estado local
+            setUser(null)
+            setProfile(null)
+            
+            // Limpiar almacenamiento local si está disponible
+            if (typeof window !== 'undefined') {
+              try {
+                localStorage.removeItem('supabase.auth.token')
+                localStorage.removeItem('sb-' + process.env.NEXT_PUBLIC_SUPABASE_URL?.split('//')[1]?.split('.')[0] + '-auth-token')
+              } catch (e) {
+                // Ignorar errores de localStorage
+              }
+            }
+            
+            return false
+          }
+          
+          // Para otros errores, usar el manejador estándar
           await handleAuthError({
             message: error.message,
             code: error.code,
             status: error.status
           }, supabase)
-          
-          // Limpiar estado local
-          setUser(null)
-          setProfile(null)
           
           return false
         }

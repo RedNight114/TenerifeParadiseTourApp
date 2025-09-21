@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/start-dev-with-polyfills.js",
+    "dev": "node scripts/start-dev-simple.js",
+    "dev:polyfills": "node scripts/start-dev-with-polyfills.js",
     "dev:legacy": "node scripts/suppress-webpack-warnings.js && next dev",
     "dev:safe": "node scripts/restart-dev.js",
     "build": "next build",
@@ -17,6 +18,7 @@
     "test:watch": "vitest --watch",
     "type-check": "tsc --noEmit",
     "clean:cache": "node scripts/migrate-to-unified-cache.js --clean",
+    "clean:auth": "node scripts/clear-auth.js",
     "cache:stats": "node scripts/migrate-to-unified-cache.js --stats",
     "cache:migrate": "node scripts/migrate-to-unified-cache.js --migrate",
     "analyze": "ANALYZE=true npm run build",

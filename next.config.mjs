@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-import './lib/server-globals.mjs'
+// Importar polyfills SSR robustos antes que cualquier otra cosa
+import './lib/ssr-polyfills.mjs'
 
 const nextConfig = {
   // Configuración básica
@@ -116,9 +117,9 @@ const nextConfig = {
     ignoreDuringBuilds: false,
   },
 
-  // Configuración de webpack optimizada
+  // Configuración de webpack simplificada
   webpack: (config, { dev, isServer }) => {
-    // Configuración de fallback para módulos del navegador
+    // Configuración básica de fallback para módulos del navegador
     if (!isServer) {
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -135,53 +136,6 @@ const nextConfig = {
         os: false,
         buffer: false,
       }
-    } else {
-      // Configuración para el servidor
-      config.resolve.fallback = {
-        ...config.resolve.fallback,
-        self: false,
-      }
-      
-      // Los polyfills globales se manejan en lib/server-globals.js
-    }
-
-    // Optimización del caché de webpack
-    if (dev) {
-      // Configuración de caché optimizada para desarrollo rápido
-      config.cache = {
-        type: 'memory', // Usar caché en memoria para desarrollo
-        maxGenerations: 1,
-      }
-      
-      // Optimizaciones de compilación para desarrollo
-      config.optimization = {
-        ...config.optimization,
-        removeAvailableModules: false,
-        removeEmptyChunks: false,
-        splitChunks: false, // Deshabilitar splitChunks en desarrollo para evitar problemas
-      }
-    } else {
-      // Configuración de producción
-      config.cache = {
-        type: 'filesystem',
-        compression: 'gzip',
-        maxMemoryGenerations: 1,
-      }
-    }
-
-    // Configuración simplificada de splitChunks para evitar errores de exports
-    config.optimization = {
-      ...config.optimization,
-      splitChunks: false, // Deshabilitar splitChunks temporalmente para evitar problemas de exports
-    }
-
-    // Configuración para resolver problemas de módulos ES/CommonJS
-    config.resolve = {
-      ...config.resolve,
-      extensionAlias: {
-        '.js': ['.js', '.ts', '.tsx'],
-        '.jsx': ['.jsx', '.tsx'],
-      },
     }
 
     return config
