@@ -22,7 +22,7 @@ const showToast = (type: 'success' | 'error' | 'info', message: string) => {
     toast[type](message)
   } else {
     // Fallback para SSR - solo log en consola
-    }: ${message}`)
+    console.log(`[${type.toUpperCase()}]: ${message}`)
   }
 }
 import { getSupabaseClient } from '@/lib/supabase-unified'

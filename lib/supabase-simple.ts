@@ -1,29 +1,16 @@
-// Cliente Supabase simplificado para debugging
-import { createClient, SupabaseClient } from '@supabase/supabase-js'
+// Cliente Supabase simplificado para debugging - Ahora usa el cliente unificado
+import { getSupabaseClientSync } from './supabase-unified'
 
-let client: SupabaseClient | null = null
-
-export function getSimpleSupabaseClient(): SupabaseClient {
+export function getSimpleSupabaseClient() {
+  const client = getSupabaseClientSync()
   if (!client) {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!url || !key) {
-      throw new Error('Variables de entorno de Supabase no configuradas')
-    }
-    
-    client = createClient(url, key, {
-      auth: {
-        autoRefreshToken: true,
-        persistSession: true,
-        detectSessionInUrl: false
-      }
-    })
+    throw new Error('Cliente Supabase no disponible')
   }
-  
   return client
 }
 
 export function resetSupabaseClient() {
-  client = null
+  // La función reset ya no es necesaria con el cliente unificado
+  // pero se mantiene para compatibilidad
+  console.log('resetSupabaseClient: Función obsoleta con cliente unificado')
 }

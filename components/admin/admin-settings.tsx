@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface SystemSetting {
   value: any
@@ -79,10 +79,7 @@ export function AdminSettings({ className }: AdminSettingsProps) {
     setSuccess(null)
 
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+      const supabase = await getSupabaseClient()
       
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token

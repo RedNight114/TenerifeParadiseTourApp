@@ -487,15 +487,22 @@ export class UnifiedCacheSystem {
 
     try {
       await cachePersistence.initialize()
-      const data = await cachePersistence.load()
       
-      // Cargar datos en memoria
-      for (const [key, entry] of data.entries()) {
-        this.memoryCache.set(key, entry)
+      // Cargar datos específicos del caché unificado
+      const cacheData = await cachePersistence.load('unified-cache-data')
+      
+      if (cacheData && typeof cacheData === 'object') {
+        // Cargar datos en memoria
+        for (const [key, entry] of Object.entries(cacheData)) {
+          if (entry && typeof entry === 'object' && 'data' in entry && 'timestamp' in entry) {
+            this.memoryCache.set(key, entry as CacheEntry<unknown>)
+          }
+        }
       }
 
       if (this.config.enableLogging) {
-        }
+        console.log('Datos cargados desde persistencia:', this.memoryCache.size, 'entradas')
+      }
     } catch (error) {
       }
   }
@@ -505,13 +512,17 @@ export class UnifiedCacheSystem {
     if (typeof window === 'undefined') return
 
     try {
-      await cachePersistence.save(this.memoryCache)
+      // Convertir Map a objeto para guardar
+      const cacheObject = Object.fromEntries(this.memoryCache)
+      await cachePersistence.save('unified-cache-data', cacheObject)
       
       if (this.config.enableLogging) {
         const stats = cachePersistence.getStats()
-        }
-    } catch (error) {
+        console.log('Datos guardados en persistencia:', this.memoryCache.size, 'entradas')
       }
+    } catch (error) {
+      console.error('Error guardando en persistencia:', error)
+    }
   }
 
   // Obtener estadísticas

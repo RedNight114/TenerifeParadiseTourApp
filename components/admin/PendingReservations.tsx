@@ -21,16 +21,11 @@ const showToast = (type: 'success' | 'error' | 'info', message: string) => {
     toast[type](message)
   } else {
     // Fallback para SSR - solo log en consola
-    }: ${message}`)
+    console.log(`[${type.toUpperCase()}]: ${message}`)
   }
 };
 import { useStripePayment } from '@/hooks/useStripePayment';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { getSupabaseClient } from '@/lib/supabase-unified';
 
 interface Reservation {
   id: string;
@@ -79,6 +74,7 @@ export function PendingReservations() {
 
   const fetchReservations = async () => {
     try {
+      const supabase = await getSupabaseClient()
       const { data, error } = await supabase
         .from('reservations')
         .select(`

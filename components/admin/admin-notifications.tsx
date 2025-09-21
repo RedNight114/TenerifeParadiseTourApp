@@ -5,7 +5,7 @@ import { Bell, X, Check, AlertCircle, Info, CheckCircle, Loader2, RefreshCw } fr
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface Notification {
   id: string
@@ -80,10 +80,7 @@ export function AdminNotifications({ className }: AdminNotificationsProps) {
   // Marcar notificación como leída
   const markAsRead = async (id: string) => {
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+      const supabase = await getSupabaseClient()
       
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
@@ -111,10 +108,7 @@ export function AdminNotifications({ className }: AdminNotificationsProps) {
   // Marcar todas como leídas
   const markAllAsRead = async () => {
     try {
-      const supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      )
+      const supabase = await getSupabaseClient()
       
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token

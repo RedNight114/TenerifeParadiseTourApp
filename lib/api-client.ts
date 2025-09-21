@@ -1,17 +1,10 @@
-﻿import { createClient } from '@supabase/supabase-js'
+﻿import { getSupabaseClient } from './supabase-unified'
 
 // Cliente API para llamadas autenticadas
 export class ApiClient {
   private static async getAuthHeaders() {
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
-      if (!url || !key) {
-        throw new Error('Variables de entorno de Supabase no configuradas')
-      }
-      
-      const supabase = createClient(url, key)
+      const supabase = await getSupabaseClient()
       const { data: { session } } = await supabase.auth.getSession()
       
       if (!session?.access_token) {

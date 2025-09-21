@@ -48,16 +48,25 @@ export class CachePersistence {
       } else if (this.config.enableLocalStorage && typeof window !== 'undefined') {
         // Fallback a localStorage
         this.stats.storageType = 'localstorage'
+      } else {
+        this.stats.storageType = 'none'
       }
 
       this.isInitialized = true
     } catch (error) {
+      console.error('Error inicializando persistencia:', error)
       this.stats.storageType = 'none'
+      this.isInitialized = true
     }
   }
 
   private async initIndexedDB(): Promise<void> {
     return new Promise((resolve, reject) => {
+      if (typeof window === 'undefined') {
+        reject(new Error('IndexedDB no disponible en servidor'))
+        return
+      }
+
       const request = indexedDB.open(this.config.dbName, this.config.dbVersion)
 
       request.onerror = () => reject(request.error)
@@ -68,173 +77,156 @@ export class CachePersistence {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result
-        
-        // Crear store si no existe
         if (!db.objectStoreNames.contains(this.config.storeName)) {
-          const store = db.createObjectStore(this.config.storeName, { keyPath: 'key' })
-          store.createIndex('timestamp', 'timestamp', { unique: false })
-          store.createIndex('tags', 'tags', { unique: false, multiEntry: true })
+          db.createObjectStore(this.config.storeName, { keyPath: 'key' })
         }
       }
     })
   }
 
-  async save(data: Map<string, any>): Promise<void> {
+  async save(key: string, data: any): Promise<void> {
     if (!this.isInitialized) await this.initialize()
-
-    try {
-      if (this.stats.storageType === 'indexeddb' && this.db) {
-        await this.saveToIndexedDB(data)
-      } else if (this.stats.storageType === 'localstorage') {
-        await this.saveToLocalStorage(data)
-      }
-      
-      this.stats.lastSync = Date.now()
-    } catch (error) {
-      }
-  }
-
-  async load(): Promise<Map<string, any>> {
-    if (!this.isInitialized) await this.initialize()
-
-    try {
-      if (this.stats.storageType === 'indexeddb' && this.db) {
-        return await this.loadFromIndexedDB()
-      } else if (this.stats.storageType === 'localstorage') {
-        return await this.loadFromLocalStorage()
-      }
-    } catch (error) {
-      }
-
-    return new Map()
-  }
-
-  private async saveToIndexedDB(data: Map<string, any>): Promise<void> {
-    if (!this.db) throw new Error('IndexedDB no inicializado')
-
-    const transaction = this.db.transaction([this.config.storeName], 'readwrite')
-    const store = transaction.objectStore(this.config.storeName)
-
-    // Limpiar datos existentes
-    await new Promise<void>((resolve, reject) => {
-      const clearRequest = store.clear()
-      clearRequest.onsuccess = () => resolve()
-      clearRequest.onerror = () => reject(clearRequest.error)
-    })
-
-    // Guardar nuevos datos
-    const entries = Array.from(data.entries())
-    let savedCount = 0
-    let totalSize = 0
-
-    for (const [key, value] of entries) {
-      const entry = {
-        key,
-        value,
-        timestamp: Date.now(),
-        size: this.calculateSize(value)
-      }
-
-      await new Promise<void>((resolve, reject) => {
-        const putRequest = store.put(entry)
-        putRequest.onsuccess = () => {
-          savedCount++
-          totalSize += entry.size
-          resolve()
-        }
-        putRequest.onerror = () => reject(putRequest.error)
-      })
+    
+    // Validar que la clave sea válida
+    if (!key || typeof key !== 'string' || key.trim() === '') {
+      console.warn('Clave de caché inválida:', key)
+      return
     }
 
-    this.stats.entryCount = savedCount
-    this.stats.totalSize = totalSize
-  }
+    try {
+      const serialized = JSON.stringify({
+        key,
+        data,
+        timestamp: Date.now()
+      })
 
-  private async loadFromIndexedDB(): Promise<Map<string, any>> {
-    if (!this.db) throw new Error('IndexedDB no inicializado')
-
-    const transaction = this.db.transaction([this.config.storeName], 'readonly')
-    const store = transaction.objectStore(this.config.storeName)
-
-    return new Promise((resolve, reject) => {
-      const request = store.getAll()
-      
-      request.onsuccess = () => {
-        const entries = request.result
-        const data = new Map()
-        let totalSize = 0
-
-        for (const entry of entries) {
-          // Verificar que no esté expirado
-          if (entry.value && entry.value.ttl) {
-            const age = Date.now() - entry.value.timestamp
-            if (age <= entry.value.ttl) {
-              data.set(entry.key, entry.value)
-              totalSize += entry.size || 0
-            }
-          }
-        }
-
-        this.stats.entryCount = data.size
-        this.stats.totalSize = totalSize
-        resolve(data)
+      if (this.stats.storageType === 'indexeddb' && this.db) {
+        await this.saveToIndexedDB(key, serialized)
+      } else if (this.stats.storageType === 'localstorage') {
+        this.saveToLocalStorage(key, serialized)
       }
 
+      this.updateStats()
+    } catch (error) {
+      console.error('Error guardando en caché:', error)
+    }
+  }
+
+  private async saveToIndexedDB(key: string, data: string): Promise<void> {
+    if (!this.db) throw new Error('IndexedDB no inicializado')
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.config.storeName], 'readwrite')
+      const store = transaction.objectStore(this.config.storeName)
+      const request = store.put({ key, data })
+
+      request.onsuccess = () => resolve()
       request.onerror = () => reject(request.error)
     })
   }
 
-  private async saveToLocalStorage(data: Map<string, any>): Promise<void> {
-    const entries = Array.from(data.entries())
-    const serialized = JSON.stringify(entries)
-    
-    // Verificar límite de tamaño
-    const sizeInMB = new Blob([serialized]).size / (1024 * 1024)
-    if (sizeInMB > this.config.maxStorageSize) {
-      }MB`)
-      return
-    }
-
-    localStorage.setItem('tpt_cache_persistence', serialized)
-    this.stats.entryCount = data.size
-    this.stats.totalSize = new Blob([serialized]).size
-  }
-
-  private async loadFromLocalStorage(): Promise<Map<string, any>> {
-    const stored = localStorage.getItem('tpt_cache_persistence')
-    if (!stored) return new Map()
+  private saveToLocalStorage(key: string, data: string): void {
+    if (typeof window === 'undefined') return
 
     try {
-      const entries = JSON.parse(stored)
-      const data = new Map(entries)
-      
-      // Filtrar entradas expiradas
-      const now = Date.now()
-      const validData = new Map()
-      
-      for (const [key, value] of data.entries()) {
-        if (value && typeof value === 'object' && 'ttl' in value) {
-          const age = now - (value as any).timestamp
-          if (age <= (value as any).ttl) {
-            validData.set(key, value)
-          }
-        }
+      localStorage.setItem(`cache_${key}`, data)
+    } catch (error) {
+      // Si localStorage está lleno, limpiar entradas antiguas
+      this.cleanupLocalStorage()
+      localStorage.setItem(`cache_${key}`, data)
+    }
+  }
+
+  async load(key: string): Promise<any> {
+    if (!this.isInitialized) await this.initialize()
+    
+    // Validar que la clave sea válida
+    if (!key || typeof key !== 'string' || key.trim() === '') {
+      console.warn('Clave de caché inválida:', key)
+      return null
+    }
+
+    try {
+      let serialized: string | null = null
+
+      if (this.stats.storageType === 'indexeddb' && this.db) {
+        serialized = await this.loadFromIndexedDB(key)
+      } else if (this.stats.storageType === 'localstorage') {
+        serialized = this.loadFromLocalStorage(key)
       }
 
-      this.stats.entryCount = validData.size
-      this.stats.totalSize = new Blob([stored]).size
-      return validData
+      if (serialized) {
+        const parsed = JSON.parse(serialized)
+        return parsed.data
+      }
+
+      return null
     } catch (error) {
-      return new Map()
+      console.error('Error cargando del caché:', error)
+      return null
     }
   }
 
-  private calculateSize(data: any): number {
+  private async loadFromIndexedDB(key: string): Promise<string | null> {
+    if (!this.db || !key) return null
+
+    return new Promise((resolve, reject) => {
+      try {
+        const transaction = this.db!.transaction([this.config.storeName], 'readonly')
+        const store = transaction.objectStore(this.config.storeName)
+        const request = store.get(key)
+
+        request.onsuccess = () => {
+          resolve(request.result?.data || null)
+        }
+        request.onerror = () => {
+          console.warn('Error cargando de IndexedDB:', request.error)
+          resolve(null)
+        }
+      } catch (error) {
+        console.warn('Error en transacción IndexedDB:', error)
+        resolve(null)
+      }
+    })
+  }
+
+  private loadFromLocalStorage(key: string): string | null {
+    if (typeof window === 'undefined') return null
+    return localStorage.getItem(`cache_${key}`)
+  }
+
+  async delete(key: string): Promise<void> {
+    if (!this.isInitialized) await this.initialize()
+
     try {
-      return new Blob([JSON.stringify(data)]).size
-    } catch {
-      return 0
+      if (this.stats.storageType === 'indexeddb' && this.db) {
+        await this.deleteFromIndexedDB(key)
+      } else if (this.stats.storageType === 'localstorage') {
+        this.deleteFromLocalStorage(key)
+      }
+
+      this.updateStats()
+    } catch (error) {
+      console.error('Error eliminando del caché:', error)
     }
+  }
+
+  private async deleteFromIndexedDB(key: string): Promise<void> {
+    if (!this.db) return
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.config.storeName], 'readwrite')
+      const store = transaction.objectStore(this.config.storeName)
+      const request = store.delete(key)
+
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  private deleteFromLocalStorage(key: string): void {
+    if (typeof window === 'undefined') return
+    localStorage.removeItem(`cache_${key}`)
   }
 
   async clear(): Promise<void> {
@@ -242,49 +234,101 @@ export class CachePersistence {
 
     try {
       if (this.stats.storageType === 'indexeddb' && this.db) {
-        const transaction = this.db.transaction([this.config.storeName], 'readwrite')
-        const store = transaction.objectStore(this.config.storeName)
-        await new Promise<void>((resolve, reject) => {
-          const clearRequest = store.clear()
-          clearRequest.onsuccess = () => resolve()
-          clearRequest.onerror = () => reject(clearRequest.error)
-        })
+        await this.clearIndexedDB()
       } else if (this.stats.storageType === 'localstorage') {
-        localStorage.removeItem('tpt_cache_persistence')
+        this.clearLocalStorage()
       }
 
-      this.stats.entryCount = 0
-      this.stats.totalSize = 0
+      this.updateStats()
     } catch (error) {
+      console.error('Error limpiando caché:', error)
+    }
+  }
+
+  private async clearIndexedDB(): Promise<void> {
+    if (!this.db) return
+
+    return new Promise((resolve, reject) => {
+      const transaction = this.db!.transaction([this.config.storeName], 'readwrite')
+      const store = transaction.objectStore(this.config.storeName)
+      const request = store.clear()
+
+      request.onsuccess = () => resolve()
+      request.onerror = () => reject(request.error)
+    })
+  }
+
+  private clearLocalStorage(): void {
+    if (typeof window === 'undefined') return
+
+    const keys = Object.keys(localStorage).filter(key => key.startsWith('cache_'))
+    keys.forEach(key => localStorage.removeItem(key))
+  }
+
+  private cleanupLocalStorage(): void {
+    if (typeof window === 'undefined') return
+
+    const cacheKeys = Object.keys(localStorage)
+      .filter(key => key.startsWith('cache_'))
+      .map(key => ({
+        key,
+        timestamp: this.getTimestampFromKey(key)
+      }))
+      .sort((a, b) => a.timestamp - b.timestamp)
+
+    // Eliminar las entradas más antiguas hasta liberar espacio
+    const maxEntries = Math.floor(this.config.maxStorageSize * 1024 * 1024 / 10000) // Estimación
+    if (cacheKeys.length > maxEntries) {
+      const toDelete = cacheKeys.slice(0, cacheKeys.length - maxEntries)
+      toDelete.forEach(item => localStorage.removeItem(item.key))
+    }
+  }
+
+  private getTimestampFromKey(key: string): number {
+    try {
+      const data = localStorage.getItem(key)
+      if (data) {
+        const parsed = JSON.parse(data)
+        return parsed.timestamp || 0
       }
+    } catch {
+      // Ignorar errores de parsing
+    }
+    return 0
+  }
+
+  private updateStats(): void {
+    if (this.stats.storageType === 'localstorage' && typeof window !== 'undefined') {
+      const cacheKeys = Object.keys(localStorage).filter(key => key.startsWith('cache_'))
+      this.stats.entryCount = cacheKeys.length
+      this.stats.lastSync = Date.now()
+      
+      // Calcular tamaño aproximado
+      this.stats.totalSize = cacheKeys.reduce((total, key) => {
+        const value = localStorage.getItem(key)
+        return total + (value ? value.length * 2 : 0) // Aproximación UTF-16
+      }, 0)
+    }
   }
 
   getStats(): PersistenceStats {
     return { ...this.stats }
   }
 
-  async cleanup(): Promise<void> {
-    if (!this.isInitialized) return
+  async isAvailable(): Promise<boolean> {
+    if (!this.isInitialized) await this.initialize()
+    return this.stats.storageType !== 'none'
+  }
 
-    try {
-      const data = await this.load()
-      const now = Date.now()
-      const validData = new Map()
+  // Método para comprimir datos antes de guardar
+  private compress(data: any): string {
+    // Implementación simple de compresión (en producción usar una librería como pako)
+    return JSON.stringify(data)
+  }
 
-      // Filtrar solo datos válidos
-      for (const [key, value] of data.entries()) {
-        if (value && typeof value === 'object' && 'ttl' in value) {
-          const age = now - (value as any).timestamp
-          if (age <= (value as any).ttl) {
-            validData.set(key, value)
-          }
-        }
-      }
-
-      // Guardar solo datos válidos
-      await this.save(validData)
-    } catch (error) {
-      }
+  // Método para descomprimir datos después de cargar
+  private decompress(data: string): any {
+    return JSON.parse(data)
   }
 }
 

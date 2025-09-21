@@ -1,7 +1,6 @@
 ﻿"use client"
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { createClient } from '@supabase/supabase-js'
 // import { setCache, getCache } from '@/lib/performance-optimizer' // Módulo eliminado
 
 // Funciones mock para reemplazar setCache y getCache
