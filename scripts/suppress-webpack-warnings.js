@@ -1,6 +1,6 @@
 // Script para suprimir warnings específicos de webpack durante el desarrollo
 // Importar polyfills para Next.js antes de cualquier otra cosa
-require('../lib/nextjs-polyfills')
+require('../lib/nextjs-polyfills.js')
 
 const originalConsoleWarn = console.warn
 const originalConsoleError = console.error
