@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { log } from '@/lib/advanced-logger'
 import { recordMetric } from '@/lib/api-metrics'
+import '@/lib/middleware-polyfills'
 
 export async function middleware(req: NextRequest) {
   // Middleware simplificado para mejor rendimiento

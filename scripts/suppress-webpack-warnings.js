@@ -1,23 +1,35 @@
 // Script para suprimir warnings específicos de webpack durante el desarrollo
 const originalConsoleWarn = console.warn
+const originalConsoleError = console.error
+
+// Suprimir warnings específicos
+const suppressedMessages = [
+  'Serializing big strings',
+  'impacts deserialization performance',
+  'consider using Buffer instead',
+  'Cannot destructure property \'protocol\' of \'window.location\'',
+  'window.location\' as it is undefined'
+]
+
+function shouldSuppressMessage(message) {
+  return suppressedMessages.some(suppressed => 
+    message.includes(suppressed)
+  )
+}
 
 console.warn = function(...args) {
   const message = args.join(' ')
   
-  // Suprimir warnings específicos de webpack
-  const suppressedWarnings = [
-    'Serializing big strings',
-    'impacts deserialization performance',
-    'consider using Buffer instead'
-  ]
-  
-  // Verificar si el mensaje contiene alguno de los warnings a suprimir
-  const shouldSuppress = suppressedWarnings.some(warning => 
-    message.includes(warning)
-  )
-  
-  if (!shouldSuppress) {
+  if (!shouldSuppressMessage(message)) {
     originalConsoleWarn.apply(console, args)
+  }
+}
+
+console.error = function(...args) {
+  const message = args.join(' ')
+  
+  if (!shouldSuppressMessage(message)) {
+    originalConsoleError.apply(console, args)
   }
 }
 
