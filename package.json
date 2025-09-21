@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "node scripts/suppress-webpack-warnings.js && next dev",
+    "dev": "node scripts/start-dev-with-polyfills.js",
+    "dev:legacy": "node scripts/suppress-webpack-warnings.js && next dev",
     "dev:safe": "node scripts/restart-dev.js",
     "build": "next build",
     "start": "next start",
