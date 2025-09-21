@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase-unified'
 import { logAuth, logError } from '@/lib/logger'
+import { withAuthErrorHandling, handleAuthError } from '@/lib/auth-error-handler'
 
 interface Profile {
   id: string
@@ -38,27 +39,41 @@ export function useAuth() {
 
   // ✅ NUEVO: Función para refrescar sesión automáticamente
   const refreshSession = useCallback(async () => {
-    try {
-      const supabase = await getSupabaseClient()
-      const { data: { session }, error } = await supabase.auth.refreshSession()
-      
-      if (error) {
-        logAuth('Error refrescando sesión', { error: error.message })
+    const supabase = await getSupabaseClient()
+    
+    return await withAuthErrorHandling(
+      async () => {
+        const { data: { session }, error } = await supabase.auth.refreshSession()
+        
+        if (error) {
+          logAuth('Error refrescando sesión', { error: error.message })
+          
+          // Manejar error de token inválido
+          await handleAuthError({
+            message: error.message,
+            code: error.code,
+            status: error.status
+          }, supabase)
+          
+          // Limpiar estado local
+          setUser(null)
+          setProfile(null)
+          
+          return false
+        }
+
+        if (session?.user) {
+          logAuth('Sesión refrescada exitosamente')
+          setUser(session.user)
+          await loadProfile(session.user.id)
+          return true
+        }
+
         return false
-      }
-
-      if (session?.user) {
-        logAuth('Sesión refrescada exitosamente')
-        setUser(session.user)
-        await loadProfile(session.user.id)
-        return true
-      }
-
-      return false
-    } catch (error) {
-      logAuth('Error refrescando sesión', { error: error instanceof Error ? error.message : 'Error desconocido' })
-      return false
-    }
+      },
+      supabase,
+      false
+    )
   }, [])
 
   // ✅ NUEVO: Configurar refresh automático de sesión
@@ -191,6 +206,10 @@ export function useAuth() {
               } else if (event === 'TOKEN_REFRESHED' && session?.user) {
                 logAuth('Token refrescado automáticamente');
                 setUser(session.user);
+              } else if (event === 'TOKEN_REFRESHED' && !session) {
+                logAuth('Token refresh falló, cerrando sesión');
+                setUser(null);
+                setProfile(null);
               }
             }
           );

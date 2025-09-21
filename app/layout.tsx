@@ -25,6 +25,7 @@ const UnifiedChatWidget = dynamic(
   }
 )
 import ErrorBoundary, { HydrationErrorFallback } from "@/components/error-boundary"
+import { AuthErrorBoundary } from "@/components/auth-error-boundary"
 import { CriticalResourcePreloader } from "@/components/preload-resources"
 
 const geist = GeistSans
@@ -167,17 +168,19 @@ export default function RootLayout({
           >
             <UnifiedQueryProvider>
               <ClientOnlyWrapper>
-                <AuthProvider>
-                  <CacheInitializer />
-                  {children}
-                  <ConditionalChatWidget />
-                  <Toaster 
-                    position="top-right"
-                    richColors
-                    closeButton
-                    duration={5000}
-                  />
-                </AuthProvider>
+                <AuthErrorBoundary>
+                  <AuthProvider>
+                    <CacheInitializer />
+                    {children}
+                    <ConditionalChatWidget />
+                    <Toaster 
+                      position="top-right"
+                      richColors
+                      closeButton
+                      duration={5000}
+                    />
+                  </AuthProvider>
+                </AuthErrorBoundary>
               </ClientOnlyWrapper>
             </UnifiedQueryProvider>
           </ThemeProvider>
