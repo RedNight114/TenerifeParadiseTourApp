@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useMemo, useCallback, useEffect } from "react"
 import type { Service } from "@/lib/supabase"
@@ -109,6 +109,7 @@ export function useServicesSearch(services: Service[], delay: number = 300) {
 }
 
 // Hook especializado para búsqueda de categorías
-export function useCategoriesSearch(categories: any[], delay: number = 300) {
+export function useCategoriesSearch(categories: unknown[], delay: number = 300) {
   return useDebouncedSearch(categories as Service[], delay, ['title', 'description'])
 }
+

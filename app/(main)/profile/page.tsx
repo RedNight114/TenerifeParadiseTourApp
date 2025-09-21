@@ -10,7 +10,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
 import { User, Mail, Calendar, Shield, Save, Loader2, CheckCircle, AlertCircle } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { Profile } from "@/lib/supabase"
 
@@ -44,11 +44,10 @@ window.location.href = '/auth/login'
     if (!user?.id) return
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
-return
+        return
       }
       
       const { data, error } = await client
@@ -58,7 +57,7 @@ return
         .maybeSingle()
 
       if (error) {
-return
+        return
       }
 
       if (data) {
@@ -70,7 +69,8 @@ return
         })
       }
     } catch (error) {
-}
+      // Error handled
+    }
   }
 
   const handleInputChange = (field: string, value: string) => {
@@ -99,8 +99,7 @@ return
         email: formData.email,
       }
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -355,4 +354,3 @@ return
     </div>
   )
 }
-

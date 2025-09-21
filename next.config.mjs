@@ -1,20 +1,28 @@
 /** @type {import('next').NextConfig} */
+import './lib/server-globals.mjs'
+
 const nextConfig = {
+  // Configuración básica
   reactStrictMode: true,
   swcMinify: true,
+  poweredByHeader: false,
+  trailingSlash: false,
   
-  // Configuración experimental simplificada para estabilidad
+  // Configuración experimental para mejor rendimiento
   experimental: {
-    // Solo mantener optimizaciones esenciales
-    optimizePackageImports: ['lucide-react'],
-    // Deshabilitar configuraciones que pueden causar problemas
-    // turbo: false, // Comentado para evitar conflictos
-    // optimizeCss: false, // Comentado para evitar problemas de CSS
-    // scrollRestoration: false, // Comentado para estabilidad
+    // Optimizaciones de compilación (solo las estables)
+    optimizePackageImports: ['@tanstack/react-query', '@supabase/supabase-js'],
   },
 
-  // Optimización de imágenes
+
+  // Configuración de imágenes optimizada
   images: {
+    formats: ['image/webp', 'image/avif'],
+    minimumCacheTTL: 31536000, // 1 año
+    dangerouslyAllowSVG: true,
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    
+    // Dominios permitidos para imágenes
     remotePatterns: [
       {
         protocol: 'https',
@@ -28,110 +36,178 @@ const nextConfig = {
         port: '',
         pathname: '/storage/v1/object/public/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'via.placeholder.com',
+        port: '',
+        pathname: '/**',
+      },
     ],
-    dangerouslyAllowSVG: true,
-    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    unoptimized: false,
-    formats: ['image/webp', 'image/avif'],
+    
+    // Configuración de tamaños responsivos
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
-    minimumCacheTTL: 60 * 60 * 24 * 30, // 30 días
   },
 
-  // Configuración de compilación más estricta
-  eslint: {
-    ignoreDuringBuilds: false,
-  },
-  typescript: {
-    ignoreBuildErrors: false,
-  },
-
-  // Configuración de webpack simplificada
-  webpack: (config, { dev, isServer }) => {
-    // Configuración de alias básica
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      '@': '.',
-      '@/components': './components',
-      '@/lib': './lib',
-      '@/hooks': './hooks',
-      '@/app': './app',
-    }
-
-    // Optimizaciones de producción más conservadoras
-    if (!dev && !isServer) {
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          vendor: {
-            test: /[\\/]node_modules[\\/]/,
-            name: 'vendors',
-            chunks: 'all',
-            priority: 10,
-          },
-          default: {
-            minChunks: 2,
-            priority: -20,
-            reuseExistingChunk: true,
-          },
-        },
-      }
-    }
-
-    return config
-  },
-
-  // Headers para caché y seguridad
+  // Configuración de headers de caché optimizados
   async headers() {
     return [
+      // APIs - No cache para datos dinámicos
       {
-        source: '/(.*)',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'origin-when-cross-origin',
-          },
-        ],
-      },
-      {
-        source: '/_next/static/(.*)',
+        source: '/api/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable', // 1 año para archivos estáticos
+            value: 'no-cache, no-store, must-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
           },
         ],
       },
+      
+      // Imágenes - Cache muy largo con validación
       {
-        source: '/images/(.*)',
+        source: '/images/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable', // 1 año
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Vary',
+            value: 'Accept',
+          },
+        ],
+      },
+      
+      // Assets estáticos - Cache permanente
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
     ]
   },
 
-  // Configuración básica para estabilidad
-  poweredByHeader: false,
+  // Configuración de compresión
   compress: true,
-  generateEtags: true,
   
-  // Configuración de output para mejor estabilidad
+  // Configuración de TypeScript y ESLint
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  eslint: {
+    ignoreDuringBuilds: false,
+  },
+
+  // Configuración de webpack optimizada
+  webpack: (config, { dev, isServer }) => {
+    // Configuración de fallback para módulos del navegador
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+        crypto: false,
+        stream: false,
+        util: false,
+        url: false,
+        assert: false,
+        http: false,
+        https: false,
+        os: false,
+        buffer: false,
+      }
+    } else {
+      // Configuración para el servidor
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        self: false,
+      }
+      
+      // Los polyfills globales se manejan en lib/server-globals.js
+    }
+
+    // Optimización del caché de webpack
+    if (dev) {
+      // Configuración de caché optimizada para desarrollo rápido
+      config.cache = {
+        type: 'memory', // Usar caché en memoria para desarrollo
+        maxGenerations: 1,
+      }
+      
+      // Optimizaciones de compilación para desarrollo
+      config.optimization = {
+        ...config.optimization,
+        removeAvailableModules: false,
+        removeEmptyChunks: false,
+        splitChunks: false, // Deshabilitar splitChunks en desarrollo para evitar problemas
+      }
+    } else {
+      // Configuración de producción
+      config.cache = {
+        type: 'filesystem',
+        compression: 'gzip',
+        maxMemoryGenerations: 1,
+      }
+    }
+
+    // Configuración simplificada de splitChunks para evitar errores de exports
+    config.optimization = {
+      ...config.optimization,
+      splitChunks: false, // Deshabilitar splitChunks temporalmente para evitar problemas de exports
+    }
+
+    // Configuración para resolver problemas de módulos ES/CommonJS
+    config.resolve = {
+      ...config.resolve,
+      extensionAlias: {
+        '.js': ['.js', '.ts', '.tsx'],
+        '.jsx': ['.jsx', '.tsx'],
+      },
+    }
+
+    return config
+  },
+
+  // Configuración de modularizeImports para mejor tree-shaking
+  modularizeImports: {
+    '@tanstack/react-query': {
+      transform: '@tanstack/react-query/{{member}}',
+    },
+    '@supabase/supabase-js': {
+      transform: '@supabase/supabase-js/{{member}}',
+    },
+  },
+
+  // Configuración de variables de entorno
+  env: {
+    CACHE_VERSION: '2.0.0',
+    CACHE_TTL_DEFAULT: '900000', // 15 minutos
+    CACHE_TTL_SERVICES: '900000', // 15 minutos
+    CACHE_TTL_CATEGORIES: '3600000', // 1 hora
+    CACHE_TTL_USERS: '300000', // 5 minutos
+  },
+
+  // Configuración de output
   output: 'standalone',
-  
-  // Configuración de trailing slash para consistencia
-  trailingSlash: false,
 }
 
 export default nextConfig

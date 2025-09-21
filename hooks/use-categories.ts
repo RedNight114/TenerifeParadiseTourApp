@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 
 interface Category {
   id: string
@@ -68,8 +68,7 @@ export function useCategories() {
 
       // Crear promesa global para evitar duplicados
       globalCategoriesCache.promise = (async () => {
-        const supabaseClient = getSupabaseClient()
-        const client = await supabaseClient.getClient()
+        const client = await getSupabaseClient()
         
         if (!client) {
           throw new Error("No se pudo obtener el cliente de Supabase")

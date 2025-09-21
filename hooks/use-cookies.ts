@@ -49,7 +49,8 @@ export function useCookies(): UseCookiesReturn {
           setHasConsent(true)
           applyPreferences(savedPreferences)
         } catch (error) {
-}
+          // Error handled
+        }
       }
     }
   }, [])
@@ -210,3 +211,4 @@ export function useCookies(): UseCookiesReturn {
     deleteCookie
   }
 } 
+

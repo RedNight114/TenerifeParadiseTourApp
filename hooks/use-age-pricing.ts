@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect, useCallback } from 'react'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 export interface AgePriceRange {
   id: number
@@ -38,8 +38,7 @@ export function useAgePricing() {
       setLoading(true)
       setError(null)
       
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error('No se pudo inicializar el cliente de Supabase')
@@ -53,7 +52,7 @@ export function useAgePricing() {
         .single()
       
       if (serviceError) {
-throw new Error(`Error obteniendo servicio: ${serviceError.message}`)
+        throw new Error(`Error obteniendo servicio: ${serviceError.message}`)
       }
       
       if (!service) {
@@ -69,7 +68,7 @@ throw new Error(`Error obteniendo servicio: ${serviceError.message}`)
         .order('min_age')
       
       if (ageRangesError) {
-// Si no hay tabla de rangos de edad, crear precios por defecto
+        // Si no hay tabla de rangos de edad, crear precios por defecto
         const defaultAgeRanges: AgePriceRange[] = [
           {
             id: 1,
@@ -270,4 +269,5 @@ return null
     exportParticipantsForReservation
   }
 }
+
 

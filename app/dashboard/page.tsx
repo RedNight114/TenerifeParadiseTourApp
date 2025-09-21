@@ -1,7 +1,7 @@
 "use client"
 
 import { useAuthContext } from "@/components/auth-provider"
-import { AuthGuard } from "@/components/auth-guard"
+import AuthGuard from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"

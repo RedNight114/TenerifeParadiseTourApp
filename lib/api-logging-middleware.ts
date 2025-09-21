@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server'
+﻿import { NextRequest, NextResponse } from 'next/server'
 import { log } from './edge-compatible-logger'
 
 export interface ApiLoggingOptions {
@@ -223,7 +223,7 @@ function getClientIP(request: NextRequest): string {
 }
 
 // Función helper para filtrar datos sensibles
-function filterSensitiveData(data: any, sensitiveFields: string[]): any {
+function filterSensitiveData(data: unknown, sensitiveFields: string[]): any {
   if (typeof data !== 'object' || data === null) {
     return data
   }
@@ -232,7 +232,7 @@ function filterSensitiveData(data: any, sensitiveFields: string[]): any {
     return data.map(item => filterSensitiveData(item, sensitiveFields))
   }
 
-  const filtered: any = {}
+  const filtered: Record<string, any> = {}
   for (const [key, value] of Object.entries(data)) {
     const lowerKey = key.toLowerCase()
     const isSensitive = sensitiveFields.some(field => lowerKey.includes(field))
@@ -385,3 +385,4 @@ export function logApiCall(
     }
   }
 }
+

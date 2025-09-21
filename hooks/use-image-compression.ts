@@ -66,6 +66,10 @@ export function useImageCompression() {
         }
       }
 
+      if (typeof document === 'undefined' || typeof window === 'undefined') {
+        throw new Error('Canvas no disponible en el servidor')
+      }
+
       // Crear canvas para comprimir
       const canvas = document.createElement('canvas')
       const ctx = canvas.getContext('2d')

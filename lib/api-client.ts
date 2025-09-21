@@ -51,7 +51,7 @@ throw error
     }
   }
 
-  static async post(url: string, data: any, options: RequestInit = {}) {
+  static async post(url: string, data: unknown, options: RequestInit = {}) {
     try {
       const headers = await this.getAuthHeaders()
       
@@ -76,7 +76,7 @@ throw error
     }
   }
 
-  static async put(url: string, data: any, options: RequestInit = {}) {
+  static async put(url: string, data: unknown, options: RequestInit = {}) {
     try {
       const headers = await this.getAuthHeaders()
       
@@ -150,7 +150,7 @@ export const adminApi = {
     return ApiClient.get(`/api/admin/audit-logs?${searchParams.toString()}`)
   },
 
-  postAuditLogs: (data: any) => 
+  postAuditLogs: (data: unknown) => 
     ApiClient.post('/api/admin/audit-logs', data),
 
   // Usuarios
@@ -173,3 +173,4 @@ export const adminApi = {
   getRateLimitStats: (days: number = 30) => 
     ApiClient.get(`/api/admin/rate-limit-stats?days=${days}`),
 } 
+

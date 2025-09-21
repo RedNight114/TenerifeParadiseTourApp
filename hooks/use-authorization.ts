@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuthContext } from '@/components/auth-provider'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
 
@@ -27,13 +27,8 @@ export interface AuthorizationState {
 
 export const checkUserRole = async (userId: string): Promise<string | null> => {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     
-    if (!client) {
-      throw new Error('No se pudo obtener el cliente de Supabase')
-    }
-
     const { data, error } = await client
       .from('profiles')
       .select('role')
@@ -41,12 +36,12 @@ export const checkUserRole = async (userId: string): Promise<string | null> => {
       .single()
 
     if (error) {
-return null
+      return null
     }
 
     return data?.role || null
   } catch (error) {
-return null
+    return null
   }
 }
 
@@ -57,27 +52,21 @@ export const isUserAdmin = async (userId: string): Promise<boolean> => {
 
 export const checkPermission = async (userId: string, permission: string): Promise<boolean> => {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     
-    if (!client) {
-      throw new Error('No se pudo obtener el cliente de Supabase')
-    }
-
     const { data, error } = await client
-      .from('user_permissions')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('permission', permission)
-      .single()
+      .rpc('user_has_permission', { 
+        user_id_param: userId, 
+        permission_name_param: permission 
+      })
 
     if (error) {
-return false
+      return false
     }
 
     return !!data
   } catch (error) {
-return false
+    return false
   }
 }
 
@@ -99,13 +88,8 @@ export function useAuthorization(): AuthorizationState {
       setIsLoading(true)
 
       // Obtener el perfil del usuario
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
-      if (!client) {
-        throw new Error("No se pudo obtener el cliente de Supabase para cargar el perfil")
-      }
-
       const { data: profile, error: profileError } = await client
         .from('profiles')
         .select('role')
@@ -113,7 +97,6 @@ export function useAuthorization(): AuthorizationState {
         .single()
 
       if (profileError) {
-        // Error obteniendo perfil para autorización
         setUserRole(null)
         setPermissions([])
         return
@@ -122,19 +105,11 @@ export function useAuthorization(): AuthorizationState {
       const role = profile.role as UserRole
       setUserRole(role)
 
-      // Obtener los permisos del usuario
+      // Obtener los permisos del usuario usando la función segura
       const { data: userPermissions, error: permissionsError } = await client
-        .from('user_permissions')
-        .select(`
-          permission_name,
-          resource,
-          action,
-          description
-        `)
-        .eq('user_id', user.id)
+        .rpc('get_user_permissions', { user_id_param: user.id })
 
       if (permissionsError) {
-        // Error obteniendo permisos
         setPermissions([])
       } else {
         setPermissions((userPermissions || []).map((perm: any) => ({
@@ -145,9 +120,7 @@ export function useAuthorization(): AuthorizationState {
         })))
       }
 
-      // Autorización cargada
     } catch (error) {
-      // Error cargando autorización
       setUserRole(null)
       setPermissions([])
     } finally {
@@ -306,3 +279,4 @@ export function useCanUpdateReservations() {
   const { hasPermission } = useAuthorization()
   return hasPermission('reservations.update.all')
 } 
+

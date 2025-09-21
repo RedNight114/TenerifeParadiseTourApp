@@ -5,9 +5,25 @@ import { useRouter } from "next/navigation"
 import { Search, MapPin, Calendar, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
 import Image from "next/image"
-import { useOptimizedData } from "@/hooks/use-optimized-data"
+import { useServices, useCategories } from "@/hooks/use-unified-cache"
 import "@/styles/hero-section.css"
 
 interface HeroSectionProps {
@@ -45,7 +61,8 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
   const searchTimeoutRef = useRef<NodeJS.Timeout>()
 
   // Obtener datos de la base de datos
-  const { data: { services, categories, subcategories } } = useOptimizedData()
+  const { data: services } = useServices()
+  const { data: categories } = useCategories()
 
   // Función para obtener icono de categoría
   const getCategoryIcon = (categoryId: string) => {
@@ -105,7 +122,7 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
 
   // Sugerencias inteligentes basadas en datos reales de la base de datos
   const smartSuggestions = useMemo(() => {
-    if (!services || !categories || !subcategories) {
+    if (!services || !categories) {
       return []
     }
 
@@ -116,14 +133,14 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
     
     featuredServices.forEach(service => {
       const category = categories.find(c => c.id === service.category_id)
-      const subcategory = subcategories.find(sc => sc.id === service.subcategory_id)
+      // const subcategory = subcategories.find(sc => sc.id === service.subcategory_id) // No disponible por ahora
       
       suggestions.push({
         type: 'service',
         id: service.id,
         title: service.title,
         category: category?.name || '',
-        subcategory: subcategory?.name || '',
+        subcategory: '', // No disponible por ahora
         count: undefined,
         price: service.price,
         duration: service.duration,
@@ -149,13 +166,13 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
         categoryServices.forEach(service => {
           // Solo agregar si no está ya en las sugerencias
           if (!suggestions.find(s => s.id === service.id)) {
-            const subcategory = subcategories.find(sc => sc.id === service.subcategory_id)
+            // const subcategory = subcategories.find(sc => sc.id === service.subcategory_id) // No disponible por ahora
             suggestions.push({
               type: 'service',
               id: service.id,
               title: service.title,
               category: category.name,
-              subcategory: subcategory?.name || '',
+              subcategory: '', // No disponible por ahora
               count: undefined,
               price: service.price,
               duration: service.duration,
@@ -179,14 +196,14 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
       
       affordableServices.forEach(service => {
         const category = categories.find(c => c.id === service.category_id)
-        const subcategory = subcategories.find(sc => sc.id === service.subcategory_id)
+        // const subcategory = subcategories.find(sc => sc.id === service.subcategory_id) // No disponible por ahora
         
         suggestions.push({
           type: 'service',
           id: service.id,
           title: service.title,
           category: category?.name || '',
-          subcategory: subcategory?.name || '',
+          subcategory: '', // No disponible por ahora
           count: undefined,
           price: service.price,
           duration: service.duration,
@@ -201,7 +218,7 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
 
     // Limitar a 6 sugerencias principales
     return suggestions.slice(0, 6)
-  }, [services, categories, subcategories])
+  }, [services, categories])
 
   // Establecer fecha mínima solo en el cliente para evitar errores de hidratación
   useEffect(() => {
@@ -223,7 +240,7 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
       
       // Validar que al menos hay un criterio de búsqueda
       if (!searchQuery.trim() && !selectedLocation && !date) {
-        toast.error("Por favor, ingresa al menos un criterio de búsqueda")
+        showToast('error', "Por favor, ingresa al menos un criterio de búsqueda")
         setIsSearching(false)
         return
       }
@@ -253,7 +270,7 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
       }
 
       // Mostrar toast de confirmación
-      toast.success("Buscando experiencias...")
+      showToast('success', "Buscando experiencias...")
 
       // Redirigir a la página de servicios con los filtros
       const searchUrl = `/services?${searchParams.toString()}`
@@ -269,7 +286,7 @@ export const HeroSection = React.memo(function HeroSection({ onSearch }: HeroSec
       }, 100)
 
     } catch (error) {
-toast.error("Error al realizar la búsqueda. Intenta de nuevo.")
+showToast('error', "Error al realizar la búsqueda. Intenta de nuevo.")
     } finally {
       setIsSearching(false)
     }
@@ -478,7 +495,7 @@ toast.error("Error al realizar la búsqueda. Intenta de nuevo.")
                        Experiencias Destacadas de Tenerife
                      </h3>
                      <div className="space-y-4">
-                      {!services || !categories || !subcategories ? (
+                      {!services || !categories ? (
                         // Estado de carga
                         <div className="text-center py-8">
                           <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />

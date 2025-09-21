@@ -34,7 +34,7 @@ function shouldBlockImageLog(message: string): boolean {
 }
 
 // Sobrescribir console.log para bloquear logs de imágenes
-console.log = function(...args: any[]) {
+console.log = function(...args: unknown[]) {
   const message = args[0]?.toString() || '';
   if (!shouldBlockImageLog(message)) {
     originalConsoleLog.apply(console, args);
@@ -42,7 +42,7 @@ console.log = function(...args: any[]) {
 };
 
 // Sobrescribir console.info para bloquear logs de imágenes
-console.info = function(...args: any[]) {
+console.info = function(...args: unknown[]) {
   const message = args[0]?.toString() || '';
   if (!shouldBlockImageLog(message)) {
     originalConsoleInfo.apply(console, args);
@@ -50,7 +50,7 @@ console.info = function(...args: any[]) {
 };
 
 // Sobrescribir console.debug para bloquear logs de imágenes
-console.debug = function(...args: any[]) {
+console.debug = function(...args: unknown[]) {
   const message = args[0]?.toString() || '';
   if (!shouldBlockImageLog(message)) {
     originalConsoleDebug.apply(console, args);
@@ -90,11 +90,6 @@ export default {
   enableImageLogs,
   disableImageLogs
 };
-
-
-
-
-
 
 
 

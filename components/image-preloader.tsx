@@ -58,8 +58,9 @@ resolve()
         })
 
         await Promise.allSettled(promises)
-} catch (error) {
-} finally {
+      } catch (error) {
+        // Error handled
+      } finally {
         isProcessing.current = false
         setIsPreloading(false)
       }
@@ -95,4 +96,5 @@ resolve()
 
   return null
 }
+
 

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { metricsCollector } from '@/lib/api-metrics'
 import { log } from '@/lib/advanced-logger'
-import { withApiLogging } from '@/lib/api-logging-middleware'
+
+// Marcar como dinámico para evitar errores de SSR
+export const dynamic = 'force-dynamic'
 
 async function handler(request: NextRequest) {
   try {
@@ -32,8 +34,8 @@ async function handler(request: NextRequest) {
     log.info('Metrics endpoint accessed', {
       endpoint: '/api/metrics',
       method: request.method,
-      userAgent: request.headers.get('user-agent'),
-      ip: request.headers.get('x-forwarded-for') || request.ip
+      userAgent: request.headers.get('user-agent') || undefined,
+      ip: request.headers.get('x-forwarded-for') || request.ip || undefined
     })
 
     return NextResponse.json({
@@ -43,7 +45,8 @@ async function handler(request: NextRequest) {
     })
 
   } catch (error) {
-    log.error('Error in metrics endpoint', error as Error, {
+    log.error('Error in metrics endpoint', {
+      error: error instanceof Error ? error.message : String(error),
       endpoint: '/api/metrics',
       method: request.method
     })
@@ -58,9 +61,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-// Exportar con logging automático
-export const GET = withApiLogging(handler, {
-  logRequestBody: false,
-  logResponseBody: false,
-  logHeaders: false
-})
+export const GET = handler

@@ -1,155 +1,167 @@
-﻿
-// Configuración de caché optimizada para Supabase
-export const CACHE_CONFIG = {
-  // TTL del caché (10 minutos)
-  TTL: 10 * 60 * 1000,
+/**
+ * Configuración centralizada del sistema de caché unificado
+ * Único punto de verdad para todas las configuraciones de caché
+ */
+
+export interface CacheConfig {
+  // Configuración básica
+  defaultTTL: number
+  maxMemorySize: number // en MB
+  maxEntries: number
   
-  // Umbral para prefetch (80% del TTL)
-  PRELOAD_THRESHOLD: 0.8,
+  // Configuración de compresión
+  enableCompression: boolean
+  compressionThreshold: number // en bytes
   
-  // Tamaño de lote para procesamiento
-  BATCH_SIZE: 50,
+  // Configuración de persistencia
+  enablePersistence: boolean
+  persistenceKey: string
   
-  // Intentos de retry
-  RETRY_ATTEMPTS: 3,
+  // Configuración de limpieza
+  cleanupInterval: number
+  evictionPolicy: 'lru' | 'lfu' | 'ttl'
   
-  // Delay entre retries
-  RETRY_DELAY: 1000,
+  // Configuración de invalidación
+  enableTagInvalidation: boolean
+  enableVersioning: boolean
   
-  // Configuración de imágenes
-  IMAGE_CONFIG: {
-    // Tamaños de imagen optimizados
-    sizes: "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+  // Configuración de métricas
+  enableMetrics: boolean
+  metricsInterval: number
+  
+  // Configuración de desarrollo
+  enableLogging: boolean
+  enableDevTools: boolean
+}
+
+// TTL específicos por tipo de recurso
+export const TTL_CONFIG = {
+  // Datos estáticos (categorías, configuraciones)
+  STATIC: 60 * 60 * 1000, // 1 hora
+  
+  // Servicios y contenido dinámico
+  SERVICES: 15 * 60 * 1000, // 15 minutos
+  
+  // Datos de usuario
+  USER_DATA: 10 * 60 * 1000, // 10 minutos
+  
+  // Conversaciones y chat
+  CONVERSATIONS: 5 * 60 * 1000, // 5 minutos
+  
+  // Datos temporales (búsquedas, filtros)
+  TEMPORARY: 2 * 60 * 1000, // 2 minutos
+  
+  // Datos críticos (autenticación)
+  CRITICAL: 30 * 60 * 1000, // 30 minutos
+} as const
+
+// Tags para invalidación inteligente
+export const CACHE_TAGS = {
+  SERVICES: 'services',
+  CATEGORIES: 'categories',
+  USERS: 'users',
+  CONVERSATIONS: 'conversations',
+  MESSAGES: 'messages',
+  API: 'api',
+  STATIC: 'static',
+  TEMPORARY: 'temporary',
+} as const
+
+// Configuración por entorno
+export const getCacheConfig = (): CacheConfig => {
+  const isDevelopment = process.env.NODE_ENV === 'development'
+  const isProduction = process.env.NODE_ENV === 'production'
+  
+  return {
+    // Configuración básica
+    defaultTTL: TTL_CONFIG.SERVICES,
+    maxMemorySize: isProduction ? 100 : 50, // Más memoria en producción
+    maxEntries: isProduction ? 2000 : 1000,
     
-    // Calidad de imagen
-    quality: 85,
+    // Configuración de compresión
+    enableCompression: true,
+    compressionThreshold: 1024, // 1 KB
     
-    // Formato preferido
-    format: "webp",
+    // Configuración de persistencia
+    enablePersistence: true,
+    persistenceKey: 'tpt_unified_cache_v4', // Nueva versión
     
-    // Lazy loading threshold
-    lazyThreshold: 0.1,
+    // Configuración de limpieza
+    cleanupInterval: isProduction ? 10 * 60 * 1000 : 5 * 60 * 1000, // 10min prod, 5min dev
+    evictionPolicy: 'lru',
+    
+    // Configuración de invalidación
+    enableTagInvalidation: true,
+    enableVersioning: true,
+    
+    // Configuración de métricas
+    enableMetrics: true,
+    metricsInterval: 30 * 1000, // 30 segundos
+    
+    // Configuración de desarrollo
+    enableLogging: isDevelopment,
+    enableDevTools: isDevelopment,
+  }
+}
+
+// Configuración específica para TanStack Query
+export const getQueryConfig = () => {
+  const config = getCacheConfig()
+  
+  return {
+    defaultOptions: {
+      queries: {
+        staleTime: TTL_CONFIG.SERVICES,
+        gcTime: TTL_CONFIG.SERVICES * 2, // Doble del staleTime
+        retry: 3,
+        retryDelay: (attemptIndex: number) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        refetchOnWindowFocus: false,
+        refetchOnMount: false,
+        refetchOnReconnect: 'always',
+        networkMode: 'online' as const,
+      },
+      mutations: {
+        retry: 1,
+        retryDelay: 1000,
+      },
+    },
+  }
+}
+
+// Configuración de precarga
+export const PRELOAD_CONFIG = {
+  // Datos críticos que se precargan al inicio
+  CRITICAL_DATA: [
+    'services:all',
+    'categories:all',
+    'subcategories:all',
+  ],
+  
+  // Datos que se precargan en background
+  BACKGROUND_DATA: [
+    'services:featured',
+    'categories:popular',
+  ],
+  
+  // Intervalo de precarga en background
+  BACKGROUND_INTERVAL: 5 * 60 * 1000, // 5 minutos
+}
+
+// Configuración de métricas
+export const METRICS_CONFIG = {
+  // Umbrales de alerta
+  ALERT_THRESHOLDS: {
+    LOW_HIT_RATE: 0.6, // 60%
+    HIGH_MEMORY_USAGE: 0.8, // 80%
+    SLOW_RESPONSE_TIME: 100, // 100ms
   },
   
-  // Configuración de queries
-  QUERY_CONFIG: {
-    // Campos específicos a seleccionar
-    selectFields: [
-      'id',
-      'title',
-      'description',
-      'category_id',
-      'subcategory_id',
-      'price',
-      'price_children',
-      'price_type',
-      'images',
-      'available',
-      'featured',
-      'duration',
-      'location',
-      'min_group_size',
-      'max_group_size',
-      'difficulty_level',
-      'vehicle_type',
-      'characteristics',
-      'insurance_included',
-      'fuel_included',
-      'menu',
-      'schedule',
-      'capacity',
-      'dietary_options',
-      'min_age',
-      'license_required',
-      'permit_required',
-      'what_to_bring',
-      'included_services',
-      'not_included_services',
-      'meeting_point_details',
-      'transmission',
-      'seats',
-      'doors',
-      'fuel_policy',
-      'pickup_locations',
-      'deposit_required',
-      'deposit_amount',
-      'experience_type',
-      'chef_name',
-      'drink_options',
-      'ambience',
-      'activity_type',
-      'fitness_level_required',
-      'equipment_provided',
-      'cancellation_policy',
-      'itinerary',
-      'guide_languages',
-      'created_at',
-      'updated_at'
-    ],
-    
-    // Relaciones a incluir
-    relations: [
-      'category:categories(name)',
-      'subcategory:subcategories(name)'
-    ],
-    
-    // Orden por defecto
-    defaultOrder: 'created_at',
-    defaultOrderDirection: 'desc'
-  }
-}
-
-// Función para medir rendimiento
-export const performanceMetrics = {
-  startTime: 0,
-  endTime: 0,
-  
-  start() {
-    this.startTime = performance.now()
+  // Intervalos de reporte
+  REPORTING_INTERVALS: {
+    REAL_TIME: 5 * 1000, // 5 segundos
+    SUMMARY: 60 * 1000, // 1 minuto
+    DETAILED: 5 * 60 * 1000, // 5 minutos
   },
-  
-  end() {
-    this.endTime = performance.now()
-    return this.endTime - this.startTime
-  },
-  
-  log(operation: string, duration: number) {
-    console.log(`${operation} completed in ${duration.toFixed(2)}ms`)
-  }
 }
 
-// Función para optimizar queries
-export const optimizeQuery = (query: any) => {
-  return query
-    .select(CACHE_CONFIG.QUERY_CONFIG.selectFields.join(', '))
-    .order(CACHE_CONFIG.QUERY_CONFIG.defaultOrder, { 
-      ascending: CACHE_CONFIG.QUERY_CONFIG.defaultOrderDirection === 'asc' 
-    })
-}
-
-// Función para procesar datos en lotes
-export const processBatch = <T>(data: T[], batchSize: number = CACHE_CONFIG.BATCH_SIZE) => {
-  const batches: T[][] = []
-  
-  for (let i = 0; i < data.length; i += batchSize) {
-    batches.push(data.slice(i, i + batchSize))
-  }
-  
-  return batches
-}
-
-// Función para retry con backoff exponencial
-export const retryWithBackoff = async <T>(
-  fn: () => Promise<T>,
-  attempts: number = CACHE_CONFIG.RETRY_ATTEMPTS
-): Promise<T> => {
-  try {
-    return await fn()
-  } catch (error) {
-    if (attempts <= 1) throw error
-    
-    await new Promise(resolve => setTimeout(resolve, CACHE_CONFIG.RETRY_DELAY))
-    return retryWithBackoff(fn, attempts - 1)
-  }
-}
-
+export default getCacheConfig

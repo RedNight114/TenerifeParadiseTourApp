@@ -28,8 +28,25 @@ import Image from "next/image"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { ServiceGallery } from "@/components/service-gallery"
-import { toast } from "sonner"
+
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
+import ServiceGallery from "@/components/service-gallery"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -38,13 +55,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
+import { useServices } from "@/hooks/use-unified-cache"
 import type { Service, Profile } from "@/lib/supabase"
 
 export default function BookingPage() {
   const { serviceId } = useParams()
   const { user, loading: authLoading, signOut } = useAuthContext()
-  const { services, loading: servicesLoading, refreshData: refreshServices, isInitialized } = useUnifiedData()
+  const { data: services, isLoading: servicesLoading, refetch: refreshServices } = useServices()
   const router = useRouter()
 
   const [service, setService] = useState<Service | null>(null)
@@ -61,23 +79,23 @@ export default function BookingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [invalidPriceAlert, setInvalidPriceAlert] = useState(false)
-  const [redsysHtml, setRedsysHtml] = useState<string | null>(null)
+  // Estado para manejo de pagos (a implementar con nueva librería)
   const [formProgress, setFormProgress] = useState(0)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [userProfile, setUserProfile] = useState<Profile | null>(null)
-  const [priceType, setPriceType] = useState<'per_person' | 'total'>('per_person')
+  const [priceType, setPriceType] = useState<'per_person' | 'total' | 'age_ranges'>('per_person')
 
   // Validar acceso del usuario
   useEffect(() => {
     if (!authLoading && !user) {
-      toast.error("Necesitas iniciar sesión para hacer una reserva")
+      showToast('error', "Necesitas iniciar sesión para hacer una reserva")
       router.push("/auth/login")
     }
   }, [user, authLoading, router])
 
   // Cargar servicios
   useEffect(() => {
-    if (services.length === 0) {
+    if (services && services.length === 0) {
       refreshServices()
     }
   }, [services, refreshServices])
@@ -93,10 +111,8 @@ export default function BookingPage() {
     if (!user?.id) return
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
-        console.error("Error: No se pudo obtener el cliente de Supabase")
         return
       }
       const { data, error } = await client
@@ -106,7 +122,6 @@ export default function BookingPage() {
         .maybeSingle()
 
       if (error) {
-        console.error("Error cargando perfil:", error)
         return
       }
 
@@ -114,8 +129,7 @@ export default function BookingPage() {
         setUserProfile(data)
       }
     } catch (error) {
-      console.error("Error cargando perfil:", error)
-    }
+      }
   }
 
   const handleSignOut = async () => {
@@ -123,8 +137,7 @@ export default function BookingPage() {
       await signOut()
       router.push("/")
     } catch (error) {
-      console.error("Error al cerrar sesión:", error)
-      toast.error("Error al cerrar sesión")
+      showToast('error', "Error al cerrar sesión")
     }
   }
 
@@ -152,8 +165,8 @@ export default function BookingPage() {
 
   // Configurar servicio y datos del usuario
   useEffect(() => {
-    if (services.length > 0 && serviceId) {
-      const foundService = services.find((s) => s.id === serviceId)
+    if (services && services.length > 0 && serviceId) {
+      const foundService = services.find((s) => s.id === serviceId)     
       setService(foundService || null)
 
       if (foundService && user) {
@@ -167,7 +180,7 @@ export default function BookingPage() {
       // Verificar precio del servicio
       if (foundService && (!foundService.price || foundService.price <= 0)) {
         setInvalidPriceAlert(true)
-        toast.error("Este servicio no tiene un precio válido configurado")
+        showToast('error', "Este servicio no tiene un precio válido configurado")
       } else {
         setInvalidPriceAlert(false)
       }
@@ -204,7 +217,7 @@ export default function BookingPage() {
       
       // Solo mostrar el toast si el usuario está viendo la página por primera vez
       if (service.id && !localStorage.getItem(`price_info_${service.id}`)) {
-        toast.info(priceInfo, {
+        showToast('info', priceInfo, {
           duration: 4000,
           description: priceType === 'per_person' 
             ? "El precio se calculará multiplicando por el número de personas"
@@ -334,27 +347,26 @@ export default function BookingPage() {
     e.preventDefault()
 
     if (!validateForm()) {
-      toast.error("Por favor, corrige los errores en el formulario")
+      showToast('error', "Por favor, corrige los errores en el formulario")
       return
     }
 
     if (!service || !user) {
-      toast.error("Error: Datos del servicio o usuario no disponibles")
+      showToast('error', "Error: Datos del servicio o usuario no disponibles")
       return
     }
 
     const total = calculateTotal()
     if (!total || total <= 0) {
-      toast.error("Error: El precio del servicio no es válido")
+      showToast('error', "Error: El precio del servicio no es válido")
       return
     }
 
     setIsSubmitting(true)
-    setRedsysHtml(null)
+            // TODO: Limpiar estado de pagos cuando se implemente nueva librería
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
       }
@@ -398,18 +410,16 @@ export default function BookingPage() {
       }
 
       toast.dismiss()
-      toast.success("¡Reserva creada exitosamente!")
+      showToast('success', "¡Reserva creada exitosamente!")
 
-      // Recibir HTML de Redsys y redirigir
-      const html = await response.text()
-      const blob = new Blob([html], { type: "text/html" })
-      const url = URL.createObjectURL(blob)
-      window.location.href = url
+      // TODO: Implementar redirección a pasarela de pago
+      // Por ahora, mostrar mensaje de confirmación
+      showToast('info', "Reserva creada. El pago se procesará próximamente.")
 
     } catch (error: unknown) {
       toast.dismiss()
       const errorMessage = error instanceof Error ? error.message : "Error al procesar la reserva"
-      toast.error(errorMessage)
+      showToast('error', errorMessage)
       setErrors({ submit: errorMessage })
     } finally {
       setIsSubmitting(false)
@@ -966,10 +976,7 @@ export default function BookingPage() {
         </div>
       </div>
 
-      {/* Redsys Form */}
-      {redsysHtml && (
-        <div dangerouslySetInnerHTML={{ __html: redsysHtml }} />
-      )}
+      {/* TODO: Implementar formulario de pago con nueva librería */}
     </div>
   )
 }

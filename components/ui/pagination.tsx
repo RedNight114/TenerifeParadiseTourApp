@@ -115,3 +115,5 @@ export {
   PaginationNext,
   PaginationPrevious,
 }
+
+export default Pagination

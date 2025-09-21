@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils"
 // Extender la interfaz Window para incluir gtag
 declare global {
   interface Window {
-    gtag?: (...args: any[]) => void
+    gtag?: (...args: unknown[]) => void
   }
 }
 
@@ -58,6 +58,8 @@ export function CookieBanner({ className }: CookieBannerProps) {
 
   // Aplicar las preferencias de cookies
   const applyCookiePreferences = (newPreferences: CookiePreferences) => {
+    if (typeof document === 'undefined') return
+    
     // Cookies necesarias (siempre activas)
     if (newPreferences.necessary) {
       // Configurar cookies esenciales

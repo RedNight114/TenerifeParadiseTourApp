@@ -1,9 +1,7 @@
 ﻿import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { withAuthorization, requireAdmin } from "@/lib/authorization"
 import { z } from "zod"
-
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
 // Esquemas de validación para gestión de usuarios
 const updateUserRoleSchema = z.object({
@@ -18,13 +16,17 @@ const getUserPermissionsSchema = z.object({
 })
 
 // GET - Obtener todos los usuarios (solo admin)
-export const GET = requireAdmin()(async (request: NextRequest, userData: any) => {
+export const GET = requireAdmin()(async (request: NextRequest, userData: unknown) => {
   try {
     const { searchParams } = new URL(request.url)
     const role = searchParams.get("role")
     const limit = parseInt(searchParams.get("limit") || "50")
     const offset = parseInt(searchParams.get("offset") || "0")
-let query = supabase
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
+    let query = supabase
       .from("profiles")
       .select(`
         id,
@@ -44,9 +46,10 @@ let query = supabase
     const { data: users, error, count } = await query
 
     if (error) {
-return NextResponse.json({ error: "Error al obtener usuarios" }, { status: 500 })
+      return NextResponse.json({ error: "Error al obtener usuarios" }, { status: 500 })
     }
-return NextResponse.json({
+    
+    return NextResponse.json({
       users,
       pagination: {
         limit,
@@ -55,7 +58,7 @@ return NextResponse.json({
       }
     })
   } catch (error) {
-return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 })
 
@@ -67,7 +70,7 @@ export const POST = requireAdmin()(async (request: NextRequest, userData: any) =
     // Validar datos de entrada
     const validation = updateUserRoleSchema.safeParse(body)
     if (!validation.success) {
-return NextResponse.json({
+      return NextResponse.json({
         error: "Datos de entrada inválidos",
         details: validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
       }, { status: 400 })
@@ -78,11 +81,15 @@ return NextResponse.json({
 
     // Prevenir que un admin se quite sus propios privilegios
     if (userId === adminUserId && role !== 'admin') {
-return NextResponse.json({
+      return NextResponse.json({
         error: "No puede cambiar su propio rol de administrador"
       }, { status: 403 })
     }
-// Actualizar el rol del usuario
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
+    // Actualizar el rol del usuario
     const { data, error } = await supabase
       .from("profiles")
       .update({ 
@@ -94,14 +101,15 @@ return NextResponse.json({
       .single()
 
     if (error) {
-return NextResponse.json({ error: "Error al actualizar rol de usuario" }, { status: 500 })
+      return NextResponse.json({ error: "Error al actualizar rol de usuario" }, { status: 500 })
     }
-return NextResponse.json({
+    
+    return NextResponse.json({
       message: "Rol de usuario actualizado exitosamente",
       user: data
     })
   } catch (error) {
-return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 })
 
@@ -113,7 +121,7 @@ export const PUT = requireAdmin()(async (request: NextRequest, userData: any) =>
     // Validar datos de entrada
     const validation = getUserPermissionsSchema.safeParse(body)
     if (!validation.success) {
-return NextResponse.json({
+      return NextResponse.json({
         error: "Datos de entrada inválidos",
         details: validation.error.errors.map(err => `${err.path.join('.')}: ${err.message}`)
       }, { status: 400 })
@@ -121,7 +129,11 @@ return NextResponse.json({
 
     const { userId } = validation.data
     const adminUserId = userData.user.id
-// Obtener el perfil del usuario
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
+    // Obtener el perfil del usuario
     const { data: profile, error: profileError } = await supabase
       .from("profiles")
       .select("id, email, full_name, role")
@@ -129,28 +141,23 @@ return NextResponse.json({
       .single()
 
     if (profileError || !profile) {
-return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
+      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 })
     }
 
-    // Obtener los permisos del usuario
+    // Obtener los permisos del usuario usando la función segura
     const { data: permissions, error: permissionsError } = await supabase
-      .from("user_permissions")
-      .select(`
-        permission_name,
-        resource,
-        action,
-        description
-      `)
-      .eq("user_id", userId)
+      .rpc('get_user_permissions', { user_id_param: userId })
 
     if (permissionsError) {
-return NextResponse.json({ error: "Error al obtener permisos" }, { status: 500 })
+      return NextResponse.json({ error: "Error al obtener permisos" }, { status: 500 })
     }
-return NextResponse.json({
+    
+    return NextResponse.json({
       user: profile,
       permissions: permissions || []
     })
   } catch (error) {
-return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }) 
+

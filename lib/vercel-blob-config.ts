@@ -31,11 +31,9 @@ export const vercelBlobConfig = {
   // Función de debug para verificar configuración
   debugConfig: () => {
     if (typeof window !== 'undefined') {
-      console.log('Cliente configurado:', !!process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN)
-      console.log('Token (primeros 10 chars):', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
+      console.log('BLOB_TOKEN (client):', process.env.NEXT_PUBLIC_BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
     } else {
-      console.log('Servidor configurado:', !!process.env.BLOB_READ_WRITE_TOKEN)
-      console.log('Token (primeros 10 chars):', process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
+      console.log('BLOB_TOKEN (server):', process.env.BLOB_READ_WRITE_TOKEN?.substring(0, 10) || 'N/A')
     }
   }
 }

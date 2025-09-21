@@ -114,7 +114,7 @@ const DEFAULT_AGE_RANGES: AgeRange[] = [
     serviceId: '', 
     rangeName: 'Seniors', 
     minAge: 65, 
-    maxAge: 120, 
+    maxAge: 99, 
     price: 0, 
     priceType: 'per_person', 
     description: '20% descuento para seniors', 
@@ -122,7 +122,7 @@ const DEFAULT_AGE_RANGES: AgeRange[] = [
   }
 ]
 
-export function UnifiedPricingParticipantSelector({ 
+function UnifiedPricingParticipantSelector({ 
   basePrice, 
   onParticipantsChange, 
   onPricingChange,
@@ -183,19 +183,31 @@ export function UnifiedPricingParticipantSelector({
 
   // Obtener etiqueta de rango de edad basada en la edad
   const getAgeRangeLabel = (age: number): string => {
-    const range = editingRanges.find(r => age >= r.minAge && age <= r.maxAge)
+    if (age < 0 || age > 120) return 'Edad no válida'
+    
+    // Si todos los precios son iguales, no validar por rangos específicos
+    if (allPricesEqual) {
+      return 'Participante'
+    }
+    
+    const range = ageRangePricing.find(r => age >= r.minAge && age <= r.maxAge)
     return range ? range.ageLabel : 'Edad no válida'
   }
 
   // Obtener tipo de participante basado en la edad
   const getParticipantType = (age: number): string => {
-    const range = editingRanges.find(r => age >= r.minAge && age <= r.maxAge)
-    return range ? range.rangeName : 'Adultos'
+    // Si todos los precios son iguales, usar un tipo genérico
+    if (allPricesEqual) {
+      return 'Participante'
+    }
+    
+    const range = ageRangePricing.find(r => age >= r.minAge && age <= r.maxAge)
+    return range ? range.rangeName : 'Participante'
   }
 
   // Calcular precio para una edad específica
   const calculatePriceForAge = (age: number): number => {
-    const range = editingRanges.find(r => age >= r.minAge && age <= r.maxAge)
+    const range = ageRangePricing.find(r => age >= r.minAge && age <= r.maxAge)
     if (!range) return basePrice
     
     return range.price > 0 ? range.price : basePrice * getPriceMultiplier(range)
@@ -387,14 +399,21 @@ export function UnifiedPricingParticipantSelector({
     <TooltipProvider>
       <div className={cn("space-y-3", className)}>
         {/* Sección Unificada de Precios y Selección */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
-          <CardHeader className="pb-2">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Euro className="w-4 h-4" />
-                <CardTitle className="text-sm font-semibold text-blue-900">
-                  Precios por Edad y Selección de Participantes
-                </CardTitle>
+        <Card className="bg-white border border-gray-200 shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-900">
+                    Seleccionar Participantes
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Elige la cantidad de participantes para cada rango de edad
+                  </p>
+                </div>
               </div>
               
               {isAdmin && (
@@ -453,10 +472,10 @@ export function UnifiedPricingParticipantSelector({
             
             {/* Indicador de precio único */}
             {pricingMode === 'view' && allPricesEqual && (
-              <div className="flex items-center gap-1 mt-1 p-1.5 bg-green-100 rounded border border-green-200">
-                <Equal className="w-3 h-3 text-green-600 flex-shrink-0" />
-                <span className="text-xs text-green-700 font-medium">
-                  Precio único: €{ageRangePricing.find(r => r.price > 0)?.price.toFixed(2) || basePrice.toFixed(2)}
+              <div className="flex items-center gap-2 mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                <Equal className="w-4 h-4 text-blue-600" />
+                <span className="text-sm font-medium text-blue-800">
+                  Precio único: €{ageRangePricing.find(r => r.price > 0)?.price.toFixed(2) || basePrice.toFixed(2)} por persona
                 </span>
               </div>
             )}
@@ -464,59 +483,62 @@ export function UnifiedPricingParticipantSelector({
           <CardContent className="px-3 sm:px-4 pb-3">
             <div className="space-y-2">
               {ageRangePricing.map((range) => (
-                <div key={range.id} className="bg-white rounded-md p-3 border border-blue-200 shadow-sm hover:shadow-md transition-all duration-200">
-                  {/* DISEÑO ULTRA COMPACTO */}
-                  <div className="flex items-center gap-3">
-                    {/* Icono ultra compacto */}
+                <div key={range.id} className="bg-gray-50 rounded-lg p-4 border border-gray-200 hover:border-blue-300 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    {/* Icono */}
                     <div className="flex-shrink-0">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center shadow-sm">
                         {getParticipantIcon(range.rangeName)}
                       </div>
                     </div>
                     
-                    {/* Información ultra compacta */}
+                    {/* Información */}
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 text-sm leading-tight">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-semibold text-gray-900 text-sm">
                           {range.rangeName}
                         </h3>
                         <span className="text-xs text-gray-500">
-                          ({range.minAge}-{range.maxAge === 120 ? '+' : range.maxAge})
+                          ({range.minAge}-{range.maxAge === 99 ? '+' : range.maxAge} años)
                         </span>
                       </div>
+                      <p className="text-xs text-gray-500">
+                        {range.description || `Participantes de ${range.minAge} a ${range.maxAge === 99 ? 'más' : range.maxAge} años`}
+                      </p>
                     </div>
                     
-                    {/* Precio ultra compacto */}
+                    {/* Precio */}
                     <div className="flex-shrink-0">
                       <Badge 
                         variant="secondary" 
                         className={cn(
-                          "text-xs px-2 py-0.5 font-medium rounded",
-                          "bg-blue-100 text-blue-800 border-blue-200",
-                          allPricesEqual && range.price > 0 && "bg-green-100 text-green-800 border-green-200"
+                          "text-xs px-3 py-1 font-medium",
+                          range.price === 0 
+                            ? "bg-green-100 text-green-800 border-green-200"
+                            : "bg-blue-100 text-blue-800 border-blue-200"
                         )}
                       >
                         {range.price === 0 ? 'Gratis' : `€${range.price.toFixed(2)}`}
                       </Badge>
                     </div>
                     
-                    {/* Controles ultra compactos */}
+                    {/* Controles */}
                     {pricingMode === 'view' && (
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        {/* Controles +/- ultra compactos */}
-                        <div className="flex items-center gap-0.5 bg-gray-50 rounded border px-0.5 py-0.5">
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Controles +/- */}
+                        <div className="flex items-center bg-white rounded border border-gray-300 p-1">
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => updateQuantity(range.id.toString(), false)}
                             disabled={quantities[range.id.toString()] === 0}
-                            className="w-5 h-5 p-0 hover:bg-gray-200 disabled:opacity-50"
+                            className="w-6 h-6 p-0 hover:bg-gray-100 disabled:opacity-50"
                           >
-                            <Minus className="w-2.5 h-2.5" />
+                            <Minus className="w-3 h-3" />
                           </Button>
                           
-                          <div className="min-w-[1.25rem] text-center">
-                            <span className="text-xs font-bold text-blue-600">
+                          <div className="min-w-[1.5rem] text-center">
+                            <span className="text-sm font-bold text-blue-600">
                               {quantities[range.id.toString()] || 0}
                             </span>
                           </div>
@@ -526,20 +548,21 @@ export function UnifiedPricingParticipantSelector({
                             size="sm"
                             onClick={() => updateQuantity(range.id.toString(), true)}
                             disabled={participants.length + (quantities[range.id.toString()] || 0) >= maxParticipants}
-                            className="w-5 h-5 p-0 hover:bg-gray-200 disabled:opacity-50"
+                            className="w-6 h-6 p-0 hover:bg-gray-100 disabled:opacity-50"
                           >
-                            <Plus className="w-2.5 h-2.5" />
+                            <Plus className="w-3 h-3" />
                           </Button>
                         </div>
                         
-                        {/* Botón Agregar ultra compacto */}
+                        {/* Botón Agregar */}
                         <Button
                           variant="default"
                           size="sm"
                           onClick={() => addParticipantsForRange(range)}
                           disabled={quantities[range.id.toString()] === 0}
-                          className="h-6 px-2 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="h-8 px-3 text-xs font-medium bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
+                          <Plus className="w-3 h-3 mr-1" />
                           Agregar
                         </Button>
                       </div>
@@ -595,62 +618,123 @@ export function UnifiedPricingParticipantSelector({
 
         {/* Sección de Participante Personalizado */}
         {pricingMode === 'view' && (
-          <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-200">
+          <Card className="bg-white border border-gray-200 shadow-sm">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg text-green-900">
-                <User className="w-5 h-5" />
-                Participante Personalizado
-              </CardTitle>
-              <p className="text-sm text-green-700">
-                Agrega un participante con edad específica
-              </p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <User className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-semibold text-gray-900">
+                    Participante Personalizado
+                  </CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Añade un participante con una edad específica
+                  </p>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="px-4 pb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-                <div className="space-y-2">
-                  <Label htmlFor="custom-age" className="text-sm font-medium text-green-800">
-                    Edad
-                  </Label>
-                  <Input
-                    id="custom-age"
-                    type="number"
-                    min="0"
-                    max="120"
-                    value={customAge}
-                    onChange={(e) => setCustomAge(parseInt(e.target.value) || 0)}
-                    className="h-10 text-sm border-green-300 focus:border-green-500 focus:ring-green-500"
-                    placeholder="Edad"
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-green-800">
-                    Precio
-                  </Label>
-                  <div className="h-10 px-3 py-2 bg-white border border-green-300 rounded-md text-sm font-bold text-green-700 flex items-center justify-center">
-                    €{calculatePriceForAge(customAge).toFixed(2)}
+            <CardContent className="px-6 pb-6">
+              <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                {allPricesEqual ? (
+                  // Diseño simplificado para precio único
+                  <div className="flex gap-4 items-end">
+                    <div className="space-y-2 flex-1">
+                      <Label htmlFor="custom-age" className="text-sm font-medium text-gray-700">
+                        Edad del participante
+                      </Label>
+                      <Input
+                        id="custom-age"
+                        type="number"
+                        min="0"
+                        max="120"
+                        value={customAge}
+                        onChange={(e) => setCustomAge(parseInt(e.target.value) || 0)}
+                        className="h-12 text-lg border border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
+                        placeholder="Introduce la edad"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Button
+                        onClick={addCustomParticipant}
+                        disabled={participants.length >= maxParticipants || customAge < 0 || customAge > 120}
+                        className="h-12 px-6 bg-green-600 hover:bg-green-700 text-white text-base font-medium"
+                      >
+                        <Plus className="w-5 h-5 mr-2" />
+                        Agregar
+                      </Button>
+                    </div>
                   </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium text-green-800">
-                    Rango
-                  </Label>
-                  <div className="h-10 px-3 py-2 bg-white border border-green-300 rounded-md text-sm text-green-600 flex items-center justify-center bg-gray-50">
-                    {getAgeRangeLabel(customAge)}
+                ) : (
+                  // Diseño completo para precios por edad
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                    <div className="space-y-2">
+                      <Label htmlFor="custom-age" className="text-sm font-medium text-gray-700">
+                        Edad
+                      </Label>
+                      <Input
+                        id="custom-age"
+                        type="number"
+                        min="0"
+                        max="120"
+                        value={customAge}
+                        onChange={(e) => setCustomAge(parseInt(e.target.value) || 0)}
+                        className="h-10 text-sm border border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
+                        placeholder="Edad"
+                      />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Precio
+                      </Label>
+                      <div className="h-10 px-3 py-2 bg-white border border-gray-300 rounded-lg text-sm font-medium text-green-700 flex items-center justify-center">
+                        €{calculatePriceForAge(customAge).toFixed(2)}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium text-gray-700">
+                        Categoría
+                      </Label>
+                      <div className={cn(
+                        "h-10 px-3 py-2 border rounded-lg text-sm font-medium flex items-center justify-center",
+                        getAgeRangeLabel(customAge) === 'Edad no válida'
+                          ? "bg-red-50 border-red-300 text-red-700"
+                          : "bg-blue-50 border-blue-300 text-blue-700"
+                      )}>
+                        {getAgeRangeLabel(customAge)}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Button
+                        onClick={addCustomParticipant}
+                        disabled={participants.length >= maxParticipants}
+                        className="w-full h-10 bg-green-600 hover:bg-green-700 text-white text-sm font-medium"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Agregar
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                )}
                 
-                <div className="space-y-2">
-                  <Button
-                    onClick={addCustomParticipant}
-                    disabled={participants.length >= maxParticipants}
-                    className="w-full h-10 bg-green-600 hover:bg-green-700 text-white text-sm font-medium shadow-sm"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Agregar
-                  </Button>
-                </div>
+                {/* Información adicional */}
+                {customAge > 0 && (
+                  <div className="mt-3 p-2 bg-blue-50 rounded border border-blue-200">
+                    <div className="flex items-center gap-2 text-xs text-blue-800">
+                      <Info className="w-3 h-3" />
+                      <span className="font-medium">
+                        {allPricesEqual 
+                          ? `${customAge} años → €${calculatePriceForAge(customAge).toFixed(2)}`
+                          : `${customAge} años → ${getAgeRangeLabel(customAge)} → €${calculatePriceForAge(customAge).toFixed(2)}`
+                        }
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -660,31 +744,48 @@ export function UnifiedPricingParticipantSelector({
         {pricingMode === 'view' && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Resumen */}
-            <Card className="bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+            <Card className="bg-white border border-gray-200 shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg text-purple-900">
-                  <UserCheck className="w-5 h-5" />
-                  Resumen
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="px-4 pb-6 space-y-4">
-                <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-purple-200">
-                  <span className="text-gray-700 text-sm font-medium">Total Participantes:</span>
-                  <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-sm px-3 py-1">
-                    {participants.length}/{maxParticipants}
-                  </Badge>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-purple-100 rounded-lg">
+                    <UserCheck className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                      Resumen
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Detalles de tu selección
+                    </p>
+                  </div>
                 </div>
-                
-                <div className="flex justify-between items-center p-3 bg-white rounded-lg border border-purple-200">
-                  <span className="text-gray-700 text-sm font-medium">Precio Total:</span>
-                  <span className="text-2xl font-bold text-purple-900">
-                    €{totalPrice.toFixed(2)}
-                  </span>
+              </CardHeader>
+              <CardContent className="px-6 pb-6 space-y-4">
+                <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-gray-700 text-sm font-medium">
+                      Total Participantes:
+                    </span>
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800 text-sm px-3 py-1">
+                      {participants.length}/{maxParticipants}
+                    </Badge>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <span className="text-gray-700 text-sm font-medium">
+                      Precio Total:
+                    </span>
+                    <span className="text-2xl font-bold text-purple-900">
+                      €{totalPrice.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
                 
                 {participants.length > 0 && (
-                  <div className="pt-3 border-t border-purple-200">
-                    <div className="text-sm text-gray-600 mb-3 font-medium">Distribución por edad:</div>
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div className="text-sm text-gray-700 mb-3 font-medium">
+                      Distribución por edad:
+                    </div>
                     <div className="space-y-2">
                       {Object.entries(
                         participants.reduce((acc, p) => {
@@ -692,9 +793,9 @@ export function UnifiedPricingParticipantSelector({
                           return acc
                         }, {} as Record<string, number>)
                       ).map(([type, count]) => (
-                        <div key={type} className="flex justify-between items-center p-2 bg-white rounded border border-purple-100">
+                        <div key={type} className="flex justify-between items-center p-2 bg-white rounded border border-gray-200">
                           <span className="text-gray-700 text-sm">{type}:</span>
-                          <Badge variant="outline" className="text-purple-700 border-purple-300">
+                          <Badge variant="outline" className="text-gray-700 border-gray-300">
                             {count}
                           </Badge>
                         </div>
@@ -706,17 +807,23 @@ export function UnifiedPricingParticipantSelector({
             </Card>
 
             {/* Participantes Seleccionados */}
-            <Card className="bg-gradient-to-r from-orange-50 to-red-50 border-orange-200">
+            <Card className="bg-white border border-gray-200 shadow-sm">
               <CardHeader className="pb-4">
-                <CardTitle className="flex items-center gap-2 text-lg text-orange-900">
-                  <Users className="w-5 h-5" />
-                  Participantes Seleccionados
-                </CardTitle>
-                <p className="text-sm text-orange-700">
-                  {participants.length} participante{participants.length !== 1 ? 's' : ''} seleccionado{participants.length !== 1 ? 's' : ''}
-                </p>
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Users className="w-5 h-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-900">
+                      Participantes Seleccionados
+                    </CardTitle>
+                    <p className="text-sm text-gray-600 mt-1">
+                      {participants.length} participante{participants.length !== 1 ? 's' : ''} seleccionado{participants.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="px-4 pb-6">
+              <CardContent className="px-6 pb-6">
                 {participants.length === 0 ? (
                   <div className="text-center py-8 text-gray-500">
                     <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
@@ -724,55 +831,59 @@ export function UnifiedPricingParticipantSelector({
                     <p className="text-xs text-gray-400">Usa los controles de arriba para agregar participantes</p>
                   </div>
                 ) : (
-                  <div className="space-y-3 max-h-48 overflow-y-auto">
-                    {participants.map((participant) => (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {participants.map((participant, index) => (
                       <div
                         key={participant.id}
-                        className={cn(
-                          "flex items-center justify-between p-3 rounded-lg border bg-white",
-                          getParticipantColor(participant.type)
-                        )}
+                        className="bg-gray-50 rounded-lg p-3 border border-gray-200"
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="flex-shrink-0">
-                            {getParticipantIcon(participant.type)}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <div className="font-medium text-sm text-gray-900 truncate">{participant.type}</div>
-                            <div className="text-xs text-gray-600 truncate">
-                              {participant.age} años • €{participant.price.toFixed(2)}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="flex-shrink-0">
+                              <div className="w-8 h-8 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                                {getParticipantIcon(participant.type)}
+                              </div>
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium text-sm text-gray-900">{participant.type}</span>
+                                <span className="text-xs text-gray-500">#{index + 1}</span>
+                              </div>
+                              <div className="text-xs text-gray-600">
+                                {participant.age} años • €{participant.price.toFixed(2)}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-2 flex-shrink-0">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => editParticipant(participant)}
-                                className="w-7 h-7 p-0 hover:bg-orange-100"
-                              >
-                                <Edit className="w-3 h-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Editar edad</TooltipContent>
-                          </Tooltip>
                           
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeParticipant(participant.id)}
-                                className="w-7 h-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent>Eliminar participante</TooltipContent>
-                          </Tooltip>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => editParticipant(participant)}
+                                  className="w-7 h-7 p-0 hover:bg-orange-100 rounded"
+                                >
+                                  <Edit className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Editar edad</TooltipContent>
+                            </Tooltip>
+                            
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeParticipant(participant.id)}
+                                  className="w-7 h-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50 rounded"
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Eliminar participante</TooltipContent>
+                            </Tooltip>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -845,3 +956,5 @@ export function UnifiedPricingParticipantSelector({
     </TooltipProvider>
   )
 }
+
+export default UnifiedPricingParticipantSelector

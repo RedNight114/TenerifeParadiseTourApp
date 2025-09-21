@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from 'react'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient, isSupabaseReady } from '@/lib/supabase-unified'
 
 export function useSupabaseConnection() {
   const [isConnected, setIsConnected] = useState<boolean>(false)
@@ -14,14 +14,16 @@ export function useSupabaseConnection() {
     setError(null)
     
     try {
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
-      if (!url || !key) {
-        throw new Error("Variables de entorno de Supabase no configuradas")
+      // Verificar si el cliente unificado está listo
+      if (isSupabaseReady()) {
+        setIsConnected(true)
+        setLastCheck(new Date())
+        setIsLoading(false)
+        return
       }
       
-      const client = createClient(url, key)
+      // Si no está listo, obtener el cliente
+      const client = await getSupabaseClient()
       
       // Verificar conexión básica
       const { data, error: connectionError } = await client

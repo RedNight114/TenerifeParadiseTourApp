@@ -2,8 +2,35 @@
 
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { createClient } from '@supabase/supabase-js'
-import { setCache, getCache } from '@/lib/performance-optimizer'
+// import { setCache, getCache } from '@/lib/performance-optimizer' // Módulo eliminado
+
+// Funciones mock para reemplazar setCache y getCache
+const setCache = (key: string, value: any, ttl?: number) => {
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify({ value, timestamp: Date.now(), ttl }))
+  }
+}
+
+const getCache = (key: string) => {
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(key)
+    if (cached) {
+      try {
+        const { value, timestamp, ttl } = JSON.parse(cached)
+        if (ttl && Date.now() - timestamp > ttl) {
+          localStorage.removeItem(key)
+          return null
+        }
+        return value
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
+}
 import type { Service } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface VirtualizedServicesConfig {
   pageSize: number;
@@ -20,7 +47,7 @@ interface VirtualizedServicesReturn {
   loadMore: () => void;
   refresh: () => void;
   search: (query: string) => void;
-  filter: (filters: any) => void;
+  filter: (filters: unknown) => void;
   virtualizedItems: Service[];
   totalCount: number;
   currentPage: number;
@@ -77,14 +104,8 @@ export function useVirtualizedServices(
         }
       }
 
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
-      if (!url || !key) {
-        throw new Error('Variables de entorno de Supabase no configuradas')
-      }
-      
-      const supabase = createClient(url, key)
+      // Obtener cliente unificado
+      const supabase = await getSupabaseClient()
 
       // Construir query base
       let query = supabase
@@ -199,7 +220,7 @@ export function useVirtualizedServices(
   }, [loadServices]);
 
   // Función de filtrado
-  const filter = useCallback((filters: any) => {
+  const filter = useCallback((filters: unknown) => {
     setActiveFilters(filters);
     setCurrentPage(0);
     setServices([]);
@@ -300,14 +321,7 @@ export function useFeaturedServices(limit: number = 6) {
         return;
       }
 
-      const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-      
-      if (!url || !key) {
-        throw new Error('Variables de entorno de Supabase no configuradas')
-      }
-      
-      const supabase = createClient(url, key)
+      const supabase = await getSupabaseClient()
 
       const { data, error: queryError } = await supabase
         .from('services')
@@ -338,7 +352,7 @@ export function useFeaturedServices(limit: number = 6) {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido';
       setError(errorMessage);
-} finally {
+    } finally {
       setLoading(false);
     }
   }, [limit]);
@@ -354,6 +368,7 @@ export function useFeaturedServices(limit: number = 6) {
     refresh: loadFeaturedServices
   };
 }
+
 
 
 

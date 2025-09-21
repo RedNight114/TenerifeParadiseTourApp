@@ -10,11 +10,11 @@ import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { X, Loader2, Plus, Trash2, Check, Shield, Car, Utensils, Activity, ClipboardList, Image as ImageIcon, Euro, Users, MapPin, CheckCircle, Star, Clock } from "lucide-react"
-import { useUnifiedData } from "@/hooks/use-unified-data"
+import { useCategories, useSubcategories } from "@/hooks/use-unified-cache"
 import type { Service } from "@/lib/supabase"
 import { ImageUpload } from "@/components/ui/image-upload"
 import { toast } from "@/components/ui/use-toast"
-import { IntegratedAgePricing } from "@/components/admin/integrated-age-pricing"
+import { SimpleAgePricing } from "@/components/admin/simple-age-pricing"
 
 // --- Componente de "Etiquetas" reutilizable ---
 function TagInput({
@@ -63,7 +63,15 @@ function TagInput({
 }
 
 // --- Componente para campos específicos de categoría ---
-function CategorySpecificFields({ categoryName, formData, handleInputChange, setFormData, loading }: any) {
+interface CategorySpecificFieldsProps {
+  categoryName: string
+  formData: any
+  handleInputChange: (field: string, value: any) => void
+  setFormData: (data: any) => void
+  loading: boolean
+}
+
+function CategorySpecificFields({ categoryName, formData, handleInputChange, setFormData, loading }: CategorySpecificFieldsProps) {
   if (!categoryName) return null
 
   const adventureFields = (
@@ -842,16 +850,21 @@ function CategorySpecificFields({ categoryName, formData, handleInputChange, set
 // --- Componente principal del formulario ---
 interface ServiceFormProps {
   service?: Service | null
-  onSubmit: (service: any) => Promise<void>
+  onSubmit: (service: unknown) => Promise<void>
   onCancel: () => void
   loading?: boolean
 }
 
 export function ServiceForm({ service, onSubmit, onCancel, loading = false }: ServiceFormProps) {   
-  const { services, categories, subcategories, loading: loadingServices, getSubcategoriesByCategory } = useUnifiedData()
+  const { data: categories, isLoading: loadingCategories } = useCategories()
+  const { data: subcategories, isLoading: loadingSubcategories } = useSubcategories()
+  const loadingServices = loadingCategories || loadingSubcategories
   
-  // Usar loadingServices en lugar de loadingCategories
-  const loadingCategories = loadingServices
+  // Función helper para obtener subcategorías por categoría
+  const getSubcategoriesByCategory = useCallback((categoryId: string) => {
+    return subcategories?.filter(sub => sub.category_id === categoryId) || []
+  }, [subcategories])
+  
 
   // Estado para detectar cambios en el formulario
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -1000,14 +1013,16 @@ export function ServiceForm({ service, onSubmit, onCancel, loading = false }: Se
       }
     }
 
-    window.addEventListener('beforeunload', handleBeforeUnload)
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', handleBeforeUnload)
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+    }
   }, [hasUnsavedChanges])
 
   // Confirmar antes de cancelar si hay cambios
   const handleCancel = () => {
     if (hasUnsavedChanges) {
-      if (window.confirm('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.')) {
+      if (typeof window !== 'undefined' && window.confirm('¿Estás seguro de que quieres cancelar? Los cambios no guardados se perderán.')) {
         setHasUnsavedChanges(false)
         onCancel()
       }
@@ -1018,13 +1033,13 @@ export function ServiceForm({ service, onSubmit, onCancel, loading = false }: Se
 
   const selectedCategory = useMemo(
     () => {
-      const category = categories.find((c) => c.id === formData.category_id)
-      return category
+      const category = categories?.find((c: any) => c.id === formData.category_id)
+      return category as any
     },
     [formData.category_id, categories],
   )
 
-  const handleInputChange = (field: string, value: any) => {
+  const handleInputChange = (field: string, value: unknown) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
@@ -1245,7 +1260,7 @@ setFormData(prev => ({
                 className="w-full p-3 border border-gray-300 rounded-md bg-white focus:ring-2 focus:ring-green-500 focus:border-green-500"
               >
                 <option value="">Selecciona una categoría</option>
-                {categories.map((cat) => (
+                {categories?.map((cat: any) => (
                   <option key={cat.id} value={cat.id}>
                     {cat.name}
                   </option>
@@ -1349,30 +1364,15 @@ setFormData(prev => ({
               >
                 <option value="per_person">Por persona</option>
                 <option value="total">Precio total</option>
+                <option value="age_ranges">Por rango de edad</option>
               </select>
               <p className="text-xs text-gray-500">
-                {formData.price_type === "per_person" ? "Se cobra por cada participante" : "Se cobra por el servicio completo"}
+                {formData.price_type === "per_person" 
+                  ? "Se cobra por cada participante" 
+                  : formData.price_type === "total"
+                  ? "Se cobra por el servicio completo"
+                  : "Se cobra según la edad de cada participante"}
               </p>
-            </div>
-
-            {/* Capacidad total */}
-            <div className="space-y-2">
-              <Label htmlFor="capacity" className="text-sm font-semibold text-gray-700">
-                Capacidad Total
-              </Label>
-              <div className="relative">
-                <Users className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                <Input
-                  id="capacity"
-                  type="number"
-                  min="0"
-                  value={formData.capacity || ""}
-                  onChange={(e) => handleInputChange("capacity", Number.parseInt(e.target.value) || 0)}
-                  className="pl-10"
-                  placeholder="0"
-                />
-              </div>
-              <p className="text-xs text-gray-500">Máximo número de personas</p>
             </div>
 
             {/* Tamaño mínimo del grupo */}
@@ -1426,27 +1426,46 @@ setFormData(prev => ({
                 <h4 className="font-medium text-blue-900 mb-1">Información sobre precios</h4>
                 <ul className="text-sm text-blue-700 space-y-1">
                   <li>• <strong>Precio Principal:</strong> Se aplica a adultos y adolescentes</li>
-                  <li>• <strong>Rangos de Edad:</strong> Configura precios específicos por edad</li>
                   <li>• <strong>Por persona:</strong> Cada participante paga individualmente</li>
                   <li>• <strong>Precio total:</strong> Se cobra una vez por el servicio completo</li>
+                  <li>• <strong>Por rango de edad:</strong> Configura precios específicos por edad</li>
                 </ul>
               </div>
             </div>
           </div>
 
           {/* Editor de precios por edad */}
-          {service && (
+          {formData.price_type === "age_ranges" && (
             <div className="mt-6">
-              <IntegratedAgePricing 
-                serviceId={service.id}
-                servicePrice={formData.price || 0}
-                onRangesChange={useCallback((ranges: any[]) => {
-                  // Aquí puedes manejar los cambios en los rangos de edad
-                  // Solo log en desarrollo y con throttling
-                  if (process.env.NODE_ENV === 'development') {
-}
-                }, [])}
-              />
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Configuración de Precios por Edad
+                </h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Configura precios específicos para diferentes rangos de edad. Los precios se aplicarán automáticamente según la edad de cada participante.
+                </p>
+                
+                {service ? (
+                  <SimpleAgePricing 
+                    serviceId={service.id}
+                    servicePrice={formData.price || 0}
+                    onRangesChange={useCallback((ranges: unknown[]) => {
+                      // Aquí puedes manejar los cambios en los rangos de edad
+                      // Solo log en desarrollo y con throttling
+                      if (process.env.NODE_ENV === 'development') {
+                        }
+                    }, [])}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                    <p className="font-medium">Precios por edad</p>
+                    <p className="text-sm">Los precios por edad se configurarán después de crear el servicio</p>
+                    <p className="text-xs mt-2">Precio base: €{formData.price || 0}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </CardContent>
@@ -1455,11 +1474,11 @@ setFormData(prev => ({
       {selectedCategory && (
         <Card>
           <CardHeader>
-            <CardTitle>Detalles Específicos de {selectedCategory.name}</CardTitle>
+            <CardTitle>Detalles Específicos de {(selectedCategory as any).name}</CardTitle>
           </CardHeader>
           <CardContent>
             <CategorySpecificFields
-              categoryName={selectedCategory.name}
+              categoryName={(selectedCategory as any).name}
               formData={formData}
               handleInputChange={handleInputChange}
               setFormData={setFormData}
@@ -1718,6 +1737,137 @@ setFormData(prev => ({
         </CardContent>
       </Card>
 
+      {/* Nueva sección para servicios incluidos */}
+      <Card className="border-0 shadow-md">
+        <CardHeader className="bg-gradient-to-r from-emerald-50 to-teal-50 border-b border-emerald-100">
+          <CardTitle className="flex items-center gap-2 text-emerald-900">
+            <CheckCircle className="h-5 w-5" />
+            Servicios Incluidos y Qué Llevar
+          </CardTitle>
+          <CardDescription className="text-emerald-700">
+            Define qué incluye el servicio y qué debe traer el cliente
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          {/* Servicios Incluidos */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <CheckCircle className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <Label className="text-base font-semibold text-gray-900">
+                  Servicios Incluidos
+                </Label>
+                <p className="text-sm text-gray-600">
+                  Lista todos los servicios, equipos y beneficios incluidos en el precio
+                </p>
+              </div>
+            </div>
+            <TagInput
+              label=""
+              items={formData.included_services}
+              setItems={(items) => setFormData({ ...formData, included_services: items })}
+              placeholder="Ej: Guía profesional, Seguro de actividad, Equipamiento básico, Transporte, Comida..."
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-500">
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Incluye servicios, equipos y beneficios</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <CheckCircle className="h-3 w-3 text-green-500 mt-0.5 flex-shrink-0" />
+                <span>Separar cada elemento con Enter</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Qué Llevar */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <ClipboardList className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <Label className="text-base font-semibold text-gray-900">
+                  Qué Debe Llevar el Cliente
+                </Label>
+                <p className="text-sm text-gray-600">
+                  Especifica qué elementos debe traer el cliente para el servicio
+                </p>
+              </div>
+            </div>
+            <TagInput
+              label=""
+              items={formData.what_to_bring}
+              setItems={(items) => setFormData({ ...formData, what_to_bring: items })}
+              placeholder="Ej: Crema solar, Ropa cómoda, Zapatos de senderismo, Cámara, Documentación..."
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-500">
+              <div className="flex items-start gap-2">
+                <ClipboardList className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <span>Elementos que el cliente debe traer</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <ClipboardList className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                <span>Incluye ropa, equipos y documentos</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Servicios No Incluidos */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <X className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <Label className="text-base font-semibold text-gray-900">
+                  Servicios No Incluidos
+                </Label>
+                <p className="text-sm text-gray-600">
+                  Aclara qué servicios o elementos NO están incluidos en el precio
+                </p>
+              </div>
+            </div>
+            <TagInput
+              label=""
+              items={formData.not_included_services}
+              setItems={(items) => setFormData({ ...formData, not_included_services: items })}
+              placeholder="Ej: Almuerzo, Bebidas, Propinas, Transporte desde hotel, Seguro adicional..."
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-500">
+              <div className="flex items-start gap-2">
+                <X className="h-3 w-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                <span>Servicios con costo adicional</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <X className="h-3 w-3 text-orange-500 mt-0.5 flex-shrink-0" />
+                <span>Evita confusiones sobre el precio</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Información adicional */}
+          <div className="mt-6 p-4 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-emerald-100 rounded-lg">
+                <CheckCircle className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div>
+                <h4 className="font-medium text-emerald-900 mb-2">💡 Consejos para una buena descripción</h4>
+                <ul className="text-sm text-emerald-700 space-y-1">
+                  <li>• <strong>Servicios incluidos:</strong> Sé específico sobre qué está cubierto en el precio</li>
+                  <li>• <strong>Qué llevar:</strong> Incluye elementos esenciales para la experiencia</li>
+                  <li>• <strong>No incluidos:</strong> Aclara costos adicionales para evitar sorpresas</li>
+                  <li>• <strong>Separación clara:</strong> Usa una línea por cada elemento para mejor legibilidad</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="border-0 shadow-md">
         <CardHeader className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-purple-100">
           <CardTitle className="flex items-center gap-2 text-purple-900">
@@ -1828,4 +1978,7 @@ setFormData(prev => ({
     </form>
   )
 }
+
+export default ServiceForm
+
 

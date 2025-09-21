@@ -9,8 +9,25 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Plus, Trash2, Edit, Save, X, Copy, Check } from 'lucide-react'
-import { toast } from 'sonner'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
+import { getSupabaseClient } from '@/lib/supabase-unified'
+
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error', message: string) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message)
+  } else {
+    // Fallback para SSR - solo log en consola
+    }: ${message}`)
+  }
+}
 
 interface AgeRange {
   id?: number
@@ -27,7 +44,7 @@ interface AgeRangeTemplate {
   id: number
   template_name: string
   description: string
-  ranges: any[]
+  ranges: unknown[]
 }
 
 interface Service {
@@ -36,7 +53,7 @@ interface Service {
   price: number
 }
 
-export function AgePricingManager() {
+export default function AgePricingManager() {
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<string>('')
   const [ageRanges, setAgeRanges] = useState<AgeRange[]>([])
@@ -64,10 +81,9 @@ export function AgePricingManager() {
     }
   }, [selectedService])
 
-  const loadServices = async () => {
+    const loadServices = async () => {
     try {
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       const { data, error } = await client
         .from('services')
@@ -78,14 +94,13 @@ export function AgePricingManager() {
       if (error) throw error
       setServices(data || [])
     } catch (error) {
-toast.error('Error cargando servicios')
+      showToast('error', 'Error cargando servicios')
     }
   }
 
-  const loadTemplates = async () => {
+    const loadTemplates = async () => {
     try {
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       const { data, error } = await client
         .from('age_range_templates')
@@ -95,15 +110,14 @@ toast.error('Error cargando servicios')
       if (error) throw error
       setTemplates(data || [])
     } catch (error) {
-toast.error('Error cargando plantillas')
+      showToast('error', 'Error cargando plantillas')
     }
   }
 
-  const loadAgeRanges = async (serviceId: string) => {
+    const loadAgeRanges = async (serviceId: string) => {
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       const { data, error } = await client
         .from('age_price_ranges')
@@ -115,22 +129,21 @@ toast.error('Error cargando plantillas')
       if (error) throw error
       setAgeRanges(data || [])
     } catch (error) {
-toast.error('Error cargando rangos de edad')
+      showToast('error', 'Error cargando rangos de edad')
     } finally {
       setLoading(false)
     }
   }
 
-  const applyTemplate = async (templateId: number) => {
+    const applyTemplate = async (templateId: number) => {
     if (!selectedService) {
-      toast.error('Selecciona un servicio primero')
+      showToast('error', 'Selecciona un servicio primero')
       return
     }
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       const { error } = await client.rpc('apply_age_range_template', {
         p_service_id: selectedService,
@@ -139,10 +152,10 @@ toast.error('Error cargando rangos de edad')
 
       if (error) throw error
       
-      toast.success('Plantilla aplicada correctamente')
+      showToast('success', 'Plantilla aplicada correctamente')
       loadAgeRanges(selectedService)
     } catch (error) {
-toast.error('Error aplicando plantilla')
+      showToast('error', 'Error aplicando plantilla')
     } finally {
       setLoading(false)
     }
@@ -150,14 +163,13 @@ toast.error('Error aplicando plantilla')
 
   const saveRange = async (range: AgeRange) => {
     if (!selectedService) {
-      toast.error('Selecciona un servicio primero')
+      showToast('error', 'Selecciona un servicio primero')
       return
     }
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       if (range.id) {
         // Actualizar rango existente
@@ -174,7 +186,7 @@ toast.error('Error aplicando plantilla')
           .eq('id', range.id)
 
         if (error) throw error
-        toast.success('Rango actualizado correctamente')
+        showToast('success', 'Rango actualizado correctamente')
       } else {
         // Crear nuevo rango
         const { error } = await client.rpc('create_custom_age_range', {
@@ -188,7 +200,7 @@ toast.error('Error aplicando plantilla')
         })
 
         if (error) throw error
-        toast.success('Rango creado correctamente')
+        showToast('success', 'Rango creado correctamente')
       }
       
       setEditingRange(null)
@@ -201,19 +213,18 @@ toast.error('Error aplicando plantilla')
       })
       loadAgeRanges(selectedService)
     } catch (error) {
-toast.error('Error guardando rango')
+showToast('error', 'Error guardando rango')
     } finally {
       setLoading(false)
     }
   }
 
-  const deleteRange = async (rangeId: number) => {
+    const deleteRange = async (rangeId: number) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este rango?')) return
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const client = await getSupabaseClient()
       
       const { error } = await client
         .from('age_price_ranges')
@@ -222,10 +233,10 @@ toast.error('Error guardando rango')
 
       if (error) throw error
       
-      toast.success('Rango eliminado correctamente')
+      showToast('success', 'Rango eliminado correctamente')
       loadAgeRanges(selectedService)
     } catch (error) {
-toast.error('Error eliminando rango')
+      showToast('error', 'Error eliminando rango')
     } finally {
       setLoading(false)
     }
@@ -503,4 +514,5 @@ toast.error('Error eliminando rango')
     </div>
   )
 }
+
 

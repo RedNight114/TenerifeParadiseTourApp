@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 // Función para normalizar URLs de imágenes
 const normalizeImageUrl = (url: string) => {
@@ -32,14 +32,7 @@ export function GallerySection() {
         setLoading(true)
         setError(null)
 // Crear cliente de Supabase directamente
-        const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        
-        if (!url || !key) {
-          throw new Error('Variables de entorno de Supabase no configuradas')
-        }
-
-        const supabase = createClient(url, key)
+        const supabase = await getSupabaseClient()
 
         // Obtener servicios con imágenes
         const { data: services, error: servicesError } = await supabase

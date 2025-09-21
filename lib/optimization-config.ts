@@ -222,7 +222,7 @@ export function createCustomOptimizationConfig(
   
   const errors = validateOptimizationConfig(customConfig)
   if (errors.length > 0) {
-return baseConfig
+    return baseConfig
   }
   
   return customConfig
@@ -239,10 +239,7 @@ export function updateOptimizationConfig(
   
   const errors = validateOptimizationConfig(optimizationConfig)
   if (errors.length > 0) {
-// Revertir cambios
+    // Revertir cambios
     Object.assign(optimizationConfig, getOptimizationConfig())
-  } else {
+  }
 }
-}
-
-

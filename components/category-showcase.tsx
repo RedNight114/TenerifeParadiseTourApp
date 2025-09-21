@@ -4,16 +4,18 @@ import { useState, useEffect, useMemo } from "react"
 import { Activity, Car, Utensils } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { useOptimizedData } from "@/hooks/use-optimized-data"
+import { useServices, useCategories } from "@/hooks/use-unified-cache"
 
 interface CategoryShowcaseProps {
   onCategorySelect: (categoryId: string) => void
 }
 
 export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
-  const { data: { services, categories, subcategories, loading: loadingServices } } = useOptimizedData()
+  const { data: services } = useServices()
+  const { data: categories } = useCategories()
+  // const { data: subcategories } = useSubcategories() // No disponible por ahora
   
-  const loadingCategories = loadingServices
+  const loadingCategories = !services || !categories
   
   // Debug logs solo en desarrollo
   if (process.env.NODE_ENV === 'development') {
@@ -45,8 +47,8 @@ export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
     }
   }
 
-  const getSubcategoriesForCategory = (categoryId: string) => {
-    return subcategories.filter((sub) => sub.category_id === categoryId)
+  const getSubcategoriesForCategory = (categoryId: string): any[] => {
+    return [] // subcategories no disponible por ahora
   }
 
   if (loadingCategories) {
@@ -70,9 +72,9 @@ export function CategoryShowcase({ onCategorySelect }: CategoryShowcaseProps) {
           <div className="text-center">
             <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
               <p className="font-bold">Debug: No se encontraron categorías</p>
-              <p>Servicios encontrados: {services.length}</p>
-              <p>Categorías encontradas: {categories.length}</p>
-              <p>Subcategorías encontradas: {subcategories.length}</p>
+              <p>Servicios encontrados: {services?.length || 0}</p>
+              <p>Categorías encontradas: {categories?.length || 0}</p>
+              <p>Subcategorías encontradas: 0</p>
             </div>
           </div>
         </div>

@@ -77,7 +77,7 @@ CREATE TABLE reservations (
   total_amount DECIMAL(10,2) NOT NULL,
   status TEXT DEFAULT 'pendiente' CHECK (status IN ('pendiente', 'confirmado', 'cancelado', 'rechazado')),
   payment_status TEXT DEFAULT 'pendiente' CHECK (payment_status IN ('pendiente', 'preautorizado', 'pagado', 'fallido')),
-  payment_id TEXT, -- ID de transacción de Redsys
+  payment_id TEXT, -- ID de transacción del proveedor de pagos
   notes TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

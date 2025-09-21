@@ -1,5 +1,5 @@
 ﻿import { type NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { 
   createReservationSchema, 
   getReservationsQuerySchema,
@@ -7,13 +7,11 @@ import {
 } from "@/lib/validation-schemas"
 import { sanitizeObject } from "@/lib/api-validation"
 import { createValidationErrorResponse } from "@/lib/api-validation"
+import { notifyNewReservation } from "@/lib/notification-service"
 
 // Forzar renderizado dinámico para evitar errores de build
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-// Cliente base de Supabase
-const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
 
 // Función para obtener el usuario autenticado
 async function getAuthenticatedUser(request: NextRequest) {
@@ -24,6 +22,7 @@ async function getAuthenticatedUser(request: NextRequest) {
     }
 
     const token = authHeader.substring(7)
+    const supabase = await getSupabaseClient()
     const { data: { user }, error } = await supabase.auth.getUser(token)
     
     if (error || !user) {
@@ -32,7 +31,7 @@ async function getAuthenticatedUser(request: NextRequest) {
 
     return user
   } catch (error) {
-return null
+    return null
   }
 }
 
@@ -69,24 +68,12 @@ export async function POST(request: NextRequest) {
 
     // Sanitizar los datos antes de procesarlos
     const sanitizedData = sanitizeObject(validatedData)
-// Crear un cliente de Supabase autenticado con el token del usuario
-    const authHeader = request.headers.get('authorization')
-    const token = authHeader?.substring(7)
-    
-    const authenticatedSupabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      }
-    )
 
-    // Crear la reserva usando el cliente autenticado
-    const { data, error } = await authenticatedSupabase
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
+    // Crear la reserva
+    const { data, error } = await supabase
       .from("reservations")
       .insert([
         {
@@ -108,14 +95,19 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (error) {
-
-
-
-return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
+      return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
     }
-return NextResponse.json(data)
+
+    // Enviar notificación a los administradores sobre la nueva reserva
+    try {
+      await notifyNewReservation(data)
+    } catch (notificationError) {
+      // No fallar la creación de la reserva si falla la notificación
+    }
+    
+    return NextResponse.json(data)
   } catch (error) {
-return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 
@@ -138,6 +130,9 @@ export async function GET(request: NextRequest) {
     // Si no se especifica userId, usar el del usuario autenticado
     const targetUserId = userId || user.id
 
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
     // Verificar si puede ver reservas de otros usuarios (solo admins)
     if (targetUserId !== user.id) {
       // Verificar si es admin
@@ -148,7 +143,7 @@ export async function GET(request: NextRequest) {
         .single()
 
       if (profile?.role !== 'admin') {
-return NextResponse.json(
+        return NextResponse.json(
           { error: "No autorizado - No puede ver reservas de otros usuarios" },
           { status: 403 }
         )
@@ -162,11 +157,12 @@ return NextResponse.json(
     const queryValidation = validateData(getReservationsQuerySchema, { userId: targetUserId })
     
     if (!queryValidation.success) {
-return createValidationErrorResponse(queryValidation.errors)
+      return createValidationErrorResponse(queryValidation.errors)
     }
 
     const validatedQuery = queryValidation.data
-const { data, error } = await supabase
+
+    const { data, error } = await supabase
       .from("reservations")
       .select(`
         *,
@@ -181,11 +177,12 @@ const { data, error } = await supabase
       .order("created_at", { ascending: false })
 
     if (error) {
-return NextResponse.json({ error: "Error al obtener las reservas" }, { status: 500 })
+      return NextResponse.json({ error: "Error al obtener las reservas" }, { status: 500 })
     }
-return NextResponse.json(data)
+    
+    return NextResponse.json(data)
   } catch (error) {
-return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
   }
 }
 

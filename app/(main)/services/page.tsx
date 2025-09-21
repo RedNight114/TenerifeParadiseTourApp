@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { ServicesGrid } from "@/components/services-grid"
-import { useOptimizedData } from "@/hooks/use-optimized-data"
+import { useServices, useCategories, useSubcategories } from "@/hooks/use-unified-cache"
 import { AdvancedLoading, SectionLoading, TableLoading } from "@/components/advanced-loading"
 import { AdvancedError } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
@@ -18,10 +18,18 @@ import { toast } from "sonner"
 
 export default function ServicesPage() {
   const {
-    data: { services, categories, subcategories, loading, error },
-    refreshData: refreshServices,
-    isInitialized
-  } = useOptimizedData()
+    data: services,
+    isLoading: servicesLoading,
+    error: servicesError,
+    refetch: refreshServices
+  } = useServices()
+  
+  const { data: categories } = useCategories()
+  const { data: subcategories } = useSubcategories()
+  
+  const loading = servicesLoading
+  const error = servicesError
+  const isInitialized = !loading && !!services
 
   const [filteredServices, setFilteredServices] = useState<Service[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -68,7 +76,7 @@ export default function ServicesPage() {
 
   useEffect(() => {
     // Solo aplicar filtros si tenemos servicios y categorías cargadas
-    if (services.length > 0 && categories && categories.length > 0) {
+    if (services && services.length > 0 && categories && categories.length > 0) {
       setIsFiltering(true)
       applyFilters()
       // Simular un pequeño delay para mostrar el estado de filtrado
@@ -80,11 +88,11 @@ export default function ServicesPage() {
   const applyFilters = () => {
     // Validar que tenemos los datos necesarios
     if (!categories || categories.length === 0) {
-      setFilteredServices(services)
+      setFilteredServices(services || [])
       return
     }
 
-    let filtered = [...services]
+    let filtered = [...(services || [])]
 
     // Filtrar por categoría
     if (selectedCategory !== "all") {
@@ -237,7 +245,7 @@ export default function ServicesPage() {
   }
 
   // Si no hay servicios después de un tiempo, mostrar mensaje de ayuda
-  if (!loading && services.length === 0 && isInitialized) {
+  if (!loading && services && services.length === 0 && isInitialized) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -275,7 +283,7 @@ export default function ServicesPage() {
   }
 
   // ✅ NUEVO: Mostrar estado cuando las categorías no están cargadas
-  if (!loading && services.length > 0 && (!categories || categories.length === 0)) {
+  if (!loading && services && services.length > 0 && (!categories || categories.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-4">
@@ -309,7 +317,7 @@ export default function ServicesPage() {
   if (error) {
     return <AdvancedError 
       error={{
-        message: error,
+        message: error?.message || 'Error desconocido',
         type: 'unknown',
         timestamp: new Date(),
         retryCount: 0
@@ -339,7 +347,7 @@ export default function ServicesPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-2xl mx-auto">
               <div className="text-center">
                 <div className="text-2xl font-bold text-[#F4C762] mb-2">
-                  {services.length}+
+                  {services?.length || 0}+
                 </div>
                 <div className="text-white/80 text-sm">Experiencias Únicas</div>
               </div>
@@ -360,6 +368,7 @@ export default function ServicesPage() {
         </div>
       </div>
 
+
       {/* Filters Section Simple */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <Card className="shadow-lg">
@@ -369,7 +378,7 @@ export default function ServicesPage() {
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-lg font-semibold text-gray-900">Filtros de búsqueda</h3>
                 <div className="text-sm text-gray-600">
-                  {services.length} servicios disponibles
+                  {services?.length || 0} servicios disponibles
                 </div>
               </div>
               
@@ -390,10 +399,10 @@ export default function ServicesPage() {
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    Todas ({services.length})
+                    Todas ({services?.length || 0})
                   </button>
                   {categories.map((category) => {
-                    const count = services.filter(s => s.category_id === category.id).length
+                    const count = (services || []).filter(s => s.category_id === category.id).length
                     const isActive = selectedCategory === category.id
                     return (
                       <button
@@ -438,10 +447,10 @@ export default function ServicesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">
-                      Todas las Categorías ({services.length})
+                      Todas las Categorías ({services?.length || 0})
                     </SelectItem>
                     {categories && categories.map((category) => {
-                      const count = services.filter(s => s.category_id === category.id).length
+                      const count = (services || []).filter(s => s.category_id === category.id).length
                       return (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name} ({count})
@@ -554,7 +563,7 @@ export default function ServicesPage() {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#0061A8] mx-auto mb-4"></div>
             <p className="text-gray-600">Cargando servicios...</p>
             <p className="text-sm text-gray-500 mt-2">
-              {services.length > 0 ? `${services.length} servicios cargados` : 'Inicializando...'}
+              Inicializando...
             </p>
           </div>
         )}

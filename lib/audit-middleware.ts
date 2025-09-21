@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
+﻿import { NextRequest, NextResponse } from "next/server"
 import { auditLogger, getRequestInfo, sanitizeData } from "./audit-logger"
 
 // Interfaz para configurar el middleware de auditoría
@@ -52,8 +52,8 @@ export class AuditMiddleware {
 
     let response: NextResponse | undefined
     let error: Error | null = null
-    let requestBody: any = null
-    let responseBody: any = null
+    let requestBody: unknown = null
+    let responseBody: unknown = null
 
     try {
       // Capturar body del request si es necesario

@@ -30,6 +30,7 @@ export interface Message {
   id: string
   conversation_id: string
   sender_id: string
+  sender_role?: 'user' | 'admin' | 'moderator' | 'support'
   content: string
   message_type: 'text' | 'image' | 'file' | 'system' | 'notification'
   file_url?: string
@@ -45,6 +46,8 @@ export interface Message {
   // Campos calculados
   sender?: UserProfile
   sender_avatar_url?: string
+  sender_full_name?: string
+  sender_email?: string
   is_own_message?: boolean
   reply_to_content?: string
   reply_to_sender_name?: string

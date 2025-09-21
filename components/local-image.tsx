@@ -56,7 +56,7 @@ export function LocalImage({
     }
     
     // Imagen por defecto
-    return '/images/placeholder.jpg'
+    return '/placeholder.jpg'
   }
 
   useEffect(() => {

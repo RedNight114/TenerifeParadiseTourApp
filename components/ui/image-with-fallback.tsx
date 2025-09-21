@@ -20,7 +20,7 @@ interface ImageWithFallbackProps {
 export default function ImageWithFallback({
   src,
   alt,
-  fallbackSrc = '/images/placeholder.jpg',
+  fallbackSrc = '/placeholder.jpg',
   className,
   width,
   height,

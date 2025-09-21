@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { getSupabaseClient } from '@/lib/supabase-singleton'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 import type { Service } from "@/lib/supabase"
 
 interface UseServiceDetailsReturn {
@@ -23,7 +23,7 @@ export function useServiceDetails(serviceId: string): UseServiceDetailsReturn {
       setLoading(true)
       setError(null)
 
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       
       // Cargar servicio con relaciones en una sola consulta
       const { data, error: fetchError } = await supabase
@@ -44,15 +44,16 @@ export function useServiceDetails(serviceId: string): UseServiceDetailsReturn {
       if (data) {
         setService(data)
         // Actualizar título de la página
-        document.title = `${data.title} - Tenerife Paradise`
+        if (typeof document !== 'undefined') {
+          document.title = `${data.title} - Tenerife Paradise`
+        }
       } else {
         setError('Servicio no encontrado')
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error cargando servicio'
       setError(errorMessage)
-      console.error('Error cargando servicio:', err)
-    } finally {
+      } finally {
       setLoading(false)
     }
   }, [serviceId])

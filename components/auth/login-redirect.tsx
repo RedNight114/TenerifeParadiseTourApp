@@ -2,7 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message)
+  } else {
+    // Fallback para SSR - solo log en consola
+    }: ${message}`)
+  }
+}
 import { CheckCircle, User, Shield, Loader2 } from 'lucide-react'
 
 interface LoginRedirectProps {
@@ -24,18 +40,10 @@ export function LoginRedirect({ user, profile, redirectPath }: LoginRedirectProp
     if (!targetPath) {
       if (profile.role === 'admin') {
         targetPath = '/admin/dashboard'
-        toast.success('¡Bienvenido Administrador!', {
-          description: 'Redirigiendo al panel de administración...',
-          duration: 4000,
-          icon: <Shield className="w-4 h-4" />
-        })
+        showToast('success', '¡Bienvenido Administrador!')
       } else {
         targetPath = '/profile'
-        toast.success('¡Bienvenido!', {
-          description: 'Redirigiendo a tu perfil...',
-          duration: 4000,
-          icon: <User className="w-4 h-4" />
-        })
+        showToast('success', '¡Bienvenido!')
       }
     }
 
@@ -44,11 +52,7 @@ export function LoginRedirect({ user, profile, redirectPath }: LoginRedirectProp
       ? `¡Bienvenido ${profile.full_name || user.email}!`
       : `¡Bienvenido ${profile.full_name || user.email}!`
 
-    toast.success(welcomeMessage, {
-      description: `Rol: ${profile.role === 'admin' ? 'Administrador' : 'Usuario'}`,
-      duration: 3000,
-      icon: profile.role === 'admin' ? <Shield className="w-4 h-4" /> : <User className="w-4 h-4" />
-    })
+    showToast('success', welcomeMessage)
 
     // Iniciar countdown
     const timer = setInterval(() => {

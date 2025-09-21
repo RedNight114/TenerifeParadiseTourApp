@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { logger } from '@/lib/advanced-logger'
-import { log } from '@/lib/advanced-logger'
-import { withApiLogging } from '@/lib/api-logging-middleware'
+import { log, AdvancedLogger } from '@/lib/advanced-logger'
+
+// Marcar como dinámico para evitar errores de SSR
+export const dynamic = 'force-dynamic'
 
 async function handler(request: NextRequest) {
   try {
@@ -30,20 +31,15 @@ async function handler(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Obtener métricas del logger
+    const logger = new AdvancedLogger()
     const metrics = logger.getMetrics()
-    
-    // Obtener métricas por endpoint si se especifica
-    let endpointMetrics = {}
-    if (endpoint !== 'all') {
-      endpointMetrics = logger.getMetricsByEndpoint(endpoint)
-    }
 
     // Log de la petición
     log.info('Logs endpoint accessed', {
       endpoint: '/api/logs',
       method: request.method,
-      userAgent: request.headers.get('user-agent'),
-      ip: request.headers.get('x-forwarded-for') || request.ip,
+      userAgent: request.headers.get('user-agent') || undefined,
+      ip: request.headers.get('x-forwarded-for') || request.ip || undefined,
       query: { level, endpoint, limit, offset }
     })
 
@@ -52,12 +48,12 @@ async function handler(request: NextRequest) {
       timestamp: new Date().toISOString(),
       filters: { level, endpoint, limit, offset },
       metrics,
-      endpointMetrics,
       note: 'Logs detallados están disponibles en la base de datos. Use el endpoint /api/logs/detailed para logs específicos.'
     })
 
   } catch (error) {
-    log.error('Error in logs endpoint', error as Error, {
+    log.error('Error in logs endpoint', {
+      error: error instanceof Error ? error.message : String(error),
       endpoint: '/api/logs',
       method: request.method
     })
@@ -72,9 +68,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-// Exportar con logging automático
-export const GET = withApiLogging(handler, {
-  logRequestBody: false,
-  logResponseBody: false,
-  logHeaders: false
-})
+export const GET = handler

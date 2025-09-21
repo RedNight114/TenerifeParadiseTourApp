@@ -1,14 +1,9 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 // Forzar renderizado dinámico para evitar errores de build
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
-
-// Configuración de Supabase
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Validación de email
 const isValidEmail = (email: string) => {
@@ -67,6 +62,9 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+    
     // Verificar si ya se envió un mensaje similar recientemente (rate limiting)
     const { data: recentMessages } = await supabase
       .from('contact_messages')
@@ -102,7 +100,7 @@ export async function POST(request: NextRequest) {
       .select()
     
     if (error) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error interno del servidor' },
         { status: 500 }
       )
@@ -124,7 +122,7 @@ return NextResponse.json(
     )
     
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
@@ -132,11 +130,12 @@ return NextResponse.json(
 }
 
 // Función para enviar notificación por email (implementar con servicio como SendGrid, Resend, etc.)
-async function sendNotificationEmail(contactData: any) {
+async function sendNotificationEmail(contactData: unknown) {
   // Implementar envío de email
 }
 
 // Función para enviar notificación por WhatsApp (implementar con API de WhatsApp Business)
-async function sendWhatsAppNotification(contactData: any) {
+async function sendWhatsAppNotification(contactData: unknown) {
   // Implementar envío de WhatsApp
 } 
+

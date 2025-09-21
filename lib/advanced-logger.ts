@@ -1,52 +1,17 @@
-﻿// Solo importar en el servidor
-let createClient: unknown = null
-if (typeof window === 'undefined') {
-  try {
-    // Usar import dinámico en lugar de require
-    import('@supabase/supabase-js').then(({ createClient: client }) => {
-      createClient = client
-    }).catch(() => {
-})
-  } catch (error) {
-}
-}
+﻿// Logger simplificado sin Supabase para evitar problemas de SSR
 
 // Tipos para el sistema de logs
 export interface LogEntry {
   id?: string
   timestamp: string
   level: 'debug' | 'info' | 'warn' | 'error' | 'fatal'
-  service: string
-  endpoint: string
-  method: string
+  message: string
+  context?: Record<string, unknown>
   userId?: string
   sessionId?: string
-  requestId: string
-  duration?: number
-  statusCode?: number
-  error?: {
-    message: string
-    stack?: string
-    code?: string
-    details?: unknown
-  }
-  metadata: {
-    userAgent?: string
-    ip?: string
-    country?: string
-    requestSize?: number
-    responseSize?: number
-    databaseQueries?: number
-    cacheHits?: number
-    cacheMisses?: number
-    [key: string]: unknown
-  }
-  context: {
-    function?: string
-    line?: number
-    file?: string
-    [key: string]: unknown
-  }
+  requestId?: string
+  source?: string
+  tags?: string[]
 }
 
 export interface LoggerConfig {
@@ -64,14 +29,14 @@ export interface LoggerConfig {
 
 // Configuración por defecto
 const DEFAULT_CONFIG: LoggerConfig = {
-  level: (typeof process !== 'undefined' && process.env.NODE_ENV === 'production') ? 'warn' : 'debug',
+  level: 'debug',
   enableConsole: true,
   enableDatabase: false,
   enableFile: false,
   enableMetrics: true,
   batchSize: 50,
-  flushInterval: 5000, // 5 segundos
-  maxFileSize: 10 * 1024 * 1024, // 10MB
+  flushInterval: 5000,
+  maxFileSize: 10 * 1024 * 1024,
   maxFiles: 5,
   retentionDays: 30
 }
@@ -81,7 +46,6 @@ export class AdvancedLogger {
   private logBuffer: LogEntry[] = []
   private flushTimer: NodeJS.Timeout | null = null
   private metrics: Map<string, number> = new Map()
-  private supabase: unknown = null
 
   constructor(config: Partial<LoggerConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
@@ -89,388 +53,182 @@ export class AdvancedLogger {
   }
 
   private initializeLogger() {
-    // Inicializar Supabase si está habilitado
-    if (this.config.enableDatabase) {
-      this.initializeSupabase()
-    }
-
     // Configurar flush automático
     if (this.config.batchSize > 1) {
       this.startAutoFlush()
     }
-
-    // Configurar limpieza automática
-    this.startCleanup()
-  }
-
-  private initializeSupabase() {
-    try {
-      // Solo ejecutar en el servidor
-      if (typeof window !== 'undefined') {
-        return
-      }
-      
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-      
-      if (supabaseUrl && supabaseKey) {
-        // Verificar que createClient esté disponible
-        if (typeof createClient === 'function') {
-          this.supabase = createClient(supabaseUrl, supabaseKey)
-          // Logger: Supabase inicializado para logs
-        }
-      }
-    } catch (error) {
-      // Logger: No se pudo inicializar Supabase
-    }
   }
 
   private startAutoFlush() {
+    if (this.flushTimer) {
+      clearInterval(this.flushTimer)
+    }
+
     this.flushTimer = setInterval(() => {
       this.flush()
     }, this.config.flushInterval)
   }
 
   private startCleanup() {
-    // Limpiar logs antiguos cada hora
+    // Limpieza automática cada hora
     setInterval(() => {
-      this.cleanupOldLogs()
+      this.cleanup()
     }, 60 * 60 * 1000)
   }
 
-  // Métodos principales de logging
-  debug(message: string, context: Partial<LogEntry['context']> = {}) {
-    this.log('debug', message, context)
+  private cleanup() {
+    // Limpiar logs antiguos
+    const cutoffTime = Date.now() - (this.config.retentionDays * 24 * 60 * 60 * 1000)
+    this.logBuffer = this.logBuffer.filter(log => 
+      new Date(log.timestamp).getTime() > cutoffTime
+    )
   }
 
-  info(message: string, context: Partial<LogEntry['context']> = {}) {
-    this.log('info', message, context)
+  private shouldLog(level: string): boolean {
+    const levels = ['debug', 'info', 'warn', 'error', 'fatal']
+    const currentLevelIndex = levels.indexOf(this.config.level)
+    const messageLevelIndex = levels.indexOf(level)
+    return messageLevelIndex >= currentLevelIndex
   }
 
-  warn(message: string, context: Partial<LogEntry['context']> = {}) {
-    this.log('warn', message, context)
-  }
-
-  error(message: string, error?: Error, context: Partial<LogEntry['context']> = {}) {
-    this.log('error', message, context, error)
-  }
-
-  fatal(message: string, error?: Error, context: Partial<LogEntry['context']> = {}) {
-    this.log('fatal', message, context, error)
-  }
-
-  // Método principal de logging
-  private log(
-    level: LogEntry['level'],
+  private createLogEntry(
+    level: 'debug' | 'info' | 'warn' | 'error' | 'fatal',
     message: string,
-    context: Partial<LogEntry['context'] & {
-      endpoint?: string
-      method?: string
-      userId?: string
-      sessionId?: string
-      statusCode?: number
-      userAgent?: string
-      ip?: string
-      country?: string
-      requestSize?: number
-      responseSize?: number
-      databaseQueries?: number
-      cacheHits?: number
-      cacheMisses?: number
-    }> = {},
-    error?: Error
-  ) {
-    // Verificar nivel de log
-    if (!this.shouldLog(level)) return
-
-    const logEntry: LogEntry = {
+    context?: Record<string, unknown>
+  ): LogEntry {
+    return {
+      id: `log_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: new Date().toISOString(),
       level,
-      service: 'tenerife-paradise-api',
-      endpoint: context.endpoint || 'unknown',
-      method: context.method || 'unknown',
-      userId: context.userId,
-      sessionId: context.sessionId,
-      requestId: this.generateRequestId(),
-      statusCode: context.statusCode,
-      error: error ? {
-        message: error.message,
-        stack: error.stack,
-        code: (error as unknown as { code?: string }).code,
-        details: (error as unknown as { details?: unknown }).details
-      } : undefined,
-      metadata: {
-        userAgent: context.userAgent,
-        ip: context.ip,
-        country: context.country,
-        requestSize: context.requestSize,
-        responseSize: context.responseSize,
-        databaseQueries: context.databaseQueries,
-        cacheHits: context.cacheHits,
-        cacheMisses: context.cacheMisses,
-        ...context
-      },
-      context: {
-        function: context.function,
-        line: context.line,
-        file: context.file,
-        ...context
+      message,
+      context,
+      source: 'server'
+    }
+  }
+
+  private log(level: 'debug' | 'info' | 'warn' | 'error' | 'fatal', message: string, context?: Record<string, unknown>) {
+    if (!this.shouldLog(level)) {
+      return
+    }
+
+    const logEntry = this.createLogEntry(level, message, context)
+
+    // Console logging
+    if (this.config.enableConsole) {
+      const prefix = `[${logEntry.timestamp}] [${level.toUpperCase()}]`
+      
+      if (context) {
+        if (level === 'error' || level === 'fatal') {
+          } else if (level === 'warn') {
+          } else {
+          }
+      } else {
+        if (level === 'error' || level === 'fatal') {
+          } else if (level === 'warn') {
+          } else {
+          }
       }
     }
 
-    // Agregar al buffer
+    // Buffer para batch processing
     this.logBuffer.push(logEntry)
 
-    // Log a consola si está habilitado
-    if (this.config.enableConsole) {
-      this.logToConsole(logEntry)
-    }
-
-    // Flush si el buffer está lleno
+    // Flush inmediato si se alcanza el batch size
     if (this.logBuffer.length >= this.config.batchSize) {
       this.flush()
     }
 
     // Actualizar métricas
     if (this.config.enableMetrics) {
-      this.updateMetrics(logEntry)
+      this.updateMetrics(level)
     }
   }
 
-  private shouldLog(level: LogEntry['level']): boolean {
-    const levels = ['debug', 'info', 'warn', 'error', 'fatal']
-    const configLevel = levels.indexOf(this.config.level)
-    const currentLevel = levels.indexOf(level)
-    return currentLevel >= configLevel
+  private updateMetrics(level: string) {
+    const key = `logs.${level}`
+    const current = this.metrics.get(key) || 0
+    this.metrics.set(key, current + 1)
   }
 
-  private logToConsole(entry: LogEntry) {
-    const timestamp = new Date(entry.timestamp).toLocaleTimeString()
-    const level = entry.level.toUpperCase().padEnd(5)
-    const service = entry.service.padEnd(20)
-    const endpoint = entry.endpoint.padEnd(30)
-    
-    const message = `${timestamp} [${level}] ${service} ${endpoint} ${entry.error?.message || ''}`
-    
-    switch (entry.level) {
-      case 'debug':
-break
-      case 'info':
-break
-      case 'warn':
-break
-      case 'error':
-      case 'fatal':
-break
-    }
+  public debug(message: string, context?: Record<string, unknown>) {
+    this.log('debug', message, context)
   }
 
-  private updateMetrics(entry: LogEntry) {
-    // Métricas por nivel
-    const levelKey = `logs.${entry.level}`
-    this.metrics.set(levelKey, (this.metrics.get(levelKey) || 0) + 1)
+  public info(message: string, context?: Record<string, unknown>) {
+    this.log('info', message, context)
+  }
 
-    // Métricas por endpoint
-    const endpointKey = `endpoints.${entry.endpoint}.${entry.method}`
-    this.metrics.set(endpointKey, (this.metrics.get(endpointKey) || 0) + 1)
+  public warn(message: string, context?: Record<string, unknown>) {
+    this.log('warn', message, context)
+  }
 
-    // Métricas de duración
-    if (entry.duration) {
-      const durationKey = `duration.${entry.endpoint}`
-      const currentAvg = this.metrics.get(durationKey) || 0
-      this.metrics.set(durationKey, (currentAvg + entry.duration) / 2)
+  public error(message: string, context?: Record<string, unknown>) {
+    this.log('error', message, context)
+  }
+
+  public fatal(message: string, context?: Record<string, unknown>) {
+    this.log('fatal', message, context)
+  }
+
+  public flush() {
+    if (this.logBuffer.length === 0) {
+      return
     }
 
-    // Métricas de errores
-    if (entry.error) {
-      const errorKey = `errors.${entry.endpoint}`
-      this.metrics.set(errorKey, (this.metrics.get(errorKey) || 0) + 1)
-    }
-  }
-
-  // Métodos de utilidad
-  private generateRequestId(): string {
-    return `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
-
-  // Métodos de API
-  async flush() {
-    if (this.logBuffer.length === 0) return
-
-    const logsToFlush = [...this.logBuffer]
+    // Aquí se implementaría el envío a base de datos o archivo
+    // Por ahora, solo limpiamos el buffer
     this.logBuffer = []
-
-    try {
-      // Flush a base de datos
-      if (this.config.enableDatabase && this.supabase) {
-        await this.flushToDatabase(logsToFlush)
-      }
-
-      // Flush a archivo
-      if (this.config.enableFile) {
-        await this.flushToFile(logsToFlush)
-      }
-    } catch (error) {
-// Reintentar con logs fallidos
-      this.logBuffer.unshift(...logsToFlush)
-    }
   }
 
-  private async flushToDatabase(logs: LogEntry[]) {
-    if (!this.supabase) return
-
-    try {
-      const supabase = this.supabase as any
-      const { error } = await supabase
-        .from('api_logs')
-        .insert(logs)
-
-      if (error) {
-        throw error
-      }
-    } catch (error) {
-      throw error
-    }
-  }
-
-  private async flushToFile(logs: LogEntry[]) {
-    // Implementar rotación de archivos
-    const logFile = `logs/api-${new Date().toISOString().split('T')[0]}.log`
-    
-    try {
-      // Aquí implementarías la lógica de escritura a archivo
-      // Por ahora solo simulamos
-} catch (error) {
-throw error
-    }
-  }
-
-  private async cleanupOldLogs() {
-    try {
-      if (this.supabase) {
-        const cutoffDate = new Date()
-        cutoffDate.setDate(cutoffDate.getDate() - this.config.retentionDays)
-
-        const supabase = this.supabase as any
-        const { error } = await supabase
-          .from('api_logs')
-          .delete()
-          .lt('timestamp', cutoffDate.toISOString())
-
-        if (error) {
-          console.error('Error al limpiar logs antiguos:', error)
-        } else {
-          console.log('Logs antiguos limpiados correctamente')
-        }
-      }
-    } catch (error) {
-      console.error('Error en cleanup de logs:', error)
-    }
-  }
-
-  // Métodos públicos para métricas
-  getMetrics() {
+  public getMetrics(): Record<string, number> {
     return Object.fromEntries(this.metrics)
   }
 
-  getMetricsByEndpoint(endpoint: string) {
-    const endpointMetrics: Record<string, number> = {}
-    
-    for (const [key, value] of this.metrics.entries()) {
-      if (key.includes(endpoint)) {
-        endpointMetrics[key] = value
-      }
-    }
-    
-    return endpointMetrics
-  }
-
-  resetMetrics() {
-    this.metrics.clear()
-  }
-
-  // Método para logging de API específico
-  logApiCall(
-    endpoint: string,
-    method: string,
-    duration: number,
-    statusCode: number,
-    userId?: string,
-    sessionId?: string,
-    metadata: Partial<LogEntry['metadata']> = {}
-  ) {
-    const level = statusCode >= 400 ? 'error' : statusCode >= 300 ? 'warn' : 'info'
-    
-    this.log(level, `${method} ${endpoint} - ${statusCode}`, {
-      endpoint,
-      method,
-      duration,
-      statusCode,
-      userId,
-      sessionId,
-      ...metadata
-    })
-  }
-
-  // Método para logging de errores de base de datos
-  logDatabaseError(
-    operation: string,
-    table: string,
-    error: Error,
-    query?: string,
-    params?: any[]
-  ) {
-    this.error(`Database error in ${operation} on ${table}`, error, {
-      function: 'database',
-      databaseOperation: operation,
-      table,
-      query,
-      params: params ? JSON.stringify(params) : undefined
-    })
-  }
-
-  // Método para logging de cache
-  logCacheOperation(
-    operation: 'hit' | 'miss' | 'set' | 'delete',
-    key: string,
-    duration?: number
-  ) {
-    this.debug(`Cache ${operation}: ${key}`, {
-      function: 'cache',
-      cacheOperation: operation,
-      cacheKey: key,
-      duration
-    })
-  }
-
-  // Destructor
-  destroy() {
+  public destroy() {
     if (this.flushTimer) {
       clearInterval(this.flushTimer)
+      this.flushTimer = null
     }
     this.flush()
   }
 }
 
-// Instancia singleton del logger
-export const logger = new AdvancedLogger()
+// Instancia global del logger
+const logger = new AdvancedLogger({
+  level: process.env.NODE_ENV === 'production' ? 'info' : 'debug',
+  enableConsole: true,
+  enableDatabase: false,
+  enableFile: false,
+  enableMetrics: true
+})
 
-// Función helper para logging rápido
+// Funciones de conveniencia
 export const log = {
-  debug: (message: string, context?: any) => logger.debug(message, context),
-  info: (message: string, context?: any) => logger.info(message, context),
-  warn: (message: string, context?: any) => logger.warn(message, context),
-  error: (message: string, error?: Error, context?: any) => logger.error(message, error, context),
-  fatal: (message: string, error?: Error, context?: any) => logger.fatal(message, error, context),
-  
-  // Métodos específicos para API
-  api: (endpoint: string, method: string, duration: number, statusCode: number, metadata?: any) => 
-    logger.logApiCall(endpoint, method, duration, statusCode, undefined, undefined, metadata),
-  
-  db: (operation: string, table: string, error: Error, query?: string, params?: any[]) =>
-    logger.logDatabaseError(operation, table, error, query, params),
-  
-  cache: (operation: 'hit' | 'miss' | 'set' | 'delete', key: string, duration?: number) =>
-    logger.logCacheOperation(operation, key, duration)
+  debug: (message: string, context?: Record<string, unknown>) => logger.debug(message, context),
+  info: (message: string, context?: Record<string, unknown>) => logger.info(message, context),
+  warn: (message: string, context?: Record<string, unknown>) => logger.warn(message, context),
+  error: (message: string, context?: Record<string, unknown>) => logger.error(message, context),
+  fatal: (message: string, context?: Record<string, unknown>) => logger.fatal(message, context),
 }
 
+// Funciones específicas para autenticación y caché
+export const logAuth = (message: string, context?: Record<string, unknown>) => {
+  logger.info(`[AUTH] ${message}`, { ...context, source: 'auth' })
+}
+
+export const logError = (message: string, error: unknown) => {
+  logger.error(`[ERROR] ${message}`, { 
+    error: error instanceof Error ? error.message : String(error),
+    stack: error instanceof Error ? error.stack : undefined
+  })
+}
+
+export const logCache = (message: string, context?: Record<string, unknown>) => {
+  logger.debug(`[CACHE] ${message}`, { ...context, source: 'cache' })
+}
+
+export const logPerformance = (message: string, context?: Record<string, unknown>) => {
+  logger.info(`[PERF] ${message}`, { ...context, source: 'performance' })
+}
+
+export default logger

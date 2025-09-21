@@ -38,22 +38,24 @@ export function ProblemDetector() {
         problems.push('Sin conexión a internet')
       }
 
-      // Problemas de carga
-      const loadingElements = document.querySelectorAll('[data-loading="true"]')
-      if (loadingElements.length > 5) {
-        problems.push('Muchos elementos cargando')
-      }
+      if (typeof document !== 'undefined') {
+        // Problemas de carga
+        const loadingElements = document.querySelectorAll('[data-loading="true"]')
+        if (loadingElements.length > 5) {
+          problems.push('Muchos elementos cargando')
+        }
 
-      // Problemas de caché
-      const cacheErrors = document.querySelectorAll('.cache-error')
-      if (cacheErrors.length > 0) {
-        problems.push('Errores de caché')
-      }
+        // Problemas de caché
+        const cacheErrors = document.querySelectorAll('.cache-error')
+        if (cacheErrors.length > 0) {
+          problems.push('Errores de caché')
+        }
 
-      // Problemas de hidratación
-      const hydrationErrors = document.querySelectorAll('.hydration-error')
-      if (hydrationErrors.length > 0) {
-        problems.push('Errores de hidratación')
+        // Problemas de hidratación
+        const hydrationErrors = document.querySelectorAll('.hydration-error')
+        if (hydrationErrors.length > 0) {
+          problems.push('Errores de hidratación')
+        }
       }
 
       setHasProblems(problems.length > 0)

@@ -1,4 +1,4 @@
-import { log } from './edge-compatible-logger'
+import { log } from './advanced-logger'
 
 export interface ApiMetrics {
   requests: {
@@ -175,7 +175,7 @@ export class ApiMetricsCollector {
     }
 
     // Log de la operación de cache
-    log.info('Cache operation', { function: 'metrics', type: 'cache' }, { hit, key })
+    log.info('Cache operation', { function: 'metrics', type: 'cache', hit, key })
   }
 
   recordDatabaseQuery(query: string, duration: number) {

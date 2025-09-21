@@ -24,7 +24,7 @@ export interface Service {
   subcategory_id?: string
   price: number
   price_children?: number
-  price_type: "per_person" | "total"
+  price_type: "per_person" | "total" | "age_ranges"
   images?: string[]
   available: boolean
   featured: boolean

@@ -1,85 +1,78 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { XCircle, ArrowLeft, RefreshCw } from "lucide-react"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { XCircle, AlertTriangle, ArrowLeft, RefreshCw } from 'lucide-react';
+import Link from 'next/link';
 
 export default function PaymentErrorPage() {
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const [reservationId, setReservationId] = useState<string | null>(null)
-
-  useEffect(() => {
-    const id = searchParams.get("reservationId")
-    setReservationId(id)
-  }, [searchParams])
-
-  const handleRetry = () => {
-    if (reservationId) {
-      router.push(`/booking/${reservationId}`)
-    } else {
-      router.push("/services")
-    }
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50 pt-20 flex items-center justify-center">
-      <div className="max-w-md w-full mx-4">
-        <Card className="text-center">
-          <CardHeader className="pb-4">
-            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
-              <XCircle className="h-8 w-8 text-red-600" />
+    <div className="min-h-screen bg-gradient-to-br from-red-50 to-pink-100 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="text-center">
+          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <XCircle className="h-8 w-8 text-red-600" />
+          </div>
+          <CardTitle className="text-2xl text-red-800">
+            Error en el Pago
+          </CardTitle>
+          <CardDescription>
+            Ha ocurrido un problema con tu reserva
+          </CardDescription>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+            <div className="flex items-center gap-2 text-red-800 mb-2">
+              <AlertTriangle className="h-4 w-4" />
+              <span className="font-medium">No te preocupes</span>
             </div>
-            <CardTitle className="text-2xl text-red-800">Error en el Pago</CardTitle>
-            <CardDescription className="text-base">No se pudo procesar tu pago</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-red-50 p-4 rounded-lg">
-              <p className="text-red-800 text-sm">
-                Ha ocurrido un error durante el procesamiento del pago. No se ha realizado ningún cargo a tu tarjeta.
-              </p>
-            </div>
+            <p className="text-sm text-red-700">
+              Tu tarjeta NO ha sido cobrada. El error puede ser temporal.
+            </p>
+          </div>
 
-            <div className="text-sm text-gray-600">
-              <p>
-                <strong>Posibles causas:</strong>
-              </p>
-              <ul className="list-disc list-inside mt-2 space-y-1 text-left">
-                <li>Datos de tarjeta incorrectos</li>
-                <li>Fondos insuficientes</li>
-                <li>Tarjeta bloqueada o expirada</li>
-                <li>Error temporal del sistema</li>
-              </ul>
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900">Posibles causas:</h4>
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>• Problema temporal de conexión</p>
+              <p>• Datos de tarjeta incorrectos</p>
+              <p>• Fondos insuficientes</p>
+              <p>• Restricciones de tu banco</p>
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <Button onClick={handleRetry} className="w-full bg-[#0061A8] hover:bg-[#0061A8]/90">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Intentar de Nuevo
+          <div className="space-y-3">
+            <h4 className="font-medium text-gray-900">¿Qué puedes hacer?</h4>
+            <div className="text-sm text-gray-600 space-y-2">
+              <p>• Verifica los datos de tu tarjeta</p>
+              <p>• Intenta con otra tarjeta</p>
+              <p>• Contacta con tu banco</p>
+              <p>• Llámanos para ayuda personalizada</p>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t space-y-3">
+            <Link href="/" className="w-full">
+              <Button className="w-full" variant="outline">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Volver al Inicio
               </Button>
+            </Link>
+            
+            <Button className="w-full" variant="outline">
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Intentar de Nuevo
+            </Button>
+          </div>
 
-              <Link href="/services">
-                <Button variant="outline" className="w-full bg-transparent">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Volver a Servicios
-                </Button>
-              </Link>
-            </div>
-
-            <div className="text-xs text-gray-500 pt-4 border-t">
-              <p>
-                ¿Necesitas ayuda? Contáctanos al{" "}
-                <a href="tel:+34617303929" className="text-[#0061A8] hover:underline">
-                  +34 617 30 39 29
-                </a>
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+          <div className="text-xs text-gray-500 text-center">
+            <p>¿Necesitas ayuda? Contacta con nosotros</p>
+            <p>Email: info@tenerifeparadisetour.com</p>
+            <p>Teléfono: +34 617 30 39 29</p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

@@ -79,7 +79,7 @@ console.log('')
 
 // 4. Verificar archivos de pagos
 console.log('💳 ARCHIVOS DE PAGOS:')
-allChecksPassed &= checkFile('lib/redsys-signature.ts', 'Firma Redsys')
+// TODO: Verificar archivo de firma cuando se implemente nuevo sistema de pagos
 allChecksPassed &= checkFile('app/api/payment/create/route.ts', 'API de creación de pago')
 allChecksPassed &= checkFile('app/api/payment/confirm/route.ts', 'API de confirmación')
 allChecksPassed &= checkFile('app/api/payment/webhook/route.ts', 'API de webhook')

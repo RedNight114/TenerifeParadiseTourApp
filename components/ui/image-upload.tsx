@@ -10,7 +10,7 @@ import { Progress } from "@/components/ui/progress"
 import { X, Upload, Loader2, CheckCircle, AlertCircle, Image as ImageIcon } from "lucide-react"
 import { useImageCompression } from "@/hooks/use-image-compression"
 import { toast } from "@/components/ui/use-toast"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface ImageUploadProps {
   onImagesUploaded: (urls: string[]) => void
@@ -138,7 +138,7 @@ export function ImageUpload({
 
       // Obtener cliente de Supabase
       const supabaseClient = getSupabaseClient()
-      const supabase = await supabaseClient.getClient()
+      const supabase = await getSupabaseClient()
       
       if (!supabase) {
         throw new Error('No se pudo obtener el cliente de Supabase')
@@ -265,7 +265,8 @@ errors.push(`${file.name}: Error al crear preview`)
         try {
           URL.revokeObjectURL(img.preview)
         } catch (error) {
-}
+          // Error handled
+        }
       })
       return
     }
@@ -351,8 +352,8 @@ toast({
     try {
       URL.revokeObjectURL(imageFile.preview)
     } catch (error) {
-}
-  }, [])
+      // Error handled
+    }}, [])
 
   const retryUpload = useCallback(async (imageFile: ImageFile) => {
     try {
@@ -379,7 +380,8 @@ toast({
         try {
           URL.revokeObjectURL(img.preview)
         } catch (error) {
-}
+          // Error handled
+        }
       })
     }
   }, [images])
@@ -574,3 +576,4 @@ toast({
     </div>
   )
 } 
+

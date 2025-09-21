@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { withAuthorization } from "@/lib/authorization"
 
 // GET - Obtener logs de auditoría con filtros
@@ -13,8 +13,8 @@ export const GET = withAuthorization({ requiredRole: "admin" })(async (request: 
     const startDate = searchParams.get("startDate")
     const endDate = searchParams.get("endDate")
     const severity = searchParams.get("severity")
-const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+
+    const client = await getSupabaseClient()
     if (!client) {
       return NextResponse.json(
         { error: "Error de conexión con la base de datos" },
@@ -56,7 +56,7 @@ const supabaseClient = getSupabaseClient()
     const { data: logs, error, count } = await query
 
     if (error) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: "Error interno del servidor" },
         { status: 500 }
       )
@@ -107,7 +107,7 @@ return NextResponse.json(
         }
       }) || []
     )
-return NextResponse.json({
+    return NextResponse.json({
       logs: processedLogs,
       pagination: {
         page,
@@ -117,7 +117,7 @@ return NextResponse.json({
       },
     })
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )
@@ -129,8 +129,8 @@ export const POST = withAuthorization({ requiredRole: "admin" })(async (request:
   try {
     const body = await request.json()
     const { action, details, severity = "info", user_id, service_id, reservation_id } = body
-const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+
+    const client = await getSupabaseClient()
     if (!client) {
       return NextResponse.json(
         { error: "Error de conexión con la base de datos" },
@@ -148,14 +148,14 @@ const supabaseClient = getSupabaseClient()
     })
 
     if (error) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: "Error interno del servidor" },
         { status: 500 }
       )
     }
-return NextResponse.json({ success: true, log: data })
+    return NextResponse.json({ success: true, log: data })
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: "Error interno del servidor" },
       { status: 500 }
     )

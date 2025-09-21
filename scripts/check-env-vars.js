@@ -19,7 +19,7 @@ requiredVars.forEach(varName => {
 
 console.log('\n🔧 Otras variables disponibles:')
 Object.keys(process.env)
-  .filter(key => key.includes('SUPABASE') || key.includes('REDSYS') || key.includes('NEXT'))
+  .filter(key => key.includes('SUPABASE') || key.includes('NEXT'))
   .forEach(key => {
     const value = process.env[key]
     if (value) {

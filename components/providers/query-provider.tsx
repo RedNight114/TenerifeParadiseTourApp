@@ -8,7 +8,7 @@ interface QueryProviderProps {
 }
 
 export function QueryProvider({ children }: QueryProviderProps) {
-  const [queryClient] = useState(() => new QueryClient({
+  const [queryClient] = useState<QueryClient>(() => new QueryClient({
     defaultOptions: {
       queries: {
         // Configuración por defecto para queries
@@ -77,11 +77,12 @@ export function QueryProvider({ children }: QueryProviderProps) {
           staleTime: 5 * 60 * 1000,
         })
       } catch (error) {
-}
+        // Error handled
+      }
     }
 
     prefetchCriticalData()
-  }, [queryClient])
+  }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -117,4 +118,5 @@ export const queryConfig = {
     retryDelay: 0,
   },
 }
+
 

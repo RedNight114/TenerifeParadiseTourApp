@@ -2,10 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { log } from '@/lib/advanced-logger'
 import { metricsCollector } from '@/lib/api-metrics'
 import { withApiLogging } from '@/lib/api-logging-middleware'
+import { unifiedCache } from '@/lib/unified-cache-system'
 
 async function handler(request: NextRequest) {
   try {
     const startTime = Date.now()
+    
+    // Intentar obtener del caché primero (caché por 30 segundos)
+    const cacheKey = 'health_check_status'
+    const cached = await unifiedCache.get(cacheKey)
+    if (cached) {
+      return NextResponse.json({
+        ...cached,
+        cached: true,
+        duration: `${Date.now() - startTime}ms`
+      }, {
+        headers: {
+          'X-Cache': 'HIT',
+          'Cache-Control': 'public, max-age=30'
+        }
+      })
+    }
     
     // Verificar estado del sistema
     const systemStatus = await checkSystemHealth()
@@ -36,7 +53,7 @@ async function handler(request: NextRequest) {
       })
     }
 
-    return NextResponse.json({
+    const response = {
       success: true,
       timestamp: new Date().toISOString(),
       status: systemStatus.overall,
@@ -48,10 +65,21 @@ async function handler(request: NextRequest) {
         nodeVersion: process.version,
         environment: process.env.NODE_ENV || 'development'
       }
+    }
+
+    // Guardar en caché por 30 segundos
+    await unifiedCache.set(cacheKey, response, { ttl: 30 * 1000 })
+
+    return NextResponse.json(response, {
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': 'public, max-age=30'
+      }
     })
 
   } catch (error) {
-    log.error('Error in health check', error as Error, {
+    log.error('Error in health check', {
+      error: error instanceof Error ? error.message : String(error),
       endpoint: '/api/health',
       method: request.method
     })

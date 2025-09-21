@@ -1,398 +1,617 @@
-"use client"
+﻿"use client"
 
-import { useState } from "react"
-import { useAuthContext } from "@/components/auth-provider"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, UserCheck, Mail, Shield, Users, CheckCircle, AlertCircle } from "lucide-react"
+import React, { useState, useEffect } from 'react'
+import { AdminSidebarModern } from '@/components/admin/admin-sidebar-modern'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { 
+  Users, 
+  UserPlus, 
+  Download, 
+  Search, 
+  Eye, 
+  Shield, 
+  User, 
+  Crown,
+  Mail,
+  Calendar,
+  MapPin,
+  Phone,
+  Activity,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Menu,
+  Home
+} from 'lucide-react'
+import { getSupabaseClient } from '@/lib/supabase'
+import { toast } from 'sonner'
 
-interface User {
+// Interfaces
+interface UserProfile {
   id: string
   email: string
-  email_confirmed_at: string | null
-  confirmed_at: string | null
+  full_name: string | null
+  role: 'admin' | 'staff' | 'customer'
+  is_active: boolean
   created_at: string
-  role?: string
+  updated_at: string
+  avatar_url?: string
+  phone?: string
+  address?: string
+  last_login?: string
 }
 
-export default function TestUsersPage() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(false)
-  const [confirmLoading, setConfirmLoading] = useState<string | null>(null)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
-  const [testEmail, setTestEmail] = useState("")
-  const [testPassword, setTestPassword] = useState("test123456")
-  const [testName, setTestName] = useState("Usuario de Prueba")
+interface UserStats {
+  total: number
+  customers: number
+  staff: number
+  admins: number
+  active: number
+  inactive: number
+}
 
-  const { user, profile } = useAuthContext()
+export default function UsersPage() {
+  const [users, setUsers] = useState<UserProfile[]>([])
+  const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [filterRole, setFilterRole] = useState<string>('all')
+  const [filterStatus, setFilterStatus] = useState<string>('all')
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null)
+  const [stats, setStats] = useState<UserStats>({
+    total: 0,
+    customers: 0,
+    staff: 0,
+    admins: 0,
+    active: 0,
+    inactive: 0
+  })
 
-  // Verificar que es admin
-  if (!user || profile?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <Shield className="h-16 w-16 mx-auto mb-4 text-red-500" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Acceso Denegado</h1>
-          <p className="text-gray-600">Solo administradores pueden acceder a esta página</p>
-        </div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    loadUsers()
+  }, [])
 
   const loadUsers = async () => {
     try {
       setLoading(true)
-      setError("")
+      const supabase = await getSupabaseClient()
+      
+      // Obtener solo perfiles de la tabla profiles (más seguro y accesible)
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false })
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
-      if (!client) {
-        throw new Error("No se pudo obtener el cliente de Supabase")
+      if (profilesError) {
+        toast.error('Error al cargar perfiles de usuarios')
+        return
       }
 
-      // Obtener usuarios de auth.users (requiere RLS policy especial)
-      const { data: authUsers, error: authError } = await client
-        .from("auth.users")
-        .select("id, email, email_confirmed_at, confirmed_at, created_at")
-        .order("created_at", { ascending: false })
-
-      if (authError) {
-        // Si no podemos acceder a auth.users, usar profiles
-        const { data: profiles, error: profilesError } = await client
-          .from("profiles")
-          .select("id, email, role, created_at")
-          .order("created_at", { ascending: false })
-
-        if (profilesError) throw profilesError
-
-        setUsers(
-          profiles.map((p: any) => ({
-            id: String(p.id),
-            email: String(p.email),
-            email_confirmed_at: null,
-            confirmed_at: null,
-            created_at: String(p.created_at),
-            role: p.role ? String(p.role) : undefined,
-          })),
-        )
-      } else {
-        setUsers(
-          (authUsers || []).map((u: any) => ({
-            id: String(u.id),
-            email: String(u.email),
-            email_confirmed_at: u.email_confirmed_at ? String(u.email_confirmed_at) : null,
-            confirmed_at: u.confirmed_at ? String(u.confirmed_at) : null,
-            created_at: String(u.created_at),
-          }))
-        )
+      // Obtener información del usuario actual para verificar permisos
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      
+      if (!currentUser) {
+        toast.error('No estás autenticado')
+        return
       }
-    } catch (err) {
-      setError("Error al cargar usuarios")
+
+      // Verificar si el usuario actual es admin
+      const currentUserProfile = profiles?.find(p => p.id === currentUser.id)
+      if (currentUserProfile?.role !== 'admin') {
+        toast.error('No tienes permisos para ver esta información')
+        return
+      }
+
+      // Convertir perfiles a UserProfile (datos limitados pero funcionales)
+      const combinedUsers: UserProfile[] = (profiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.email || 'Email no disponible',
+        full_name: profile.full_name,
+        role: (profile.role as 'admin' | 'staff' | 'customer') || 'customer',
+        is_active: profile.is_active ?? true, // Asumir activo si no está definido
+        created_at: profile.created_at || new Date().toISOString(),
+        updated_at: profile.updated_at || profile.created_at || new Date().toISOString(),
+        avatar_url: profile.avatar_url,
+        phone: profile.phone,
+        address: profile.address,
+        last_login: profile.last_login
+      }))
+
+      setUsers(combinedUsers)
+      calculateStats(combinedUsers)
+      
+    } catch (error) {
+      toast.error('Error al cargar usuarios')
     } finally {
       setLoading(false)
     }
   }
 
-  const createTestUser = async () => {
-    if (!testEmail || !testPassword || !testName) {
-      setError("Todos los campos son requeridos")
-      return
+  const calculateStats = (usersData: UserProfile[]) => {
+    const newStats: UserStats = {
+      total: usersData.length,
+      customers: usersData.filter(u => u.role === 'customer').length,
+      staff: usersData.filter(u => u.role === 'staff').length,
+      admins: usersData.filter(u => u.role === 'admin').length,
+      active: usersData.filter(u => u.is_active).length,
+      inactive: usersData.filter(u => !u.is_active).length
     }
+    setStats(newStats)
+  }
 
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (user.full_name && user.full_name.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesRole = filterRole === 'all' || user.role === filterRole
+    const matchesStatus = filterStatus === 'all' || 
+                         (filterStatus === 'active' && user.is_active) ||
+                         (filterStatus === 'inactive' && !user.is_active)
+    
+    return matchesSearch && matchesRole && matchesStatus
+  })
+
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'staff' | 'customer') => {
     try {
-      setLoading(true)
-      setError("")
-      setSuccess("")
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId)
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
-      if (!client) {
-        throw new Error("No se pudo obtener el cliente de Supabase")
+      if (error) {
+        toast.error('Error al cambiar rol del usuario')
+        return
       }
 
-      // Crear usuario de prueba
-      const { data, error: signUpError } = await client.auth.signUp({
-        email: testEmail,
-        password: testPassword,
-        options: {
-          data: {
-            full_name: testName,
-          },
-        },
-      })
-
-      if (signUpError) throw signUpError
-
-      if (data.user) {
-        // Confirmar automáticamente en desarrollo
-        await confirmUser(data.user.id, testEmail)
-        setSuccess(`Usuario de prueba ${testEmail} creado y confirmado`)
-        setTestEmail("")
-        setTestName("Usuario de Prueba")
-        loadUsers()
-      }
-    } catch (err: any) {
-      setError(err.message || "Error al crear usuario de prueba")
-    } finally {
-      setLoading(false)
+      // Actualizar estado local
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, role: newRole } : user
+      ))
+      
+      toast.success('Rol actualizado correctamente')
+      loadUsers() // Recargar para actualizar stats
+    } catch (error) {
+      toast.error('Error al cambiar rol del usuario')
     }
   }
 
-  const confirmUser = async (userId: string, email: string) => {
+  const handleToggleStatus = async (userId: string, isActive: boolean) => {
     try {
-      setConfirmLoading(userId)
-      setError("")
+      const supabase = await getSupabaseClient()
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_active: !isActive })
+        .eq('id', userId)
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
-      if (!client) {
-        throw new Error("No se pudo obtener el cliente de Supabase")
+      if (error) {
+        toast.error('Error al cambiar estado del usuario')
+        return
       }
 
-      // Llamar a la función SQL para confirmar usuario
-      const { error } = await client.rpc("confirm_test_user", {
-        user_email: email,
-      })
-
-      if (error) throw error
-
-      setSuccess(`Usuario ${email} confirmado exitosamente`)
-      loadUsers()
-    } catch (err: any) {
-      setError(err.message || "Error al confirmar usuario")
-    } finally {
-      setConfirmLoading(null)
+      // Actualizar estado local
+      setUsers(users.map(user => 
+        user.id === userId ? { ...user, is_active: !isActive } : user
+      ))
+      
+      toast.success(`Usuario ${isActive ? 'desactivado' : 'activado'} correctamente`)
+      loadUsers() // Recargar para actualizar stats
+    } catch (error) {
+      toast.error('Error al cambiar estado del usuario')
     }
   }
 
-  const getUserStatusBadge = (user: User) => {
-    if (user.email_confirmed_at) {
-      return (
-        <Badge variant="default" className="bg-green-100 text-green-800">
-          Confirmado
-        </Badge>
-      )
+  const handleExport = () => {
+    const csvContent = [
+      ['Email', 'Nombre', 'Rol', 'Estado', 'Fecha de Registro', 'Último Login'],
+      ...filteredUsers.map(user => [
+        user.email,
+        user.full_name || '',
+        user.role,
+        user.is_active ? 'Activo' : 'Inactivo',
+        new Date(user.created_at).toLocaleDateString('es-ES'),
+        user.last_login ? new Date(user.last_login).toLocaleDateString('es-ES') : 'Nunca'
+      ])
+    ].map(row => row.join(',')).join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `usuarios-${new Date().toISOString().split('T')[0]}.csv`
+    link.click()
+    
+    toast.success('Usuarios exportados correctamente')
+  }
+
+  const getRoleIcon = (role: string) => {
+    switch (role) {
+      case 'admin': return <Crown className="w-4 h-4" />
+      case 'staff': return <Shield className="w-4 h-4" />
+      default: return <User className="w-4 h-4" />
     }
+  }
+
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin': return 'bg-purple-100 text-purple-800 border-purple-200'
+      case 'staff': return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'customer': return 'bg-gray-100 text-gray-800 border-gray-200'
+      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
+  const getStatusColor = (isActive: boolean) => {
+    return isActive 
+      ? 'bg-green-100 text-green-800 border-green-200' 
+      : 'bg-red-100 text-red-800 border-red-200'
+  }
+
+  if (loading) {
     return (
-      <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
-        Pendiente
-      </Badge>
-    )
-  }
+      <div className="min-h-screen bg-gray-50 flex">
+        {/* Sidebar */}
+        <AdminSidebarModern />
 
-  const getRoleBadge = (role?: string) => {
-    if (role === "admin") {
-      return (
-        <Badge variant="default" className="bg-blue-100 text-blue-800">
-          Admin
-        </Badge>
-      )
-    }
-    return <Badge variant="outline">Cliente</Badge>
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center py-4">
-            <Users className="h-8 w-8 text-blue-600 mr-3" />
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Gestión de Usuarios de Prueba</h1>
-              <p className="text-sm text-gray-600">Crear y confirmar usuarios para testing</p>
+        {/* Main Content */}
+        <div className="flex-1 overflow-auto">
+          {/* Loading State */}
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <p className="text-gray-600">Cargando usuarios...</p>
             </div>
           </div>
         </div>
       </div>
+    )
+  }
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Mensajes */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <AdminSidebarModern />
 
-        {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Crear usuario de prueba */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <UserCheck className="h-5 w-5" />
-                <span>Crear Usuario de Prueba</span>
-              </CardTitle>
-              <CardDescription>Crea un usuario de prueba que será confirmado automáticamente</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="testEmail">Email</Label>
-                <Input
-                  id="testEmail"
-                  type="email"
-                  value={testEmail}
-                  onChange={(e) => setTestEmail(e.target.value)}
-                  placeholder="test@example.com"
-                />
-              </div>
-              <div>
-                <Label htmlFor="testName">Nombre Completo</Label>
-                <Input
-                  id="testName"
-                  value={testName}
-                  onChange={(e) => setTestName(e.target.value)}
-                  placeholder="Usuario de Prueba"
-                />
-              </div>
-              <div>
-                <Label htmlFor="testPassword">Contraseña</Label>
-                <Input
-                  id="testPassword"
-                  type="password"
-                  value={testPassword}
-                  onChange={(e) => setTestPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                />
-              </div>
-              <Button onClick={createTestUser} disabled={loading} className="w-full">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Creando...
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    Crear Usuario de Prueba
-                  </>
-                )}
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <main className="p-6">
+        <div className="space-y-6">
+      {/* Header */}
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">👥 Gestión de Usuarios</h1>
+              <p className="text-gray-600 mt-1">Administra usuarios, roles y permisos del sistema</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button onClick={handleExport} variant="outline">
+                <Download className="w-4 h-4 mr-2" />
+                Exportar CSV
               </Button>
+              <Button>
+                <UserPlus className="w-4 h-4 mr-2" />
+                Nuevo Usuario
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Total</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
+        </div>
+      </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                    <User className="w-5 h-5 text-gray-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Clientes</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.customers}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">Staff</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.staff}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+          <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                    <Crown className="w-5 h-5 text-purple-600" />
+                  </div>
+              <div>
+                    <p className="text-sm font-medium text-gray-600">Admins</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.admins}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                    <p className="text-sm font-medium text-gray-600">Activos</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.active}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                    <XCircle className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                    <p className="text-sm font-medium text-gray-600">Inactivos</p>
+                    <p className="text-2xl font-bold text-gray-900">{stats.inactive}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="flex-1">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Input
+                      placeholder="Buscar por email o nombre..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+                </div>
+                <Select value={filterRole} onValueChange={setFilterRole}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Filtrar por rol" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los roles</SelectItem>
+                    <SelectItem value="customer">Clientes</SelectItem>
+                    <SelectItem value="staff">Staff</SelectItem>
+                    <SelectItem value="admin">Administradores</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={filterStatus} onValueChange={setFilterStatus}>
+                  <SelectTrigger className="w-full sm:w-48">
+                    <SelectValue placeholder="Filtrar por estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos los estados</SelectItem>
+                    <SelectItem value="active">Activos</SelectItem>
+                    <SelectItem value="inactive">Inactivos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Usuarios existentes */}
+          {/* Users List */}
           <Card>
             <CardHeader>
-              <div className="flex justify-between items-center">
-                <div>
                   <CardTitle className="flex items-center space-x-2">
-                    <Users className="h-5 w-5" />
-                    <span>Usuarios Registrados</span>
+                <Users className="w-5 h-5" />
+                <span>Usuarios ({filteredUsers.length})</span>
                   </CardTitle>
-                  <CardDescription>Lista de usuarios y su estado de confirmación</CardDescription>
-                </div>
-                <Button onClick={loadUsers} variant="outline" size="sm">
-                  Actualizar
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                  <span>Cargando usuarios...</span>
-                </div>
-              ) : users.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">
-                  <Users className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No hay usuarios registrados</p>
-                  <Button onClick={loadUsers} variant="outline" className="mt-4 bg-transparent">
-                    Cargar Usuarios
-                  </Button>
-                </div>
-              ) : (
+              <ScrollArea className="h-96">
                 <div className="space-y-4">
-                  {users.map((user) => (
-                    <div key={user.id} className="border rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Mail className="h-4 w-4 text-gray-400" />
-                            <span className="font-medium">{user.email}</span>
+                  {filteredUsers.map((user) => (
+                    <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center space-x-4">
+                        <Avatar className="w-12 h-12">
+                          <AvatarImage src={user.avatar_url} />
+                          <AvatarFallback>
+                            {user.full_name ? user.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : user.email[0].toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h3 className="font-semibold text-gray-900">
+                              {user.full_name || 'Sin nombre'}
+                            </h3>
+                            <Badge className={getRoleColor(user.role)}>
+                              {getRoleIcon(user.role)}
+                              <span className="ml-1">
+                                {user.role === 'customer' ? 'Cliente' : 
+                                 user.role === 'staff' ? 'Staff' : 
+                                 user.role === 'admin' ? 'Admin' : 
+                                 user.role}
+                              </span>
+                            </Badge>
+                            <Badge className={getStatusColor(user.is_active)}>
+                              {user.is_active ? 'Activo' : 'Inactivo'}
+                            </Badge>
                           </div>
-                          <div className="flex space-x-2 mb-2">
-                            {getUserStatusBadge(user)}
-                            {user.role && getRoleBadge(user.role)}
-                          </div>
-                          <p className="text-sm text-gray-500">
-                            Creado: {new Date(user.created_at).toLocaleDateString("es-ES")}
+                          <p className="text-sm text-gray-600">{user.email}</p>
+                          <p className="text-xs text-gray-500">
+                            Registrado: {new Date(user.created_at).toLocaleDateString('es-ES')}
                           </p>
                         </div>
-                        {!user.email_confirmed_at && (
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Dialog>
+                          <DialogTrigger asChild>
                           <Button
+                              variant="outline"
                             size="sm"
-                            onClick={() => confirmUser(user.id, user.email)}
-                            disabled={confirmLoading === user.id}
-                          >
-                            {confirmLoading === user.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                Confirmar
-                              </>
+                              onClick={() => setSelectedUser(user)}
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-2xl">
+                            <DialogHeader>
+                              <DialogTitle>Detalles del Usuario</DialogTitle>
+                            </DialogHeader>
+                            {selectedUser && (
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-4">
+                                  <Avatar className="w-20 h-20">
+                                    <AvatarImage src={selectedUser.avatar_url} />
+                                    <AvatarFallback className="text-lg">
+                                      {selectedUser.full_name ? selectedUser.full_name.split(' ').map(n => n[0]).join('').toUpperCase() : selectedUser.email[0].toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <div>
+                                    <h3 className="text-xl font-bold">{selectedUser.full_name || 'Sin nombre'}</h3>
+                                    <p className="text-gray-600">{selectedUser.email}</p>
+                                    <div className="flex items-center space-x-2 mt-2">
+                                      <Badge className={getRoleColor(selectedUser.role)}>
+                                        {getRoleIcon(selectedUser.role)}
+                                        <span className="ml-1">
+                                          {selectedUser.role === 'customer' ? 'Cliente' : 
+                                           selectedUser.role === 'staff' ? 'Staff' : 
+                                           selectedUser.role === 'admin' ? 'Admin' : 
+                                           selectedUser.role}
+                                        </span>
+                                      </Badge>
+                                      <Badge className={getStatusColor(selectedUser.is_active)}>
+                                        {selectedUser.is_active ? 'Activo' : 'Inactivo'}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div className="space-y-2">
+                                    <h4 className="font-semibold text-gray-900">Información Personal</h4>
+                                    <div className="space-y-1 text-sm">
+                                      <div className="flex items-center space-x-2">
+                                        <Mail className="w-4 h-4 text-gray-400" />
+                                        <span>{selectedUser.email}</span>
+                                      </div>
+                                      {selectedUser.phone && (
+                                        <div className="flex items-center space-x-2">
+                                          <Phone className="w-4 h-4 text-gray-400" />
+                                          <span>{selectedUser.phone}</span>
+                                        </div>
+                                      )}
+                                      {selectedUser.address && (
+                                        <div className="flex items-center space-x-2">
+                                          <MapPin className="w-4 h-4 text-gray-400" />
+                                          <span>{selectedUser.address}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-2">
+                                    <h4 className="font-semibold text-gray-900">Información de Cuenta</h4>
+                                    <div className="space-y-1 text-sm">
+                                      <div className="flex items-center space-x-2">
+                                        <Calendar className="w-4 h-4 text-gray-400" />
+                                        <span>Registrado: {new Date(selectedUser.created_at).toLocaleDateString('es-ES')}</span>
+                                      </div>
+                                      {selectedUser.last_login && (
+                                        <div className="flex items-center space-x-2">
+                                          <Activity className="w-4 h-4 text-gray-400" />
+                                          <span>Último login: {new Date(selectedUser.last_login).toLocaleDateString('es-ES')}</span>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
                             )}
+                          </DialogContent>
+                        </Dialog>
+                        
+                        <Select
+                          value={user.role}
+                          onValueChange={(value: 'admin' | 'staff' | 'customer') => handleRoleChange(user.id, value)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="customer">Cliente</SelectItem>
+                            <SelectItem value="staff">Staff</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant={user.is_active ? "destructive" : "default"}
+                              size="sm"
+                            >
+                              {user.is_active ? <XCircle className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                           </Button>
-                        )}
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {user.is_active ? 'Desactivar Usuario' : 'Activar Usuario'}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {user.is_active 
+                                  ? '¿Estás seguro de que quieres desactivar este usuario? No podrá acceder al sistema.'
+                                  : '¿Estás seguro de que quieres activar este usuario? Podrá acceder al sistema nuevamente.'
+                                }
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleToggleStatus(user.id, user.is_active)}
+                              >
+                                {user.is_active ? 'Desactivar' : 'Activar'}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
                 </div>
-              )}
+              </ScrollArea>
             </CardContent>
           </Card>
         </div>
-
-        {/* Instrucciones */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Instrucciones para Testing</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-semibold mb-2">Opción 1: Crear Usuario de Prueba</h4>
-                <ol className="text-sm space-y-1 list-decimal list-inside">
-                  <li>Completa el formulario de arriba</li>
-                  <li>El usuario será creado y confirmado automáticamente</li>
-                  <li>Podrás iniciar sesión inmediatamente</li>
-                </ol>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Opción 2: Confirmar Usuario Existente</h4>
-                <ol className="text-sm space-y-1 list-decimal list-inside">
-                  <li>Registra un usuario normalmente</li>
-                  <li>Haz clic en "Actualizar" para ver usuarios</li>
-                  <li>Haz clic en "Confirmar" para activar el usuario</li>
-                </ol>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h4 className="font-semibold text-blue-900 mb-2">Usuarios Admin Predefinidos:</h4>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• admin@tenerifeparadise.com</li>
-                <li>• samuel@tenerifeparadise.com</li>
-                <li>• tecnicos@tenerifeparadise.com</li>
-              </ul>
-              <p className="text-xs text-blue-700 mt-2">Estos usuarios tendrán rol de admin una vez confirmados</p>
-            </div>
-          </CardContent>
-        </Card>
+        </main>
       </div>
     </div>
   )

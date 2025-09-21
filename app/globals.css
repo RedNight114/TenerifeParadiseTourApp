@@ -20,13 +20,7 @@
   }
 
   /* Optimización de fuentes */
-  @font-face {
-    font-family: 'Inter';
-    font-style: normal;
-    font-weight: 400;
-    font-display: swap;
-    src: url('/fonts/inter-var.woff2') format('woff2');
-  }
+  /* Usar fuentes de Google Fonts en lugar de archivos locales */
 
   /* Optimización de scroll */
   html {

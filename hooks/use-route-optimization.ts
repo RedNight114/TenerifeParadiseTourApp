@@ -2,7 +2,35 @@
 
 import { useEffect, useCallback, useRef } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { setCache, getCache } from '@/lib/performance-optimizer'
+// import { setCache, getCache } from '@/lib/performance-optimizer' // Módulo eliminado
+
+// Funciones mock para reemplazar setCache y getCache
+const setCache = (key: string, value: any, ttl?: number) => {
+  // Implementación mock simple
+  if (typeof window !== 'undefined') {
+    localStorage.setItem(key, JSON.stringify({ value, timestamp: Date.now(), ttl }))
+  }
+}
+
+const getCache = (key: string) => {
+  // Implementación mock simple
+  if (typeof window !== 'undefined') {
+    const cached = localStorage.getItem(key)
+    if (cached) {
+      try {
+        const { value, timestamp, ttl } = JSON.parse(cached)
+        if (ttl && Date.now() - timestamp > ttl) {
+          localStorage.removeItem(key)
+          return null
+        }
+        return value
+      } catch {
+        return null
+      }
+    }
+  }
+  return null
+}
 
 interface RouteOptimizationConfig {
   enablePrefetch: boolean;
@@ -104,7 +132,8 @@ export function useRouteOptimization(
           }, cacheTTL)
 
         } catch (error) {
-} finally {
+          // Error handled
+        } finally {
           prefetchQueueRef.current.delete(route.path)
         }
       })
@@ -139,7 +168,8 @@ export function useRouteOptimization(
       }, cacheTTL)
 
     } catch (error) {
-} finally {
+      // Error handled
+    } finally {
       prefetchQueueRef.current.delete(path)
     }
   }, [enablePrefetch, router, cacheTTL])
@@ -200,7 +230,8 @@ export function useRouteOptimization(
       }
 
     } catch (error) {
-}
+      // Error handled
+    }
   }, [enablePreload, cacheTTL])
 
   // Navegación optimizada
@@ -346,6 +377,7 @@ export function useNavigationOptimization() {
 }
 
 export default useRouteOptimization
+
 
 
 

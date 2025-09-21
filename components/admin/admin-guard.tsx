@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { useAuthContext } from "@/components/auth-provider"
 import { Loader2, Shield, AlertTriangle } from "lucide-react"
@@ -16,56 +16,71 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [isChecking, setIsChecking] = useState(true)
-  const [checkAttempts, setCheckAttempts] = useState(0)
-  const [redirecting, setRedirecting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const checkTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const hasCheckedRef = useRef(false)
 
   useEffect(() => {
+    // Evitar múltiples verificaciones
+    if (hasCheckedRef.current) return
+
     const checkAuth = async () => {
-      // Evitar múltiples verificaciones simultáneas
-      if (redirecting) return
+      try {
+        setIsChecking(true)
+        setError(null)
 
-      // Esperar a que termine la carga de autenticación
-      if (authLoading) {
-        return
-      }
-
-      // Si no hay usuario, redirigir al login
-      if (!user) {
-        setRedirecting(true)
-        router.push("/admin/login")
-        return
-      }
-
-      // Si hay usuario pero no hay perfil, esperar con límite de intentos
-      if (!profile) {
-        if (checkAttempts < 5) {
-          setCheckAttempts(prev => prev + 1)
-          setTimeout(checkAuth, 1000)
+        // Esperar a que termine la carga de autenticación
+        if (authLoading) {
           return
-        } else {
-          setRedirecting(true)
+        }
+
+        // Si no hay usuario, redirigir al login
+        if (!user) {
           router.push("/admin/login")
           return
         }
-      }
 
-      // Verificar si es admin
-      if (profile.role !== "admin") {
-        setRedirecting(true)
-        router.push("/")
-        return
-      }
+        // Si hay usuario pero no hay perfil, esperar un poco más
+        if (!profile) {
+          // Timeout de 3 segundos para cargar el perfil
+          checkTimeoutRef.current = setTimeout(() => {
+            if (!profile) {
+              router.push("/admin/login")
+            }
+          }, 3000)
+          
+          return
+        }
 
-      // Usuario autorizado
-      setIsAuthorized(true)
-      setIsChecking(false)
+        // Verificar si es admin
+        if (profile.role !== "admin") {
+          router.push("/")
+          return
+        }
+
+        // Usuario autorizado
+        setIsAuthorized(true)
+        setIsChecking(false)
+        hasCheckedRef.current = true
+
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Error desconocido')
+        setIsChecking(false)
+      }
     }
 
     checkAuth()
-  }, [user, profile, authLoading, router, checkAttempts, redirecting])
+
+    // Cleanup
+    return () => {
+      if (checkTimeoutRef.current) {
+        clearTimeout(checkTimeoutRef.current)
+      }
+    }
+  }, [user, profile, authLoading, router])
 
   // Mostrar loading mientras se verifica
-  if (authLoading || isChecking || redirecting) {
+  if (authLoading || isChecking) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#1E3A8A] via-[#3B82F6] to-[#1E40AF] flex items-center justify-center">
         <Card className="w-full max-w-md mx-4">
@@ -78,20 +93,15 @@ export function AdminGuard({ children, fallback }: AdminGuardProps) {
           <CardContent className="text-center">
             <div className="flex items-center justify-center mb-4">
               <Loader2 className="w-6 h-6 animate-spin text-[#3B82F6] mr-2" />
-              <span>
-                {redirecting ? 'Redirigiendo...' : 'Comprobando permisos de administrador...'}
-              </span>
+              <span>Comprobando permisos de administrador...</span>
             </div>
             <p className="text-sm text-gray-600">
-              {redirecting 
-                ? 'Te estamos redirigiendo a la página correspondiente.'
-                : 'Por favor, espera mientras verificamos tu acceso al panel de administración.'
-              }
+              Por favor, espera mientras verificamos tu acceso al panel de administración.
             </p>
-            {checkAttempts > 0 && !redirecting && (
-              <p className="text-xs text-gray-500 mt-2">
-                Intento {checkAttempts}/5
-              </p>
+            {error && (
+              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600">{error}</p>
+              </div>
             )}
           </CardContent>
         </Card>

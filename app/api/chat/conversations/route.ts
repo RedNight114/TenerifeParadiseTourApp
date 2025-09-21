@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { ChatService } from '@/lib/chat-service'
+import { ChatServiceRefactored } from '@/lib/services/chat-service-refactored'
 
 export async function GET(request: NextRequest) {
   try {
@@ -48,10 +48,10 @@ export async function GET(request: NextRequest) {
     let conversations
     if (profile?.role === 'admin') {
       // Admins pueden ver todas las conversaciones
-      conversations = await ChatService.getAllConversations(filters)
+      conversations = await ChatServiceRefactored.getInstance().getAllConversations(filters)
     } else {
       // Usuarios solo ven sus propias conversaciones
-      conversations = await ChatService.getUserConversations(user.id)
+      conversations = await ChatServiceRefactored.getInstance().getUserConversations(user.id)
     }
 
     return NextResponse.json({ conversations })
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const conversation = await ChatService.createConversationWithRequest({
+    const conversation = await ChatServiceRefactored.getInstance().createConversation({
       title,
       priority,
       initial_message

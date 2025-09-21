@@ -6,7 +6,7 @@ import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Camera, Upload, Loader2 } from "lucide-react"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 
 interface AvatarUploadProps {
   currentAvatarUrl?: string
@@ -65,8 +65,7 @@ export function AvatarUpload({
   const uploadAvatar = async (file: File) => {
     try {
       setUploading(true)
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")

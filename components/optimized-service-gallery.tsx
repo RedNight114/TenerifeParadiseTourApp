@@ -87,7 +87,7 @@ export const OptimizedServiceGallery = memo(({
 
   // Precargar imagen principal al cambiar
   useEffect(() => {
-    if (images[selectedImageIndex]) {
+    if (images[selectedImageIndex] && typeof window !== 'undefined') {
       const img = new window.Image()
       img.src = images[selectedImageIndex] // Assuming optimizeImageUrl is no longer needed
     }
@@ -128,7 +128,7 @@ export const OptimizedServiceGallery = memo(({
                 } group-hover:scale-105`}
                 priority={priority}
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                fallbackSrc="/images/placeholder.jpg"
+                fallbackSrc="/placeholder.jpg"
               />
               
               {/* Skeleton loading */}
@@ -173,7 +173,7 @@ export const OptimizedServiceGallery = memo(({
                       className="max-h-full max-w-full object-contain w-full h-full"
                       priority={true}
                       sizes="90vw"
-                      fallbackSrc="/images/placeholder.jpg"
+                      fallbackSrc="/placeholder.jpg"
                     />
                     
                     {/* Controles de navegación en modal */}
@@ -278,7 +278,7 @@ export const OptimizedServiceGallery = memo(({
                         isThumbnailLoaded ? 'opacity-100' : 'opacity-0'
                       }`}
                       sizes="(max-width: 768px) 25vw, (max-width: 1200px) 16vw, 12vw"
-                      fallbackSrc="/images/placeholder.jpg"
+                      fallbackSrc="/placeholder.jpg"
                     />
                     
                     {/* Skeleton para miniatura */}

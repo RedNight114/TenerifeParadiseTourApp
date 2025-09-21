@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from '@/lib/supabase-unified'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -46,8 +46,7 @@ export function ReservationsManagement() {
       setLoading(true)
       setError(null)
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -97,8 +96,7 @@ export function ReservationsManagement() {
 
   const updateReservationStatus = async (reservationId: string, status: Reservation["status"]) => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -124,8 +122,7 @@ export function ReservationsManagement() {
 
   const updatePaymentStatus = async (reservationId: string, paymentStatus: Reservation["payment_status"]) => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -365,3 +362,6 @@ export function ReservationsManagement() {
     </div>
   )
 }
+
+export default ReservationsManagement
+

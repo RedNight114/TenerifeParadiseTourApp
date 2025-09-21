@@ -87,27 +87,29 @@ export async function cleanupOrphanedImages(): Promise<ImageCleanupResult> {
           .remove([file.name])
 
         if (deleteError) {
-} else {
+          // Error handled
+        } else {
           deletedCount++
         }
       } catch (error) {
-}
+        // Error handled
+      }
     }
 
     return {
       success: true,
       message: `Limpieza completada. ${deletedCount} imágenes huérfanas eliminadas`,
       deletedCount
-    }
+      }
 
-  } catch (error) {
-return {
-      success: false,
-      message: 'Error durante la limpieza de imágenes',
-      error: error instanceof Error ? error.message : 'Error desconocido'
+    } catch (error) {
+      return {
+        success: false,
+        message: 'Error durante la limpieza de imágenes',
+        error: error instanceof Error ? error.message : 'Error desconocido'
+      }
     }
   }
-}
 
 /**
  * Verifica si una imagen está siendo utilizada por algún servicio
@@ -213,4 +215,5 @@ export async function getImageStorageStats(): Promise<{
 throw error
   }
 }
+
 

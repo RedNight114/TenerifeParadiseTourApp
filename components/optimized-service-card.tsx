@@ -131,13 +131,13 @@ return (
     <div className="relative h-72 w-full overflow-hidden rounded-t-xl group">
       {/* Imagen principal usando SupabaseStorageImage */}
       <SupabaseStorageImage
-        src={images[currentImageIndex] || '/images/placeholder.jpg'}
+        src={images[currentImageIndex] || '/placeholder.jpg'}
         alt={`${service.title} - Imagen ${currentImageIndex + 1}`}
         width={400}
         height={300}
         className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
         priority={priority}
-        fallbackSrc="/images/placeholder.jpg"
+        fallbackSrc="/placeholder.jpg"
       />
 
 

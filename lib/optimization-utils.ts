@@ -2,7 +2,7 @@
 // Utilidades para optimización de rendimiento
 
 // Función para debounce
-export const debounce = <T extends (...args: any[]) => any>(
+export const debounce = <T extends (...args: unknown[]) => any>(
   func: T,
   wait: number
 ): ((...args: Parameters<T>) => void) => {
@@ -15,7 +15,7 @@ export const debounce = <T extends (...args: any[]) => any>(
 }
 
 // Función para throttle
-export const throttle = <T extends (...args: any[]) => any>(
+export const throttle = <T extends (...args: unknown[]) => any>(
   func: T,
   limit: number
 ): ((...args: Parameters<T>) => void) => {
@@ -31,7 +31,7 @@ export const throttle = <T extends (...args: any[]) => any>(
 }
 
 // Función para memoización
-export const memoize = <T extends (...args: any[]) => any>(
+export const memoize = <T extends (...args: unknown[]) => any>(
   func: T,
   resolver?: (...args: Parameters<T>) => string
 ): T => {
@@ -90,6 +90,8 @@ export const optimizeImageUrl = (url: string, options: {
 
 // Función para preload recursos críticos
 export const preloadCriticalResources = (urls: string[]) => {
+  if (typeof document === 'undefined') return
+  
   urls.forEach(url => {
     const link = document.createElement('link')
     link.rel = 'preload'
@@ -129,4 +131,5 @@ export const measureWebVitals = () => {
     })
 }).observe({ entryTypes: ['layout-shift'] })
 }
+
 

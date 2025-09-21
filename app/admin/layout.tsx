@@ -1,8 +1,7 @@
+
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Toaster } from "@/components/ui/toaster"
-import { AuthProvider } from "@/components/auth-provider"
-import "./admin-layout.css"
 
 const inter = Inter({ 
   subsets: ["latin"],
@@ -25,11 +24,9 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <AuthProvider>
-      <div className={`admin-layout ${inter.variable}`}>
-        {children}
-        <Toaster />
-      </div>
-    </AuthProvider>
+    <div className={`min-h-screen bg-gray-50 ${inter.variable}`}>
+      {children}
+      <Toaster />
+    </div>
   )
 }

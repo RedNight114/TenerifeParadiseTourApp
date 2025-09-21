@@ -1,7 +1,7 @@
-"use client"
+﻿"use client"
 
 import React, { useMemo, useCallback, useState, useRef } from 'react'
-import { FixedSizeList as List, VariableSizeList as VariableList } from 'react-window'
+// import ReactWindow from 'react-window'
 import { useResizeObserver } from '@/hooks/use-resize-observer'
 import { Loader2, RefreshCw } from 'lucide-react'
 import { Button } from './button'
@@ -51,7 +51,7 @@ export function VirtualizedList<T>({
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
   const containerRef = useRef<HTMLDivElement>(null)
-  const listRef = useRef<List>(null)
+  const listRef = useRef<any>(null)
 
   // Debouncing para búsqueda
   React.useEffect(() => {
@@ -192,20 +192,14 @@ export function VirtualizedList<T>({
             <span className="ml-2 text-gray-600">Cargando...</span>
           </div>
         ) : (
-          <List
+          <div 
             ref={listRef}
-            height={dynamicHeight}
-            itemCount={items.length}
-            itemSize={itemHeight}
-            width="100%"
-            overscanCount={5} // Pre-renderizar 5 elementos extra
-            onScroll={() => {
-              // Aquí puedes implementar lógica adicional de scroll
-              // Por ejemplo, infinite scroll, analytics, etc.
-            }}
+            style={{ height: dynamicHeight, overflow: 'auto' }}
+            className="w-full"
           >
-            {renderRow}
-          </List>
+            {items.map((item, index) => renderRow({ index, style: { height: itemHeight } }))}
+          </div>
+          
         )}
       </div>
 
@@ -241,7 +235,7 @@ export function useVariableSizeList<T>(
   items: T[],
   getItemSize: (index: number) => number
 ) {
-  const listRef = useRef<VariableList>(null)
+  const listRef = useRef<any>(null)
 
   // Recalcular tamaños cuando cambian los items
   React.useEffect(() => {
@@ -263,8 +257,8 @@ export function VirtualizedServicesList({
   renderService,
   ...props 
 }: Omit<VirtualizedListProps<any>, 'items' | 'renderItem'> & {
-  services: any[]
-  renderService: (service: any, index: number, style: React.CSSProperties) => React.ReactNode
+  services: unknown[]
+  renderService: (service: unknown, index: number, style: React.CSSProperties) => React.ReactNode
 }) {
   return (
     <VirtualizedList
@@ -291,3 +285,4 @@ export function VirtualizedServicesList({
     />
   )
 }
+

@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect } from "react"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 
 interface ContactMessage {
   id: string
@@ -23,8 +23,7 @@ export function useContactMessages() {
       setLoading(true)
       setError(null)
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error('No se pudo obtener el cliente de Supabase')
@@ -43,15 +42,14 @@ export function useContactMessages() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       setError(errorMessage)
-} finally {
+    } finally {
       setLoading(false)
     }
   }
 
   const markAsRead = async (messageId: string) => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error('No se pudo obtener el cliente de Supabase')
@@ -75,13 +73,12 @@ export function useContactMessages() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       setError(errorMessage)
-}
+    }
   }
 
   const deleteMessage = async (messageId: string) => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error('No se pudo obtener el cliente de Supabase')
@@ -101,7 +98,7 @@ export function useContactMessages() {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       setError(errorMessage)
-}
+    }
   }
 
   useEffect(() => {

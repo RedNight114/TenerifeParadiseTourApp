@@ -18,6 +18,16 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Eye, EyeOff, Mail, Lock, User, ArrowRight, CheckCircle, AlertCircle, Chrome, Facebook, RefreshCw, Shield, Sparkles, Star, MapPin, Clock, Phone, Send, ExternalLink } from "lucide-react"
 import { toast } from "sonner"
 
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
+
 function RegisterPageContent() {
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
@@ -54,7 +64,7 @@ setIsSubmitting(true)
 
     // Validaciones del cliente
     if (!fullName || !email || !password || !confirmPassword) {
-toast.error("Campos incompletos", {
+showToast('error', "Campos incompletos", {
         description: "Por favor completa todos los campos requeridos.",
         duration: 4000,
         icon: "⚠️"
@@ -64,7 +74,7 @@ toast.error("Campos incompletos", {
     }
 
     if (!email.includes("@")) {
-toast.error("Email inválido", {
+showToast('error', "Email inválido", {
         description: "Por favor ingresa un formato de email válido.",
         duration: 4000,
         icon: "📧"
@@ -74,7 +84,7 @@ toast.error("Email inválido", {
     }
 
     if (password.length < 6) {
-toast.error("Contraseña muy corta", {
+showToast('error', "Contraseña muy corta", {
         description: "La contraseña debe tener al menos 6 caracteres.",
         duration: 4000,
         icon: "🔒"
@@ -84,7 +94,7 @@ toast.error("Contraseña muy corta", {
     }
 
     if (password !== confirmPassword) {
-toast.error("Contraseñas no coinciden", {
+showToast('error', "Contraseñas no coinciden", {
         description: "Asegúrate de que ambas contraseñas sean iguales.",
         duration: 4000,
         icon: "🔐"
@@ -94,7 +104,7 @@ toast.error("Contraseñas no coinciden", {
     }
 
     if (!acceptTerms) {
-toast.error("Términos no aceptados", {
+showToast('error', "Términos no aceptados", {
         description: "Debes aceptar los términos y condiciones para continuar.",
         duration: 4000,
         icon: "📋"
@@ -123,7 +133,7 @@ if (errorMsg.includes("User already registered")) {
         } else {
           errorMessage = errorMsg
         }
-toast.error("Error en el registro", {
+showToast('error', "Error en el registro", {
           description: errorMessage,
           duration: 5000,
           icon: "❌"
@@ -132,7 +142,7 @@ toast.error("Error en el registro", {
 // Registro exitoso - mostrar pantalla de verificación
         setRegistrationSuccess(true)
         setRegisteredEmail(email)
-        toast.success("¡Cuenta creada exitosamente!", {
+        showToast('success', "¡Cuenta creada exitosamente!", {
           description: "Hemos enviado un email de confirmación. Por favor revisa tu bandeja de entrada y confirma tu cuenta para poder iniciar sesión.",
           duration: 8000,
           icon: "📧"
@@ -140,7 +150,7 @@ toast.error("Error en el registro", {
       }
     } catch (error) {
 const errorMessage = error instanceof Error ? error.message : "Error inesperado"
-      toast.error("Error inesperado", {
+      showToast('error', "Error inesperado", {
         description: `${errorMessage}. Por favor intenta de nuevo.`,
         duration: 5000,
         icon: "💥"
@@ -152,7 +162,7 @@ setIsSubmitting(false)
 
   const handleSocialRegister = async (provider: "google" | "github") => {
     try {
-toast.info(`Conectando con ${provider}...`, {
+showToast('info', `Conectando con ${provider}...`, {
         description: `Preparando la autenticación con ${provider}.`,
         duration: 3000,
         icon: "🔗"
@@ -161,27 +171,27 @@ toast.info(`Conectando con ${provider}...`, {
       if (signInWithProvider) {
         try {
           await signInWithProvider(provider)
-          toast.success(`Redirigiendo...`, {
+          showToast('success', `Redirigiendo...`, {
             description: `Conectando con ${provider} para completar el registro.`,
             duration: 3000,
             icon: "🔄"
           })
         } catch (error) {
-          toast.error(`Error con ${provider}`, {
+          showToast('error', `Error con ${provider}`, {
             description: `No se pudo conectar con ${provider}. Intenta de nuevo.`,
             duration: 5000,
             icon: "❌"
           })
         }
       } else {
-        toast.error("Servicio no disponible", {
+        showToast('error', "Servicio no disponible", {
           description: "No se puede iniciar sesión con proveedor en este momento.",
           duration: 5000,
           icon: "⚠️"
         })
       }
     } catch (error) {
-toast.error(`Error con ${provider}`, {
+showToast('error', `Error con ${provider}`, {
         description: `Error al registrarse con ${provider}. Intenta de nuevo.`,
         duration: 5000,
         icon: "💥"
@@ -191,7 +201,7 @@ toast.error(`Error con ${provider}`, {
 
   const handleResendVerification = async () => {
     try {
-      toast.info("Enviando email de verificación...", {
+      showToast('info', "Enviando email de verificación...", {
         description: "Preparando el envío del email de confirmación.",
         duration: 3000,
         icon: "📤"
@@ -199,27 +209,27 @@ toast.error(`Error con ${provider}`, {
       if (resendVerificationEmail) {
         const { error } = await resendVerificationEmail()
         if (!error) {
-          toast.success("Email enviado", {
+          showToast('success', "Email enviado", {
             description: "El email de verificación ha sido enviado. Revisa tu bandeja de entrada.",
             duration: 5000,
             icon: "✅"
           })
         } else {
-          toast.error("Error al enviar email", {
+          showToast('error', "Error al enviar email", {
             description: error || "No se pudo enviar el email de verificación.",
             duration: 5000,
             icon: "❌"
           })
         }
       } else {
-        toast.error("Servicio no disponible", {
+        showToast('error', "Servicio no disponible", {
           description: "No se puede reenviar el email de verificación en este momento.",
           duration: 5000,
           icon: "⚠️"
         })
       }
     } catch (error) {
-      toast.error("Error inesperado", {
+      showToast('error', "Error inesperado", {
         description: "Error al enviar el email de verificación. Intenta de nuevo.",
         duration: 5000,
         icon: "💥"

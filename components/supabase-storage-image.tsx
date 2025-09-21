@@ -30,6 +30,16 @@ export default function SupabaseStorageImage({
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
+  // Función para validar URL de imagen
+  const isValidImageUrl = (url: string) => {
+    try {
+      new URL(url)
+      return url.startsWith('http://') || url.startsWith('https://')
+    } catch {
+      return false
+    }
+  }
+
   // Actualizar src cuando cambie
   useEffect(() => {
     if (src !== imageSrc) {
@@ -41,16 +51,19 @@ export default function SupabaseStorageImage({
 
   // Función para manejar errores de carga
   const handleError = () => {
-if (!hasError) {
+    if (!hasError) {
       setHasError(true)
-      setImageSrc(fallbackSrc)
+      // Solo usar fallback si es diferente al src original
+      if (fallbackSrc && fallbackSrc !== src) {
+        setImageSrc(fallbackSrc)
+      }
       setIsLoading(false)
     }
   }
 
   // Función para manejar carga exitosa
   const handleLoad = () => {
-setIsLoading(false)
+    setIsLoading(false)
     setHasError(false)
   }
 
@@ -61,13 +74,16 @@ setIsLoading(false)
 
   // ✅ OPTIMIZADO: Debug logging solo en desarrollo
   if (process.env.NODE_ENV === 'development') {
-}
+    }
 
   return (
     <div className={`relative ${fill ? 'w-full h-full' : ''} ${className}`}>
       {isLoading && (
-        <div className="absolute inset-0 bg-gray-200 animate-pulse rounded-lg flex items-center justify-center">
-          <span className="text-gray-500 text-sm">Cargando imagen...</span>
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-200 to-gray-300 animate-pulse rounded-lg flex items-center justify-center z-10">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <span className="text-gray-500 text-xs">Cargando imagen...</span>
+          </div>
         </div>
       )}
       
@@ -102,7 +118,3 @@ setIsLoading(false)
     </div>
   )
 }
-
-
-
-

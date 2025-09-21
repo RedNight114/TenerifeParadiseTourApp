@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { getAuditStats, cleanupOldLogs } from "@/lib/audit-logger"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from '@/lib/supabase-unified'
 import { 
   Activity, 
   Shield, 
@@ -137,8 +137,7 @@ export function AuditDashboard() {
 
   const fetchLogs = async () => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -212,8 +211,7 @@ export function AuditDashboard() {
 
   const exportLogs = async (format: 'json' | 'csv' = 'json') => {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
@@ -278,21 +276,25 @@ export function AuditDashboard() {
           ])
         ].map(row => row.map((field: string) => `"${field}"`).join(',')).join('\n')
         
-        const blob = new Blob([csvContent], { type: 'text/csv' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
-        a.click()
-        window.URL.revokeObjectURL(url)
+        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+          const blob = new Blob([csvContent], { type: 'text/csv' })
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.csv`
+          a.click()
+          window.URL.revokeObjectURL(url)
+        }
       } else {
-        const blob = new Blob([JSON.stringify(transformedLogs, null, 2)], { type: 'application/json' })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement('a')
-        a.href = url
-        a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`
-        a.click()
-        window.URL.revokeObjectURL(url)
+        if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+          const blob = new Blob([JSON.stringify(transformedLogs, null, 2)], { type: 'application/json' })
+          const url = window.URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = `audit-logs-${new Date().toISOString().split('T')[0]}.json`
+          a.click()
+          window.URL.revokeObjectURL(url)
+        }
       }
     } catch (err) {
       setError((err as Error).message)
@@ -686,3 +688,5 @@ export function AuditDashboard() {
     </div>
   )
 } 
+
+export default AuditDashboard 

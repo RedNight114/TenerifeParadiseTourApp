@@ -499,3 +499,5 @@ export function ContactMessages() {
     </div>
   )
 } 
+
+export default ContactMessages 

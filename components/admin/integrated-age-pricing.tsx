@@ -8,8 +8,24 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2, Edit, Save, X, Copy, Check, Euro, Users } from 'lucide-react'
-import { toast } from 'sonner'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message)
+  } else {
+    // Fallback para SSR - solo log en consola
+    }: ${message}`)
+  }
+}
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface AgeRange {
   id?: number
@@ -26,7 +42,7 @@ interface AgeRangeTemplate {
   id: number
   template_name: string
   description: string
-  ranges: any[]
+  ranges: unknown[]
 }
 
 interface Service {
@@ -79,10 +95,9 @@ export function IntegratedAgePricing({
 
   const loadTemplates = async () => {
     try {
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const supabase = await getSupabaseClient()
       
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('age_range_templates')
         .select('*')
         .order('template_name')
@@ -97,10 +112,9 @@ export function IntegratedAgePricing({
   const loadAgeRanges = async (serviceId: string) => {
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const supabase = await getSupabaseClient()
       
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('age_price_ranges')
         .select('*')
         .eq('service_id', serviceId)
@@ -118,28 +132,27 @@ export function IntegratedAgePricing({
 
   const applyTemplate = async (templateId: number) => {
     if (!serviceId) {
-      toast.error('Selecciona un servicio primero')
+      showToast('error', 'Selecciona un servicio primero')
       return
     }
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const supabase = await getSupabaseClient()
       
-      const { error } = await client.rpc('apply_age_range_template', {
+      const { error } = await supabase.rpc('apply_age_range_template', {
         p_service_id: serviceId,
         p_template_id: templateId
       })
 
       if (error) throw error
       
-      toast.success('Plantilla aplicada correctamente')
+      showToast('success', 'Plantilla aplicada correctamente')
       if (serviceId) {
         loadAgeRanges(serviceId)
       }
     } catch (error) {
-toast.error('Error aplicando plantilla')
+showToast('error', 'Error aplicando plantilla')
     } finally {
       setLoading(false)
     }
@@ -168,12 +181,11 @@ toast.error('Error aplicando plantilla')
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const supabase = await getSupabaseClient()
       
       if (range.id && range.id > 1000) {
         // Es un rango local, convertirlo a real
-        const { error } = await client.rpc('create_custom_age_range', {
+        const { error } = await supabase.rpc('create_custom_age_range', {
           p_service_id: serviceId,
           p_range_name: range.range_name,
           p_min_age: range.min_age,
@@ -184,10 +196,10 @@ toast.error('Error aplicando plantilla')
         })
 
         if (error) throw error
-        toast.success('Rango creado correctamente')
+        showToast('success', 'Rango creado correctamente')
       } else if (range.id) {
         // Actualizar rango existente
-        const { error } = await client
+        const { error } = await supabase
           .from('age_price_ranges')
           .update({
             range_name: range.range_name,
@@ -200,10 +212,10 @@ toast.error('Error aplicando plantilla')
           .eq('id', range.id)
 
         if (error) throw error
-        toast.success('Rango actualizado correctamente')
+        showToast('success', 'Rango actualizado correctamente')
       } else {
         // Crear nuevo rango
-        const { error } = await client.rpc('create_custom_age_range', {
+        const { error } = await supabase.rpc('create_custom_age_range', {
           p_service_id: serviceId,
           p_range_name: range.range_name,
           p_min_age: range.min_age,
@@ -214,7 +226,7 @@ toast.error('Error aplicando plantilla')
         })
 
         if (error) throw error
-        toast.success('Rango creado correctamente')
+        showToast('success', 'Rango creado correctamente')
       }
       
       setEditingRange(null)
@@ -229,7 +241,7 @@ toast.error('Error aplicando plantilla')
         loadAgeRanges(serviceId)
       }
     } catch (error) {
-toast.error('Error guardando rango')
+showToast('error', 'Error guardando rango')
     } finally {
       setLoading(false)
     }
@@ -246,20 +258,19 @@ toast.error('Error guardando rango')
 
     try {
       setLoading(true)
-      const supabase = getSupabaseClient()
-      const client = await supabase.getClient()
+      const supabase = await getSupabaseClient()
       
-      const { error } = await client
+      const { error } = await supabase
         .from('age_price_ranges')
         .update({ is_active: false })
         .eq('id', rangeId)
 
       if (error) throw error
       
-      toast.success('Rango eliminado correctamente')
+      showToast('success', 'Rango eliminado correctamente')
       loadAgeRanges(serviceId)
     } catch (error) {
-toast.error('Error eliminando rango')
+showToast('error', 'Error eliminando rango')
     } finally {
       setLoading(false)
     }
@@ -282,7 +293,7 @@ toast.error('Error eliminando rango')
 
   const createPreviewRange = () => {
     if (!newRange.range_name || newRange.min_age === 0 && newRange.max_age === 0) {
-      toast.error('Completa los campos obligatorios')
+      showToast('error', 'Completa los campos obligatorios')
       return
     }
 
@@ -543,4 +554,5 @@ toast.error('Error eliminando rango')
     </Card>
   )
 }
+
 

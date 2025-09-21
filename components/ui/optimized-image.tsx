@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import NextImage from 'next/image'
-import { optimizeImage } from '@/lib/performance-optimizer'
+// import { optimizeImage } from '@/lib/performance-optimizer' // Módulo eliminado
 
 interface OptimizedImageProps {
   src: string
@@ -111,7 +111,7 @@ export function OptimizedImage({
   // Optimizar imagen cuando se carga
   useEffect(() => {
     if (imgRef.current && imageSrc) {
-      optimizeImage(imgRef.current)
+      // optimizeImage(imgRef.current) // Función no disponible
     }
   }, [imageSrc])
 
@@ -225,6 +225,8 @@ export function CompressedImage({
     if (!src) return
 
     const compressImage = async () => {
+      if (typeof window === 'undefined' || typeof document === 'undefined') return
+      
       try {
         const img = new window.Image()
         img.crossOrigin = 'anonymous'

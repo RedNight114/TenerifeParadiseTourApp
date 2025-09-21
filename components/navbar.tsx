@@ -38,7 +38,8 @@ export function Navbar() {
     try {
       await signOut()
     } catch (error) {
-}
+      // Error handled
+    }
   }
 
   const getUserInitials = (rawName?: unknown) => {
@@ -148,6 +149,7 @@ export function Navbar() {
                   src="/images/logo-tenerife.png"
                   alt="TenerifeParadiseTour&Excursions"
                   fill
+                  sizes="(max-width: 640px) 56px, (max-width: 768px) 64px, (max-width: 1024px) 72px, (max-width: 1280px) 80px, 88px"
                   className="object-contain drop-shadow-xl"
                   onError={() => setLogoError(true)}
                 />
@@ -457,4 +459,5 @@ export function Navbar() {
     </nav>
   )
 }
+
 

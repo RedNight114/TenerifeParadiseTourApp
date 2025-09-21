@@ -4,25 +4,27 @@ import React, { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { SimpleServiceCard } from "@/components/simple-service-card"
-import { useOptimizedServices } from "@/hooks/use-optimized-data"
+import { AdvancedServiceCard } from "@/components/advanced-service-card"
+import { useServices } from "@/hooks/use-unified-cache"
 import { SmartImagePreloader } from "@/components/image-preloader"
 import { Sparkles, RefreshCw, Loader2 } from "lucide-react"
 
 export function FeaturedServices() {
   const router = useRouter()
   const { 
-    services, 
-    loading, 
+    data: services, 
+    isLoading: loading, 
     error, 
-    refreshServices, 
-    isInitialized 
-  } = useOptimizedServices()
+    refetch: refreshServices
+  } = useServices()
+  
+  const isInitialized = !loading && !!services
   
   const [showTimeoutMessage, setShowTimeoutMessage] = useState(false)
 
   // ✅ OPTIMIZADO: Memoizar servicios destacados para evitar recálculos
   const featuredServices = useMemo(() => {
-    if (services.length === 0) return []
+    if (!services || services.length === 0) return []
     
     // Primero, obtener servicios marcados como destacados
     const featured = services.filter(service => service.featured)
@@ -49,20 +51,20 @@ export function FeaturedServices() {
 
   // ✅ OPTIMIZADO: Lógica de timeout simplificada
   useEffect(() => {
-    if (loading && services.length === 0 && !isInitialized) {
+    if (loading && !services && !isInitialized) {
       const timer = setTimeout(() => setShowTimeoutMessage(true), 3000)
       return () => clearTimeout(timer)
     } else {
       setShowTimeoutMessage(false)
     }
-  }, [loading, services.length, isInitialized])
+  }, [loading, services, isInitialized])
 
   // ✅ OPTIMIZADO: Logs de depuración más claros
   useEffect(() => {
-}, [services.length, featuredServices.length, loading, error, isInitialized, showTimeoutMessage])
+}, [services?.length, featuredServices.length, loading, error, isInitialized, showTimeoutMessage])
 
   // ✅ OPTIMIZADO: Estados de carga más claros y efectivos
-  if (!isInitialized && !loading && services.length === 0) {
+  if (!isInitialized && !loading && !services) {
     return (
       <section className="py-24 bg-gradient-to-br from-blue-50 via-white to-indigo-50">
         <div className="container mx-auto px-4">
@@ -79,7 +81,7 @@ export function FeaturedServices() {
                 <p className="text-orange-800 font-medium">Inicializando sistema...</p>
               </div>
               <Button 
-                onClick={() => refreshServices(true)} 
+                onClick={() => refreshServices()} 
                 size="sm" 
                 className="bg-orange-600 hover:bg-orange-700"
               >
@@ -131,7 +133,7 @@ export function FeaturedServices() {
                 La carga está tardando más de lo esperado
               </p>
               <Button 
-                onClick={() => refreshServices(true)} 
+                onClick={() => refreshServices()} 
                 size="sm" 
                 className="bg-yellow-600 hover:bg-yellow-700"
               >
@@ -159,7 +161,7 @@ export function FeaturedServices() {
             <div className="bg-red-50 border border-red-200 rounded-2xl p-6 max-w-md mx-auto shadow-lg">
               <p className="text-red-800 mb-4 font-medium">Error al cargar los servicios</p>
               <Button 
-                onClick={() => refreshServices(true)} 
+                onClick={() => refreshServices()} 
                 size="sm" 
                 className="bg-red-600 hover:bg-red-700"
               >
@@ -190,7 +192,7 @@ export function FeaturedServices() {
                 No hay servicios disponibles en este momento
               </p>
               <Button 
-                onClick={() => refreshServices(true)} 
+                onClick={() => refreshServices()} 
                 size="sm" 
                 className="bg-gray-600 hover:bg-gray-700"
               >
@@ -218,13 +220,14 @@ return (
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-stretch">
           {featuredServices.map((service, index) => (
-            <SimpleServiceCard
+            <AdvancedServiceCard
               key={service.id}
               service={service}
               priority={index < 3} // Priorizar las primeras 3 imágenes
-              className="transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+              variant={index === 0 ? 'featured' : 'default'} // Primera tarjeta destacada
+              className="transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-full"
             />
           ))}
         </div>

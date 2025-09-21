@@ -138,12 +138,7 @@ export function withRateLimit(config: RateLimitConfig) {
       const result = checkRateLimit(request, config)
       
       if (!result.success) {
-        console.log('Rate limit exceeded:', {
-          key: config.keyGenerator ? config.keyGenerator(request) : defaultKeyGenerator(request),
-          limit: result.limit,
-          remaining: result.remaining,
-          retryAfter: result.retryAfter
-        })
+        // Rate limit exceeded
         
         const response = NextResponse.json({
           error: result.message || 'Rate limit exceeded',

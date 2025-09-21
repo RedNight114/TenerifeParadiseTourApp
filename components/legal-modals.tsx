@@ -18,18 +18,22 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
       }
     }
 
-    if (isOpen) {
+    if (isOpen && typeof document !== 'undefined') {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
     }
 
     return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleEscape)
+        document.body.style.overflow = 'unset'
+      }
     }
   }, [isOpen, onClose])
 
   const copyToClipboard = async () => {
+    if (typeof document === 'undefined' || typeof navigator === 'undefined') return
+    
     try {
       const content = document.querySelector('.legal-modal-content-print')?.textContent || ''
       await navigator.clipboard.writeText(content)
@@ -113,7 +117,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                   <span className="text-orange-500 text-lg">💳</span>
                   <div>
                     <strong className="text-gray-900">Información de pago:</strong>
-                    <p className="text-gray-600 text-sm">Datos de tarjeta (procesados por Redsys de forma segura)</p>
+                    <p className="text-gray-600 text-sm">Datos de tarjeta (procesados por pasarela de pago segura)</p>
                   </div>
                 </li>
                 <li className="flex items-start space-x-3 p-3 bg-white border border-gray-200 rounded-lg">
@@ -449,7 +453,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="p-4 bg-white border border-gray-200 rounded-lg">
                   <span className="text-emerald-500 text-lg">💳</span>
-                  <p className="text-gray-700 text-sm leading-relaxed">Aceptamos pagos seguros a través de Redsys (Visa, MasterCard, Maestro)</p>
+                  <p className="text-gray-700 text-sm leading-relaxed">Aceptamos pagos seguros a través de pasarela de pago (Visa, MasterCard, Maestro)</p>
                 </div>
                 <div className="p-4 bg-white border border-gray-200 rounded-lg">
                   <span className="text-emerald-500 text-lg">🏦</span>
@@ -796,7 +800,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                 <li><strong>Google Analytics:</strong> Análisis de tráfico web</li>
                 <li><strong>Google Ads:</strong> Publicidad y remarketing</li>
                 <li><strong>Facebook Pixel:</strong> Seguimiento de conversiones</li>
-                <li><strong>Redsys:</strong> Procesamiento de pagos seguros</li>
+                <li><strong>Pasarela de Pago:</strong> Procesamiento de pagos seguros</li>
                 <li><strong>Supabase:</strong> Base de datos y autenticación</li>
               </ul>
 

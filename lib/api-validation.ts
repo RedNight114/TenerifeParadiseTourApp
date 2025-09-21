@@ -11,10 +11,10 @@ export interface ValidationConfig {
 
 // Función para crear un middleware de validación
 export function withValidation(config: ValidationConfig) {
-  return function(handler: (req: NextRequest, validatedData: any) => Promise<NextResponse>) {
+  return function(handler: (req: NextRequest, validatedData: unknown) => Promise<NextResponse>) {
     return async function(request: NextRequest): Promise<NextResponse> {
       try {
-        const validatedData: any = {}
+        const validatedData: Record<string, any> = {}
 
         // Validar body si se especifica
         if (config.body) {
@@ -122,7 +122,7 @@ export function sanitizeString(input: string): string {
 
 // Función para sanitizar objeto completo
 export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
-  const sanitized: any = {}
+  const sanitized: Record<string, any> = {}
   
   for (const [key, value] of Object.entries(obj)) {
     if (typeof value === 'string') {
@@ -134,5 +134,6 @@ export function sanitizeObject<T extends Record<string, any>>(obj: T): T {
     }
   }
   
-  return sanitized
+  return sanitized as T
 } 
+

@@ -3,16 +3,21 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
+import { usePathname } from "next/navigation"
 import { Facebook, Instagram, Mail, Phone, MapPin, Clock, Shield, Star, CheckCircle, ArrowUp } from "lucide-react"
 import { CookieSettingsModal } from "@/components/cookie-settings-modal"
 import { LegalModal } from "@/components/legal-modals"
 
 export function Footer() {
+  const pathname = usePathname()
   const [isCookieModalOpen, setIsCookieModalOpen] = useState(false)
   const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'privacy' | 'terms' | 'cookies' | null }>({
     isOpen: false,
     type: null
   })
+  
+  // No mostrar el botón flotante en páginas de administración
+  const isAdminPage = pathname?.startsWith('/admin')
 
   // Categorías estáticas para el footer
   const staticCategories = [
@@ -257,14 +262,16 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Single Scroll to Top Button */}
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-6 right-6 p-3 bg-gradient-to-r from-[#F4C762] to-[#FFD700] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50"
-          aria-label="Volver arriba"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </button>
+        {/* Single Scroll to Top Button - Solo en páginas públicas */}
+        {!isAdminPage && (
+          <button
+            onClick={scrollToTop}
+            className="fixed bottom-6 right-6 p-3 bg-gradient-to-r from-[#F4C762] to-[#FFD700] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50"
+            aria-label="Volver arriba"
+          >
+            <ArrowUp className="h-5 w-5" />
+          </button>
+        )}
       </footer>
 
       {/* Cookie Settings Modal */}

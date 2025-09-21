@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { useState } from "react"
@@ -13,7 +13,17 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { ArrowLeft, Mail, CheckCircle, AlertCircle, Loader2, Shield, Sparkles, Phone, HelpCircle } from "lucide-react"
 import { toast } from "sonner"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from '@/lib/supabase-unified'
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
@@ -26,22 +36,21 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     if (!email.trim()) {
-      toast.error("Por favor ingresa tu correo electrónico")
+      showToast('error', "Por favor ingresa tu correo electrónico")
       setLoading(false)
       return
     }
 
     if (!email.includes("@")) {
-      toast.error("Por favor ingresa un correo electrónico válido")
+      showToast('error', "Por favor ingresa un correo electrónico válido")
       setLoading(false)
       return
     }
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
-        toast.error("No se pudo obtener el cliente de Supabase")
+        showToast('error', "No se pudo obtener el cliente de Supabase")
         setLoading(false)
         return
       }
@@ -51,16 +60,16 @@ export default function ForgotPasswordPage() {
 
       if (error) {
         if (error.message && error.message.includes("Email rate limit exceeded")) {
-          toast.error("Has solicitado demasiados resets. Espera unos minutos e inténtalo de nuevo.")
+          showToast('error', "Has solicitado demasiados resets. Espera unos minutos e inténtalo de nuevo.")
         } else {
-          toast.error("Error al enviar el correo de recuperación. Inténtalo de nuevo.")
+          showToast('error', "Error al enviar el correo de recuperación. Inténtalo de nuevo.")
         }
       } else {
-        toast.success("¡Correo enviado! Revisa tu bandeja de entrada y spam.")
+        showToast('success', "¡Correo enviado! Revisa tu bandeja de entrada y spam.")
         setEmail("")
       }
     } catch (err: any) {
-      toast.error(err.message || "Error inesperado. Por favor inténtalo de nuevo.")
+      showToast('error', err.message || "Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }
@@ -249,3 +258,4 @@ export default function ForgotPasswordPage() {
     </div>
   )
 }
+

@@ -1,6 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { toast } from 'sonner'
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message)
+  } else {
+    // Fallback para SSR - solo log en consola
+    }: ${message}`)
+  }
+}
 
 interface UseLoginRedirectProps {
   user: any
@@ -19,29 +35,17 @@ export function useLoginRedirect({ user, profile, redirectPath }: UseLoginRedire
     const welcomeMessage = `¡Bienvenido ${profile.full_name || user.email}!`
     const roleDescription = profile.role === 'admin' ? 'Administrador' : 'Usuario'
     
-    toast.success(welcomeMessage, {
-      description: `Rol: ${roleDescription}`,
-      duration: 3000,
-      icon: profile.role === 'admin' ? '🛡️' : '👤'
-    })
+    showToast('success', welcomeMessage)
 
     // Determinar ruta de redirección
     let targetPath = redirectPath
     if (!targetPath) {
       if (profile.role === 'admin') {
         targetPath = '/admin/dashboard'
-        toast.success('Redirigiendo al panel de administración...', {
-          description: 'Serás redirigido en 3 segundos',
-          duration: 3000,
-          icon: '🛡️'
-        })
+        showToast('success', 'Redirigiendo al panel de administración...')
       } else {
         targetPath = '/profile'
-        toast.success('Redirigiendo a tu perfil...', {
-          description: 'Serás redirigido en 3 segundos',
-          duration: 3000,
-          icon: '👤'
-        })
+        showToast('success', 'Redirigiendo a tu perfil...')
       }
     }
 

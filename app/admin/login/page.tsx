@@ -14,6 +14,16 @@ import { Separator } from "@/components/ui/separator"
 import { Loader2, Eye, EyeOff, Shield, ArrowLeft, AlertCircle, CheckCircle, Lock, Mail, ArrowRight, Sparkles, Users, Settings, Database, Activity } from 'lucide-react'
 import { toast } from "sonner"
 
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
+
 export default function AdminLoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -32,7 +42,7 @@ if (profile.role === "admin") {
 setRedirecting(true)
         router.push("/admin/dashboard")
       } else {
-toast.error("No tienes permisos de administrador")
+showToast('error', "No tienes permisos de administrador")
         router.push("/")
       }
     }
@@ -43,13 +53,13 @@ toast.error("No tienes permisos de administrador")
     setLoading(true)
 // Validaciones
     if (!email.trim() || !password.trim()) {
-      toast.error("Por favor completa todos los campos")
+      showToast('error', "Por favor completa todos los campos")
       setLoading(false)
       return
     }
 
     if (!email.includes("@")) {
-      toast.error("Por favor ingresa un email válido")
+      showToast('error', "Por favor ingresa un email válido")
       setLoading(false)
       return
     }
@@ -74,28 +84,28 @@ const { error: signInError, data } = await signIn(email.trim(), password)
           }
         }
         
-        toast.error(errorMessage)
+        showToast('error', errorMessage)
       } else {
-toast.success("Verificando permisos de administrador...")
+showToast('success', "Verificando permisos de administrador...")
         
         // El perfil se cargará automáticamente en useAuthContext
         // Solo necesitamos esperar un momento para que se actualice
         setTimeout(() => {
           if (profile && profile.role === 'admin') {
-toast.success("Acceso confirmado. Redirigiendo al dashboard...")
+showToast('success', "Acceso confirmado. Redirigiendo al dashboard...")
             setRedirecting(true)
             router.push("/admin/dashboard")
           } else if (profile && profile.role !== 'admin') {
-toast.error("No tienes permisos de administrador")
+showToast('error', "No tienes permisos de administrador")
             router.push("/")
           } else {
-toast.error("Error al verificar permisos")
+showToast('error', "Error al verificar permisos")
             router.push("/")
           }
         }, 1000)
       }
     } catch (err) {
-toast.error("Error inesperado. Por favor inténtalo de nuevo.")
+showToast('error', "Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }

@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import type React from "react"
 import { useState, useEffect } from "react"
@@ -13,7 +13,17 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Eye, EyeOff, Lock, CheckCircle, AlertCircle, Loader2, Shield, Sparkles, Key, Check, X } from "lucide-react"
 import { toast } from "sonner"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from '@/lib/supabase-unified'
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
 
 export default function ResetPasswordPage() {
   const [password, setPassword] = useState("")
@@ -45,18 +55,17 @@ export default function ResetPasswordPage() {
 
     if (!accessToken || !refreshToken) {
       setValidToken(false)
-      toast.error("Enlace de recuperación inválido o expirado")
+      showToast('error', "Enlace de recuperación inválido o expirado")
       return
     }
 
     // Set the session with the tokens
     const setSession = async () => {
       try {
-        const supabaseClient = getSupabaseClient()
-        const client = await supabaseClient.getClient()
+        const client = await getSupabaseClient()
         if (!client) {
           setValidToken(false)
-          toast.error("No se pudo obtener el cliente de Supabase")
+          showToast('error', "No se pudo obtener el cliente de Supabase")
           return
         }
         const { error } = await client.auth.setSession({
@@ -66,13 +75,13 @@ export default function ResetPasswordPage() {
 
         if (error) {
           setValidToken(false)
-          toast.error("Enlace de recuperación inválido o expirado")
+          showToast('error', "Enlace de recuperación inválido o expirado")
         } else {
           setValidToken(true)
         }
       } catch (err: any) {
         setValidToken(false)
-        toast.error(err.message || "Error al validar el enlace de recuperación")
+        showToast('error', err.message || "Error al validar el enlace de recuperación")
       }
     }
 
@@ -85,28 +94,27 @@ export default function ResetPasswordPage() {
 
     // Validations
     if (!password.trim() || !confirmPassword.trim()) {
-      toast.error("Por favor completa todos los campos")
+      showToast('error', "Por favor completa todos los campos")
       setLoading(false)
       return
     }
 
     if (!isPasswordValid) {
-      toast.error("La contraseña no cumple con todos los requisitos de seguridad")
+      showToast('error', "La contraseña no cumple con todos los requisitos de seguridad")
       setLoading(false)
       return
     }
 
     if (password !== confirmPassword) {
-      toast.error("Las contraseñas no coinciden")
+      showToast('error', "Las contraseñas no coinciden")
       setLoading(false)
       return
     }
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
-        toast.error("No se pudo obtener el cliente de Supabase")
+        showToast('error', "No se pudo obtener el cliente de Supabase")
         setLoading(false)
         return
       }
@@ -116,15 +124,15 @@ export default function ResetPasswordPage() {
       })
 
       if (error) {
-        toast.error("Error al cambiar la contraseña. Inténtalo de nuevo.")
+        showToast('error', "Error al cambiar la contraseña. Inténtalo de nuevo.")
       } else {
-        toast.success("¡Contraseña cambiada exitosamente! Redirigiendo al login...")
+        showToast('success', "¡Contraseña cambiada exitosamente! Redirigiendo al login...")
         setTimeout(() => {
           router.push("/auth/login")
         }, 2000)
       }
     } catch (err: any) {
-      toast.error(err.message || "Error inesperado. Por favor inténtalo de nuevo.")
+      showToast('error', err.message || "Error inesperado. Por favor inténtalo de nuevo.")
     } finally {
       setLoading(false)
     }
@@ -402,3 +410,4 @@ export default function ResetPasswordPage() {
     </div>
   )
 }
+

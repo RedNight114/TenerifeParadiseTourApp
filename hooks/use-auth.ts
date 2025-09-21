@@ -1,8 +1,8 @@
 "use client"
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
-import { getSupabaseClient } from '@/lib/supabase-singleton'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 import { logAuth, logError } from '@/lib/logger'
 
 interface Profile {
@@ -22,16 +22,75 @@ export function useAuth() {
   const [isInitialized, setIsInitialized] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [sessionRefreshInterval, setSessionRefreshInterval] = useState<NodeJS.Timeout | null>(null)
+  const [isClient, setIsClient] = useState(false)
+  const authStateRef = useRef<{ user: User | null; profile: Profile | null }>({ user: null, profile: null })
+
+  // Evitar problemas de hidratación
+  useEffect(() => {
+    setIsClient(true)
+  }, [])
+
+  // ✅ NUEVO: Sincronizar estado local con ref para evitar desincronización
+  useEffect(() => {
+    authStateRef.current = { user, profile }
+  }, [user, profile])
+
+  // ✅ NUEVO: Función para refrescar sesión automáticamente
+  const refreshSession = useCallback(async () => {
+    try {
+      const supabase = await getSupabaseClient()
+      const { data: { session }, error } = await supabase.auth.refreshSession()
+      
+      if (error) {
+        logAuth('Error refrescando sesión', { error: error.message })
+        return false
+      }
+
+      if (session?.user) {
+        logAuth('Sesión refrescada exitosamente')
+        setUser(session.user)
+        await loadProfile(session.user.id)
+        return true
+      }
+
+      return false
+    } catch (error) {
+      logAuth('Error refrescando sesión', { error: error instanceof Error ? error.message : 'Error desconocido' })
+      return false
+    }
+  }, [])
+
+  // ✅ NUEVO: Configurar refresh automático de sesión
+  useEffect(() => {
+    if (user) {
+      // Refrescar sesión cada 50 minutos (antes de que expire)
+      const interval = setInterval(() => {
+        refreshSession()
+      }, 50 * 60 * 1000) // 50 minutos
+
+      setSessionRefreshInterval(interval)
+
+      return () => {
+        if (interval) clearInterval(interval)
+      }
+    }
+  }, [user, refreshSession])
+
+  // ✅ NUEVO: Limpiar intervalos al desmontar
+  useEffect(() => {
+    return () => {
+      if (sessionRefreshInterval) {
+        clearInterval(sessionRefreshInterval)
+      }
+    }
+  }, [sessionRefreshInterval])
 
   // Cargar perfil del usuario
   const loadProfile = useCallback(async (userId: string) => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
-
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -54,12 +113,8 @@ export function useAuth() {
   // Crear perfil por defecto
   const createDefaultProfile = async (userId: string, fullName: string) => {
     try {
-      const supabase = getSupabaseClient()
+      const supabase = await getSupabaseClient()
       
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
-
       const { data, error } = await supabase
         .from('profiles')
         .insert([
@@ -86,18 +141,15 @@ export function useAuth() {
     }
   }
 
-  // Inicializar autenticación
+  // Inicializar autenticación solo en el cliente
   useEffect(() => {
+    if (!isClient) return
+
     const initializeAuth = async () => {
       try {
         logAuth('Iniciando sistema de autenticación...');
         
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-          logError('No se pudo obtener el cliente de Supabase');
-          setIsInitialized(true);
-          return;
-        }
+        const supabase = await getSupabaseClient();
 
         // Obtener sesión actual
         try {
@@ -136,6 +188,9 @@ export function useAuth() {
               } else if (event === 'SIGNED_OUT') {
                 setUser(null);
                 setProfile(null);
+              } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+                logAuth('Token refrescado automáticamente');
+                setUser(session.user);
               }
             }
           );
@@ -157,18 +212,14 @@ export function useAuth() {
     };
 
     initializeAuth();
-  }, [loadProfile])
+  }, [loadProfile, isClient])
 
   const login = async (email: string, password: string) => {
     try {
       setIsLoading(true);
       logAuth('Intentando login', { email });
       
-      const supabase = getSupabaseClient()
-      
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
+      const supabase = await getSupabaseClient()
 
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -189,7 +240,7 @@ export function useAuth() {
         return {
           data: {
             user: data.user,
-            profile // Usar el perfil actualizado
+            profile: authStateRef.current.profile
           },
           error: null
         };
@@ -211,11 +262,7 @@ export function useAuth() {
       logAuth('Iniciando proceso de registro...');
       logAuth('Datos de registro', { email, fullName });
       
-      const supabase = getSupabaseClient()
-      
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
+      const supabase = await getSupabaseClient()
 
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -255,11 +302,7 @@ export function useAuth() {
     try {
       logAuth('Cerrando sesión...');
       
-      const supabase = getSupabaseClient()
-      
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
+      const supabase = await getSupabaseClient()
 
       const { error } = await supabase.auth.signOut()
       if (error) {
@@ -287,10 +330,7 @@ export function useAuth() {
       setIsLoading(true);
       logAuth('Intentando login con proveedor', { provider });
       
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase');
-      }
+      const supabase = await getSupabaseClient();
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider,
@@ -316,10 +356,7 @@ export function useAuth() {
     try {
       logAuth('Reenviando email de verificación...');
       
-      const supabase = getSupabaseClient();
-      if (!supabase) {
-        throw new Error('No se pudo obtener el cliente de Supabase');
-      }
+      const supabase = await getSupabaseClient();
 
       const { error } = await supabase.auth.resend({
         type: 'signup',
@@ -338,6 +375,22 @@ export function useAuth() {
     }
   };
 
+  // ✅ NUEVO: Función para verificar si la sesión está activa
+  const isSessionValid = useCallback(() => {
+    return !!user && !!profile;
+  }, [user, profile])
+
+  // ✅ NUEVO: Función para obtener información de la sesión
+  const getSessionInfo = useCallback(() => {
+    return {
+      user,
+      profile,
+      isAuthenticated: !!user,
+      isAdmin: profile?.role === 'admin',
+      sessionAge: user ? Date.now() - new Date(user.created_at).getTime() : 0
+    }
+  }, [user, profile])
+
   return {
     user,
     profile,
@@ -349,5 +402,9 @@ export function useAuth() {
     logout,
     loginWithProvider,
     resendVerificationEmail,
+    // ✅ NUEVAS FUNCIONES
+    refreshSession,
+    isSessionValid,
+    getSessionInfo
   }
 } 

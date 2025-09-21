@@ -60,3 +60,6 @@ Write-Host "📋 Próximos pasos:" -ForegroundColor Yellow
 Write-Host "1. Ejecutar: npm run lint" -ForegroundColor White
 Write-Host "2. Verificar que se redujeron los warnings" -ForegroundColor White
 Write-Host "3. Ejecutar: npm run build" -ForegroundColor White
+
+
+

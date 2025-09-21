@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { useAuthContext } from "@/components/auth-provider"
 
 interface Reservation {
@@ -10,13 +10,22 @@ interface Reservation {
   service_id: string
   service_name: string
   date: string
-  time: string
+  time?: string
   participants: number
   total_price: number
   status: string
+  payment_status?: string
   notes?: string
   location?: string
   created_at: string
+  profiles?: {
+    full_name: string
+    email: string
+  }
+  services?: {
+    title: string
+    price: number
+  }
 }
 
 export function useReservations() {
@@ -30,8 +39,7 @@ export function useReservations() {
       setLoading(true)
       setError(null)
 
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         throw new Error('No se pudo obtener el cliente de Supabase')
@@ -40,7 +48,16 @@ export function useReservations() {
       const { data, error } = await client
         .from('reservations')
         .select(`
-          *,
+          id,
+          user_id,
+          service_id,
+          participants,
+          booking_date,
+          total_price,
+          status,
+          payment_status,
+          notes,
+          created_at,
           profiles(full_name, email),
           services(title, price)
         `)
@@ -51,11 +68,30 @@ export function useReservations() {
         throw error
       }
 
-      setReservations(data || [])
+      // Mapear los datos para que coincidan con la interfaz
+      const mappedReservations = (data || []).map((reservation: any) => ({
+        id: reservation.id,
+        user_id: reservation.user_id,
+        service_id: reservation.service_id,
+        service_name: reservation.services?.title || 'Servicio no disponible',
+        date: reservation.booking_date || reservation.reservation_date || '',
+        time: reservation.reservation_time || '',
+        participants: reservation.participants || reservation.guests || 1,
+        total_price: reservation.total_price || reservation.total_amount || 0,
+        status: reservation.status || 'pending',
+        payment_status: reservation.payment_status || 'pendiente',
+        notes: reservation.notes || '',
+        location: 'Tenerife', // Valor por defecto
+        created_at: reservation.created_at,
+        profiles: reservation.profiles,
+        services: reservation.services
+      }))
+
+      setReservations(mappedReservations)
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Error desconocido'
       setError(errorMessage)
-} finally {
+    } finally {
       setLoading(false)
     }
   }, [user?.id])
@@ -64,8 +100,7 @@ export function useReservations() {
     if (!user?.id) return
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
         throw new Error("No se pudo obtener el cliente de Supabase")
       }
@@ -86,7 +121,7 @@ export function useReservations() {
 
       return { success: true }
     } catch (err) {
-return { error: err instanceof Error ? err.message : "Error al cancelar la reserva" }
+      return { error: err instanceof Error ? err.message : "Error al cancelar la reserva" }
     }
   }, [user?.id])
 

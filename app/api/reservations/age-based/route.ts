@@ -1,12 +1,5 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
-import { getSupabaseClient } from '@/lib/supabase-optimized'
-import { createClient } from '@supabase/supabase-js'
-
-// Configurar Supabase para el servidor
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 export async function POST(request: NextRequest) {
   try {
@@ -27,6 +20,9 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
 
     // Verificar que el servicio existe y está disponible
     const { data: service, error: serviceError } = await supabase
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (reservationError) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error al crear la reserva' },
         { status: 500 }
       )
@@ -96,7 +92,7 @@ return NextResponse.json(
       .insert(participantData)
 
     if (participantsError) {
-// Intentar eliminar la reserva si falla la creación de participantes
+      // Intentar eliminar la reserva si falla la creación de participantes
       await supabase
         .from('reservations')
         .delete()
@@ -120,7 +116,8 @@ return NextResponse.json(
       .single()
 
     if (fetchError) {
-}
+      // Continuar sin la reserva completa
+    }
 
     // Enviar email de confirmación (opcional)
     // await sendReservationConfirmationEmail(user.email, completeReservation)
@@ -133,7 +130,7 @@ return NextResponse.json(
     })
 
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
@@ -153,6 +150,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
+
     let query = supabase
       .from('reservations')
       .select(`
@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     const { data: reservations, error } = await query.order('created_at', { ascending: false })
 
     if (error) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error al obtener las reservas' },
         { status: 500 }
       )
@@ -182,7 +182,7 @@ return NextResponse.json(
     })
 
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
@@ -200,6 +200,9 @@ export async function PUT(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
 
     // Verificar que la reserva existe
     const { data: existingReservation, error: fetchError } = await supabase
@@ -238,7 +241,7 @@ export async function PUT(request: NextRequest) {
       .eq('id', reservationId)
 
     if (updateError) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error al actualizar la reserva' },
         { status: 500 }
       )
@@ -251,7 +254,7 @@ return NextResponse.json(
       .eq('reservation_id', reservationId)
 
     if (deleteError) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error al actualizar los participantes' },
         { status: 500 }
       )
@@ -272,7 +275,7 @@ return NextResponse.json(
         .insert(participantData)
 
       if (participantsError) {
-return NextResponse.json(
+        return NextResponse.json(
           { error: 'Error al actualizar los participantes' },
           { status: 500 }
         )
@@ -286,7 +289,7 @@ return NextResponse.json(
     })
 
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
@@ -304,6 +307,9 @@ export async function DELETE(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Obtener cliente unificado
+    const supabase = await getSupabaseClient()
 
     // Verificar que la reserva existe
     const { data: existingReservation, error: fetchError } = await supabase
@@ -334,7 +340,7 @@ export async function DELETE(request: NextRequest) {
       .eq('id', reservationId)
 
     if (deleteError) {
-return NextResponse.json(
+      return NextResponse.json(
         { error: 'Error al cancelar la reserva' },
         { status: 500 }
       )
@@ -346,10 +352,11 @@ return NextResponse.json(
     })
 
   } catch (error) {
-return NextResponse.json(
+    return NextResponse.json(
       { error: 'Error interno del servidor' },
       { status: 500 }
     )
   }
 }
+
 

@@ -2,12 +2,13 @@
 
 import { useState, useMemo, useCallback } from "react"
 import { SimpleServiceCard } from "@/components/simple-service-card"
+import { AdvancedServiceCard } from "@/components/advanced-service-card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Search, Filter, X, RefreshCw } from "lucide-react"
-import { useOptimizedData } from "@/hooks/use-optimized-data"
+import { useServices } from "@/hooks/use-unified-cache"
 import { SmartImagePreloader } from "@/components/image-preloader"
 import type { Service } from "@/lib/supabase"
 
@@ -18,7 +19,8 @@ interface ServicesGridProps {
 }
 
 export function ServicesGrid({ propLoading, className = "", services: externalServices }: ServicesGridProps) {
-  const { data: { services: internalServices, loading }, isInitialized } = useOptimizedData()
+  const { data: internalServices, isLoading: loading } = useServices()
+  const isInitialized = !loading && !!internalServices
   const services = externalServices || internalServices
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
@@ -33,7 +35,7 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
     const cats = new Set<string>()
     const subcats = new Map<string, Set<string>>()
     
-    services.forEach(service => {
+    services?.forEach(service => {
       if (service.category?.name) {
         cats.add(service.category.name)
         if (service.subcategory?.name) {
@@ -53,7 +55,7 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
 
   // Filtrar y ordenar servicios
   const displayServices = useMemo(() => {
-    const filtered = services.filter(service => {
+    const filtered = (services || []).filter(service => {
       const matchesSearch = service.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            service.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            service.category?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -99,7 +101,7 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
 
   // Obtener servicios destacados para precarga prioritaria
   const featuredServices = useMemo(() => {
-    return services.filter(service => service.featured).slice(0, 6)
+    return (services || []).filter(service => service.featured).slice(0, 6)
   }, [services])
 
   // Obtener servicios visibles para precarga
@@ -107,7 +109,7 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
     return displayServices.slice(0, 12) // Precargar solo los primeros 12 servicios visibles
   }, [displayServices])
 
-  if (isLoading && services.length === 0) {
+  if (isLoading && (!services || services.length === 0)) {
     return (
       <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 ${className}`}>
         {Array.from({ length: 9 }).map((_, index) => (
@@ -250,7 +252,7 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
             {/* Contador de resultados */}
             <div className="flex items-end">
               <div className="text-sm text-gray-600">
-                <span className="font-medium">{displayServices.length}</span> de {services.length} servicios
+                <span className="font-medium">{displayServices.length}</span> de {services?.length || 0} servicios
               </div>
             </div>
           </div>
@@ -296,14 +298,15 @@ export function ServicesGrid({ propLoading, className = "", services: externalSe
         )}
       </div>
 
-      {/* Grid de servicios */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+      {/* Grid de servicios con alturas uniformes y tarjetas más anchas */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto items-stretch">
         {displayServices.map((service, index) => (
-          <SimpleServiceCard
+          <AdvancedServiceCard
             key={service.id}
             service={service}
             priority={index < 6} // Priorizar las primeras 6 imágenes
-            className="transform transition-all duration-300 hover:scale-105"
+            variant={service.featured ? 'featured' : 'default'}
+            className="transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl h-full"
           />
         ))}
       </div>

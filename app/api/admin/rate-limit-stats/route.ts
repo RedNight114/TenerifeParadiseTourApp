@@ -6,14 +6,14 @@ import { getRateLimitStats, clearRateLimitCache } from "@/lib/rate-limiting"
 export const GET = requireAdmin()(async (request: NextRequest, userData: any) => {
   try {
     const adminUserId = userData.user.id
-const stats = getRateLimitStats()
-return NextResponse.json({
+    const stats = getRateLimitStats()
+    return NextResponse.json({
       stats,
       timestamp: new Date().toISOString(),
       adminUserId
     })
   } catch (error) {
-return NextResponse.json({ error: "Error al obtener estadísticas" }, { status: 500 })
+    return NextResponse.json({ error: "Error al obtener estadísticas" }, { status: 500 })
   }
 })
 
@@ -21,13 +21,14 @@ return NextResponse.json({ error: "Error al obtener estadísticas" }, { status: 
 export const POST = requireAdmin()(async (request: NextRequest, userData: any) => {
   try {
     const adminUserId = userData.user.id
-clearRateLimitCache()
-return NextResponse.json({
+    clearRateLimitCache()
+    return NextResponse.json({
       message: "Cache de rate limiting limpiado exitosamente",
       timestamp: new Date().toISOString(),
       adminUserId
     })
   } catch (error) {
-return NextResponse.json({ error: "Error al limpiar cache" }, { status: 500 })
+    return NextResponse.json({ error: "Error al limpiar cache" }, { status: 500 })
   }
 }) 
+

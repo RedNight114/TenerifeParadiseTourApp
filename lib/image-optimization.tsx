@@ -63,7 +63,7 @@ export function optimizeImageUrl(
   format?: string
 ): string {
   if (!imageUrl) {
-    return "/images/placeholder.jpg"
+    return "/placeholder.jpg"
   }
 
   // Limpiar cache periódicamente
@@ -96,7 +96,7 @@ export function optimizeImageUrl(
     optimizedUrl = `/images/${imageUrl}`
   }
   else {
-    optimizedUrl = "/images/placeholder.jpg"
+    optimizedUrl = "/placeholder.jpg"
   }
 
   // Guardar en cache
@@ -138,8 +138,8 @@ function optimizeSupabaseUrl(url: string, size: keyof typeof IMAGE_CONFIG.SIZES,
       return urlObj.toString()
     }
   } catch (error) {
-}
-  
+    // Error handled
+  }
   return url
 }
 
@@ -171,8 +171,8 @@ function optimizeVercelUrl(url: string, size: keyof typeof IMAGE_CONFIG.SIZES, f
     urlObj.search = params.toString()
     return urlObj.toString()
   } catch (error) {
-}
-  
+    // Error handled
+  }
   return url
 }
 
@@ -231,8 +231,10 @@ export function useImageLazyLoading(
     })
 
     // Observar elementos de imagen
-    const imageElements = document.querySelectorAll('[data-image-lazy]')
-    imageElements.forEach(el => observer.observe(el))
+    if (typeof document !== 'undefined') {
+      const imageElements = document.querySelectorAll('[data-image-lazy]')
+      imageElements.forEach(el => observer.observe(el))
+    }
 
     return () => observer.disconnect()
   }, [handleIntersection, threshold, rootMargin])
@@ -358,3 +360,4 @@ export const OptimizedImage = memo(({
 })
 
 OptimizedImage.displayName = 'OptimizedImage' 
+

@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
 import { cookies } from 'next/headers'
-import { ChatService } from '@/lib/chat-service'
+import { ChatServiceRefactored } from '@/lib/services/chat-service-refactored'
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const messages = await ChatService.getConversationMessages(
+    const messages = await ChatServiceRefactored.getInstance().getConversationMessages(
       conversationId,
       limit,
       offset
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const message = await ChatService.sendMessage({
+    const message = await ChatServiceRefactored.getInstance().sendMessage({
       conversation_id,
       content,
       message_type,

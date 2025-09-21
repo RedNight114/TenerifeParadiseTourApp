@@ -11,7 +11,7 @@ interface AuthGuardProps {
   redirectTo?: string
 }
 
-export function AuthGuard({ 
+function AuthGuard({ 
   children, 
   requireAuth = false, 
   requireAdmin = false, 
@@ -28,19 +28,24 @@ export function AuthGuard({
 
     // Si requiere autenticación y no está autenticado
     if (requireAuth && !isAuthenticated) {
-router.push(redirectTo)
+      router.push(redirectTo)
       return
     }
 
     // Si requiere admin y no es admin
     if (requireAdmin && !isAdmin) {
-router.push('/')
+      router.push('/dashboard')
       return
     }
 
     // Si está autenticado y está en la página de login, redirigir al dashboard
     if (isAuthenticated && redirectTo === '/auth/login') {
-router.push('/dashboard')
+      // Redirigir a admin/dashboard si es admin, sino a dashboard normal
+      if (isAdmin) {
+        router.push('/admin/dashboard')
+      } else {
+        router.push('/dashboard')
+      }
       return
     }
   }, [isInitialized, loading, isAuthenticated, isAdmin, requireAuth, requireAdmin, redirectTo, router])
@@ -86,4 +91,6 @@ router.push('/dashboard')
 
   return <>{children}</>
 }
+
+export default AuthGuard
 

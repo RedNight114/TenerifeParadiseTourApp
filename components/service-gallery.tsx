@@ -14,7 +14,7 @@ interface ServiceGalleryProps {
   className?: string
 }
 
-export function ServiceGallery({ images, serviceTitle, className = "" }: ServiceGalleryProps) {
+function ServiceGallery({ images, serviceTitle, className = "" }: ServiceGalleryProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0)
   const [isModalOpen, setIsModalOpen] = useState(false)
 
@@ -193,4 +193,6 @@ export function ServiceGallery({ images, serviceTitle, className = "" }: Service
       )}
     </div>
   )
-} 
+}
+
+export default ServiceGallery 

@@ -1,5 +1,5 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
-import { getSupabaseClient } from "./supabase-optimized"
+import { getSupabaseClient } from "./supabase-unified"
 import { logAuth, logError } from "./logger"
 
 // Tipos para autorización
@@ -44,8 +44,7 @@ export async function verifyAuthToken(authHeader: string): Promise<string | null
       return null
     }
 
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     if (!client) {
       throw new Error("No se pudo obtener el cliente de Supabase")
     }
@@ -72,8 +71,7 @@ async function getUserProfile(request: NextRequest) {
       return null
     }
 
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     if (!client) {
       throw new Error("No se pudo obtener el cliente de Supabase")
     }
@@ -106,8 +104,7 @@ async function getUserProfile(request: NextRequest) {
 // Función para verificar si el usuario tiene un rol específico
 async function hasRole(userId: string, requiredRole: UserRole): Promise<boolean> {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     if (!client) {
       throw new Error("No se pudo obtener el cliente de Supabase")
     }
@@ -144,18 +141,16 @@ async function hasRole(userId: string, requiredRole: UserRole): Promise<boolean>
 // Función para verificar si el usuario tiene un permiso específico
 async function hasPermission(userId: string, permissionName: string): Promise<boolean> {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     if (!client) {
       throw new Error("No se pudo obtener el cliente de Supabase")
     }
 
     const { data, error } = await client
-      .from('user_permissions')
-      .select('permission_name')
-      .eq('user_id', userId)
-      .eq('permission_name', permissionName)
-      .single()
+      .rpc('user_has_permission', { 
+        user_id_param: userId, 
+        permission_name_param: permissionName 
+      })
 
     return !error && !!data
   } catch (error) {
@@ -167,8 +162,7 @@ async function hasPermission(userId: string, permissionName: string): Promise<bo
 // Función para verificar si el usuario puede acceder a un recurso específico
 async function canAccessResource(userId: string, resource: string, action: string): Promise<boolean> {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     if (!client) {
       throw new Error("No se pudo obtener el cliente de Supabase")
     }
@@ -179,7 +173,7 @@ async function canAccessResource(userId: string, resource: string, action: strin
       .eq('user_id', userId)
       .eq('resource', resource)
       .eq('action', action)
-      .single()
+      .limit(1)
 
     return !error && !!data
   } catch (error) {

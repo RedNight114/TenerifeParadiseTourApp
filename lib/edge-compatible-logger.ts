@@ -201,10 +201,11 @@ export const edgeLogger = new EdgeCompatibleLogger()
 
 // Funciones de conveniencia
 export const log = {
-  debug: (message: string, context?: any, metadata?: any) => edgeLogger.debug(message, context, metadata),
-  info: (message: string, context?: any, metadata?: any) => edgeLogger.info(message, context, metadata),
-  warn: (message: string, context?: any, metadata?: any) => edgeLogger.warn(message, context, metadata),
-  error: (message: string, context?: any, metadata?: any) => edgeLogger.error(message, context, metadata),
-  fatal: (message: string, context?: any, metadata?: any) => edgeLogger.fatal(message, context, metadata)
+  debug: (message: string, context?: Partial<LogEntry['context']>, metadata?: Partial<LogEntry['metadata']>) => edgeLogger.debug(message, context, metadata),
+  info: (message: string, context?: Partial<LogEntry['context']>, metadata?: Partial<LogEntry['metadata']>) => edgeLogger.info(message, context, metadata),
+  warn: (message: string, context?: Partial<LogEntry['context']>, metadata?: Partial<LogEntry['metadata']>) => edgeLogger.warn(message, context, metadata),
+  error: (message: string, context?: Partial<LogEntry['context']>, metadata?: Partial<LogEntry['metadata']>) => edgeLogger.error(message, context, metadata),
+  fatal: (message: string, context?: Partial<LogEntry['context']>, metadata?: Partial<LogEntry['metadata']>) => edgeLogger.fatal(message, context, metadata)
 }
+
 

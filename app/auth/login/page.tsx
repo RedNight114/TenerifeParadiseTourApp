@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -17,9 +17,26 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Separator } from "@/components/ui/separator"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Eye, EyeOff, Mail, Lock, ArrowRight, CheckCircle, AlertCircle, Chrome, Facebook, RefreshCw, Shield, Sparkles, Star, MapPin, Clock, Phone } from "lucide-react"
-import { toast } from "sonner"
 
-function LoginPageContent() {
+// Importación dinámica de sonner para evitar problemas de SSR
+let toast: any = null
+if (typeof window !== 'undefined') {
+  import('sonner').then(({ toast: toastImport }) => {
+    toast = toastImport
+  })
+}
+
+// Función helper para manejar toasts de manera segura
+const showToast = (type: 'success' | 'error' | 'info', message: string, options?: any) => {
+  if (typeof window !== 'undefined' && toast) {
+    toast[type](message, options)
+  } else {
+    // Fallback para SSR - solo log en consola
+    console.log(`[${type.toUpperCase()}]: ${message}`)
+  }
+}
+
+function LoginPageMain() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -39,7 +56,7 @@ function LoginPageContent() {
   // Mostrar opción de cerrar sesión si ya está autenticado
   useEffect(() => {
     if (user && profile && !loading) {
-setShowRedirect(true)
+      setShowRedirect(true)
     }
   }, [user, profile, loading])
 
@@ -47,13 +64,13 @@ setShowRedirect(true)
   useEffect(() => {
     const message = searchParams.get("message")
     if (message === "registration-success") {
-      toast.success("¡Registro exitoso!", {
+      showToast('success', "¡Registro exitoso!", {
         description: "Ahora puedes iniciar sesión con tu cuenta verificada.",
         duration: 5000,
         icon: "🎉"
       })
     } else if (message === "email-verified") {
-      toast.success("¡Email verificado!", {
+      showToast('success', "¡Email verificado!", {
         description: "Tu cuenta ha sido confirmada exitosamente. Ya puedes iniciar sesión.",
         duration: 5000,
         icon: "✅"
@@ -63,11 +80,11 @@ setShowRedirect(true)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-setIsSubmitting(true)
+    setIsSubmitting(true)
 
     // Validaciones del cliente
     if (!email || !password) {
-toast.error("Campos incompletos", {
+      showToast('error', "Campos incompletos", {
         description: "Por favor completa todos los campos requeridos.",
         duration: 4000,
         icon: "⚠️"
@@ -77,7 +94,7 @@ toast.error("Campos incompletos", {
     }
 
     if (!email.includes("@")) {
-toast.error("Email inválido", {
+      showToast('error', "Email inválido", {
         description: "Por favor ingresa un formato de email válido.",
         duration: 4000,
         icon: "📧"
@@ -85,10 +102,11 @@ toast.error("Email inválido", {
       setIsSubmitting(false)
       return
     }
-try {
-const result = await signIn(email, password)
-if (result.error) {
-// Manejar error de login
+
+    try {
+      const result = await signIn(email, password)
+      if (result.error) {
+        // Manejar error de login
         let errorMessage = "Error al iniciar sesión"
         
         if (result.error && typeof result.error === 'object' && 'message' in result.error) {
@@ -103,18 +121,18 @@ if (result.error) {
             errorMessage = errorMsg
           }
         }
-toast.error("Error de autenticación", {
+        showToast('error', "Error de autenticación", {
           description: errorMessage,
           duration: 5000,
           icon: "🔐"
         })
       } else {
-setShowRedirect(true)
+        setShowRedirect(true)
       }
     } catch (error) {
-toast.error("Error al iniciar sesión. Por favor intenta de nuevo.")
+      showToast('error', "Error al iniciar sesión. Por favor intenta de nuevo.")
     } finally {
-setIsSubmitting(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -155,11 +173,11 @@ setIsSubmitting(false)
                 Volver al Inicio
               </Button>
             </div>
-                  </div>
+          </div>
+        </div>
       </div>
-    </div>
-  )
-}
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#0061A8] via-[#1E40AF] to-[#F4C762] flex items-center justify-center p-3 sm:p-4 md:p-6 relative overflow-hidden font-sans">
@@ -175,183 +193,95 @@ setIsSubmitting(false)
       <div className="w-full max-w-6xl relative z-10">
         {/* Sección de bienvenida - Siempre visible, encima del formulario en móviles/tablets */}
         <div className="lg:hidden text-white text-center mb-6 sm:mb-8 px-3 sm:px-4">
-          <div className="space-y-4 sm:space-y-6">
-            <div className="flex items-center justify-center space-x-3 sm:space-x-4">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 relative flex-shrink-0">
-                {!logoError ? (
-                  <Image
-                    src="/images/logo-tenerife.png"
-                    alt="TenerifeParadiseTour&Excursions"
-                    fill
-                    className="object-contain drop-shadow-xl"
-                    onError={() => setLogoError(true)}
-                  />
-                ) : (
-                  <div className="w-full h-full bg-gradient-to-r from-[#0061A8] to-[#F4C762] rounded-lg flex items-center justify-center shadow-2xl relative">
-                    <span className="text-white font-bold text-base sm:text-lg">TP</span>
-                    <Sparkles className="absolute -top-1 -right-1 w-3 h-3 text-[#F4C762] animate-pulse" />
-                  </div>
-                )}
+          <div className="flex justify-center mb-4">
+            {logoError ? (
+              <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center">
+                <span className="text-2xl font-bold text-white">TP</span>
               </div>
-              <div className="min-w-0 flex-1 text-center">
-                <h2 className="text-base sm:text-lg font-bold leading-tight">Tenerife Paradise</h2>
-                <p className="text-[#F4C762] font-medium text-sm sm:text-base">Tours & Excursions</p>
-              </div>
-            </div>
-            
-            <div className="space-y-3 sm:space-y-4">
-              <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold leading-tight tracking-tight">
-                ¡Bienvenido de vuelta!
-              </h1>
-              <p className="text-base sm:text-lg leading-relaxed text-white/90 max-w-lg mx-auto">
-                Inicia sesión para continuar tu aventura en Tenerife y descubrir experiencias únicas
-              </p>
-            </div>
+            ) : (
+              <Image
+                src="/images/logo-white.svg"
+                alt="Tenerife Paradise Tour"
+                width={64}
+                height={64}
+                className="w-16 h-16"
+                onError={() => setLogoError(true)}
+              />
+            )}
           </div>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-2">¡Bienvenido de vuelta!</h1>
+          <p className="text-white/90 text-sm sm:text-base">Inicia sesión para continuar tu aventura</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 xl:gap-12 items-center">
-          {/* Lado izquierdo - Información (solo en desktop) */}
-          <div className="hidden lg:block text-white space-y-6 lg:space-y-8 order-2 lg:order-1 px-3 sm:px-4">
-            {/* Logo y título - Solo en desktop */}
-            <div className="space-y-6 lg:space-y-8">
-              <div className="flex items-center space-x-3 sm:space-x-4">
-                <div className="w-12 h-12 sm:w-14 sm:h-14 lg:w-16 lg:h-16 relative flex-shrink-0">
-                  {!logoError ? (
-                    <Image
-                      src="/images/logo-tenerife.png"
-                      alt="TenerifeParadiseTour&Excursions"
-                      fill
-                      className="object-contain drop-shadow-xl"
-                      onError={() => setLogoError(true)}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-[#0061A8] to-[#F4C762] rounded-lg flex items-center justify-center shadow-2xl relative">
-                      <span className="text-white font-bold text-sm sm:text-base lg:text-lg">TP</span>
-                      <Sparkles className="absolute -top-1 -right-1 w-2 h-2 sm:w-3 sm:h-3 text-[#F4C762] animate-pulse" />
-                    </div>
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold leading-tight">Tenerife Paradise</h2>
-                  <p className="text-[#F4C762] font-medium text-base sm:text-lg lg:text-xl">Tours & Excursions</p>
-                </div>
+        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
+          {/* Panel izquierdo - Solo visible en desktop */}
+          <div className="hidden lg:block text-white">
+            <div className="max-w-md">
+              <div className="flex justify-center mb-8">
+                {logoError ? (
+                  <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center">
+                    <span className="text-3xl font-bold text-white">TP</span>
+                  </div>
+                ) : (
+                  <Image
+                    src="/images/logo-white.svg"
+                    alt="Tenerife Paradise Tour"
+                    width={80}
+                    height={80}
+                    className="w-20 h-20"
+                    onError={() => setLogoError(true)}
+                  />
+                )}
               </div>
               
-              <div className="space-y-4 sm:space-y-6 lg:space-y-8">
-                <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold leading-tight tracking-tight">
-                  ¡Bienvenido de vuelta!
-                </h1>
-                <p className="text-lg sm:text-xl lg:text-2xl leading-relaxed text-white/90 max-w-lg lg:max-w-xl">
-                  Inicia sesión para continuar tu aventura en Tenerife y descubrir experiencias únicas
-                </p>
-              </div>
-            </div>
+              <h1 className="text-4xl font-bold mb-6 leading-tight">
+                ¡Bienvenido de vuelta!
+              </h1>
+              
+              <p className="text-xl text-white/90 mb-8 leading-relaxed">
+                Inicia sesión para continuar explorando las maravillas de Tenerife
+              </p>
 
-            {/* Características destacadas */}
-            <div className="space-y-4 sm:space-y-6">
-              <h3 className="text-lg sm:text-xl lg:text-2xl font-semibold text-[#F4C762]">
-                ¿Por qué elegirnos?
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div className="flex items-start space-x-3">
-                  <Star className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base">Experiencias Únicas</h4>
-                    <p className="text-white/80 text-xs sm:text-sm">Descubre Tenerife como nunca antes</p>
+              {/* Características destacadas */}
+              <div className="space-y-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Shield className="w-4 h-4 text-white" />
                   </div>
+                  <span className="text-white/90">Acceso seguro y protegido</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <Shield className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base">Seguridad Garantizada</h4>
-                    <p className="text-white/80 text-xs sm:text-sm">Tu seguridad es nuestra prioridad</p>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Sparkles className="w-4 h-4 text-white" />
                   </div>
+                  <span className="text-white/90">Experiencias únicas</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <MapPin className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base">Destinos Exclusivos</h4>
-                    <p className="text-white/80 text-xs sm:text-sm">Lugares que solo nosotros conocemos</p>
+                
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
+                    <Star className="w-4 h-4 text-white" />
                   </div>
+                  <span className="text-white/90">Reservas prioritarias</span>
                 </div>
-                <div className="flex items-start space-x-3">
-                  <Clock className="w-5 h-5 text-[#F4C762] mt-0.5 flex-shrink-0" />
-                  <div>
-                    <h4 className="font-semibold text-sm sm:text-base">Horarios Flexibles</h4>
-                    <p className="text-white/80 text-xs sm:text-sm">Adaptamos nuestros tours a ti</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Información de contacto */}
-            <div className="space-y-3 sm:space-y-4">
-              <div className="flex items-center space-x-3">
-                <Phone className="w-4 h-4 text-[#F4C762]" />
-                <span className="text-sm sm:text-base">+34 617 30 39 29</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Mail className="w-4 h-4 text-[#F4C762]" />
-                <span className="text-sm sm:text-base break-all">Tenerifeparadisetoursandexcursions@hotmail.com</span>
-              </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-4 h-4 text-[#F4C762]" />
-                <span className="text-sm sm:text-base">Santa Cruz de Tenerife, Islas Canarias</span>
               </div>
             </div>
           </div>
 
-          {/* Lado derecho - Formulario de login */}
-          <div className="order-1 lg:order-2">
+          {/* Panel derecho - Formulario de login */}
+          <div className="w-full max-w-md mx-auto lg:mx-0">
             <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-2xl sm:text-3xl font-bold text-gray-900">
+              <CardHeader className="space-y-1 pb-6">
+                <CardTitle className="text-2xl font-bold text-center text-gray-900">
                   Iniciar Sesión
                 </CardTitle>
-                <CardDescription className="text-gray-600">
-                  Accede a tu cuenta para continuar
+                <CardDescription className="text-center text-gray-600">
+                  Ingresa tus credenciales para acceder a tu cuenta
                 </CardDescription>
               </CardHeader>
               
-              <CardContent className="space-y-4">
-                {/* Notificación de verificación de email */}
-                <EmailVerificationNotice />
-                
-                {/* Aviso si ya está autenticado */}
-                {user && profile && !loading && (
-                  <Alert className="bg-blue-50 border-blue-200">
-                    <AlertCircle className="h-4 w-4 text-blue-600" />
-                    <AlertDescription className="text-blue-800">
-                      Ya estás autenticado como <strong>{user.email}</strong> ({profile.role})
-                    </AlertDescription>
-                    <div className="mt-3 space-y-2">
-                      <Button
-                        onClick={async () => {
-await signOut()
-                          toast.success("Sesión cerrada. Puedes iniciar sesión nuevamente.")
-                        }}
-                        variant="outline"
-                        size="sm"
-                        className="w-full border-blue-300 text-blue-700 hover:bg-blue-50"
-                      >
-                        Cerrar Sesión
-                      </Button>
-                      <Button
-                        onClick={() => {
-                          const redirectPath = profile.role === 'admin' ? '/admin/dashboard' : '/profile'
-                          window.location.href = redirectPath
-                        }}
-                        size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        Ir a {profile.role === 'admin' ? 'Dashboard' : 'Perfil'}
-                      </Button>
-                    </div>
-                  </Alert>
-                )}
-                
-                <form onSubmit={handleSubmit} className={`space-y-4 ${user && profile ? 'opacity-50 pointer-events-none' : ''}`}>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-sm font-medium text-gray-700">
                       Email
@@ -364,12 +294,12 @@ await signOut()
                         placeholder="tu@email.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="pl-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
+                        className="pl-10 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="password" className="text-sm font-medium text-gray-700">
                       Contraseña
@@ -379,28 +309,22 @@ await signOut()
                       <Input
                         id="password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="••••••••"
+                        placeholder="Tu contraseña"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="pl-10 pr-10 bg-white/80 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
+                        className="pl-10 pr-10 border-gray-300 focus:border-[#0061A8] focus:ring-[#0061A8]"
                         required
                       />
-                      <Button
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                         onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                       >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-gray-400" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-gray-400" />
-                        )}
-                      </Button>
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Checkbox
@@ -414,12 +338,12 @@ await signOut()
                     </div>
                     <Link
                       href="/auth/forgot-password"
-                      className="text-sm text-[#0061A8] hover:text-[#004A87] font-medium"
+                      className="text-sm text-[#0061A8] hover:text-[#0056A3] font-medium"
                     >
                       ¿Olvidaste tu contraseña?
                     </Link>
                   </div>
-                  
+
                   <Button
                     type="submit"
                     disabled={isSubmitting}
@@ -427,54 +351,70 @@ await signOut()
                   >
                     {isSubmitting ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                         Iniciando sesión...
                       </>
                     ) : (
                       <>
                         Iniciar Sesión
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className="w-4 h-4 ml-2" />
                       </>
                     )}
                   </Button>
                 </form>
-                
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-300" />
+
+                <div className="mt-6">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <Separator className="w-full" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                      <span className="bg-white px-2 text-gray-500">O continúa con</span>
+                    </div>
                   </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white/95 px-2 text-gray-500">O continúa con</span>
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-300 hover:bg-gray-50"
+                    >
+                      <Chrome className="w-4 h-4 mr-2" />
+                      Google
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full border-gray-300 hover:bg-gray-50"
+                    >
+                      <Facebook className="w-4 h-4 mr-2" />
+                      Facebook
+                    </Button>
                   </div>
-                </div>
-                
-                <div className="text-center text-sm text-gray-500 py-2">
-                  Los inicios de sesión social estarán disponibles próximamente
                 </div>
               </CardContent>
-              
-              <CardFooter className="flex flex-col space-y-3">
+
+              <CardFooter className="flex flex-col space-y-4">
                 <div className="text-center text-sm text-gray-600">
                   ¿No tienes una cuenta?{" "}
                   <Link
                     href="/auth/register"
-                    className="text-[#0061A8] hover:text-[#004A87] font-medium"
+                    className="text-[#0061A8] hover:text-[#0056A3] font-medium"
                   >
                     Regístrate aquí
                   </Link>
                 </div>
+
                 <div className="text-center text-xs text-gray-500">
                   Al continuar, aceptas nuestros{" "}
                   <button
                     onClick={() => openLegalModal('terms')}
-                    className="text-[#0061A8] hover:underline"
+                    className="text-[#0061A8] hover:text-[#0056A3] underline"
                   >
                     Términos de Servicio
                   </button>{" "}
                   y{" "}
                   <button
                     onClick={() => openLegalModal('privacy')}
-                    className="text-[#0061A8] hover:underline"
+                    className="text-[#0061A8] hover:text-[#0056A3] underline"
                   >
                     Política de Privacidad
                   </button>
@@ -484,21 +424,12 @@ await signOut()
           </div>
         </div>
       </div>
-      
-      {/* Componente de redirección post-login */}
-      {showRedirect && user && profile && (
-        <LoginRedirect 
-          user={user} 
-          profile={profile} 
-          redirectPath={searchParams.get("redirect") || undefined}
-        />
-      )}
 
-      {/* Legal Modals */}
+      {/* Modal legal */}
       {legalModal.isOpen && legalModal.type && (
-        <LegalModal 
-          isOpen={legalModal.isOpen}
+        <LegalModal
           type={legalModal.type}
+          isOpen={legalModal.isOpen}
           onClose={closeLegalModal}
         />
       )}
@@ -509,8 +440,7 @@ await signOut()
 export default function LoginPage() {
   return (
     <AuthPageWrapper>
-      <LoginPageContent />
+      <LoginPageMain />
     </AuthPageWrapper>
   )
 }
-

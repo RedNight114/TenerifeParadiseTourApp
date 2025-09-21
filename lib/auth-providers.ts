@@ -1,8 +1,7 @@
-import { getSupabaseClient } from "./supabase-optimized"
+import { getSupabaseClient } from "./supabase-unified"
 
 export async function signInWithGoogle() {
-  const supabaseClient = getSupabaseClient()
-  const client = await supabaseClient.getClient()
+  const client = await getSupabaseClient()
   if (!client) {
     throw new Error("No se pudo obtener el cliente de Supabase")
   }
@@ -16,8 +15,7 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithGithub() {
-  const supabaseClient = getSupabaseClient()
-  const client = await supabaseClient.getClient()
+  const client = await getSupabaseClient()
   if (!client) {
     throw new Error("No se pudo obtener el cliente de Supabase")
   }

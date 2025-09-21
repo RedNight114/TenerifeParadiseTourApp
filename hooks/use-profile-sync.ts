@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useAuthContext } from "@/components/auth-provider"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 
 interface Profile {
   id: string
@@ -48,14 +48,7 @@ export function useProfileSync() {
     setError(null)
 
     try {
-      // Sincronizando perfil para usuario
-      
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
-      
-      if (!client) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
+      const client = await getSupabaseClient()
 
       // ✅ PASO 1: Intentar cargar perfil existente
       let { data: existingProfile, error: loadError } = await client
@@ -65,13 +58,11 @@ export function useProfileSync() {
         .maybeSingle()
 
       if (loadError) {
-throw loadError
+        throw loadError
       }
 
       // ✅ PASO 2: Si no hay perfil, crearlo automáticamente
       if (!existingProfile) {
-        // Creando perfil nuevo
-        
         const { data: newProfile, error: createError } = await client
           .from("profiles")
           .insert({
@@ -87,19 +78,15 @@ throw loadError
           .single()
 
         if (createError) {
-throw createError
+          throw createError
         }
 
-        // Perfil creado exitosamente
         existingProfile = newProfile
-      } else {
-        // Perfil existente cargado
       }
 
       // ✅ NUEVO: Solo actualizar si los datos han cambiado
       setProfile(prevProfile => {
         if (JSON.stringify(prevProfile) !== JSON.stringify(existingProfile)) {
-          // Perfil actualizado con nuevos datos
           return existingProfile
         }
         return prevProfile
@@ -107,7 +94,7 @@ throw createError
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
-setError(errorMessage)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -121,12 +108,7 @@ setError(errorMessage)
     setError(null)
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
-      
-      if (!client) {
-        throw new Error('No se pudo obtener el cliente de Supabase')
-      }
+      const client = await getSupabaseClient()
 
       // ✅ NUEVO: Actualizar estado local inmediatamente para UI responsiva
       const optimisticProfile = { ...profile, ...updates, updated_at: new Date().toISOString() }
@@ -147,14 +129,15 @@ setError(errorMessage)
         setProfile(profile)
         throw updateError
       }
-// ✅ NUEVO: Sincronizar inmediatamente después de la actualización
+
+      // ✅ NUEVO: Sincronizar inmediatamente después de la actualización
       setTimeout(() => {
         syncProfile()
       }, 100)
       
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Error desconocido'
-setError(errorMessage)
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
@@ -163,7 +146,6 @@ setError(errorMessage)
   // ✅ Función para refrescar perfil
   const refreshProfile = () => {
     if (user?.id) {
-      // Refresco manual solicitado
       syncProfile()
     }
   }
@@ -171,7 +153,6 @@ setError(errorMessage)
   // ✅ NUEVO: Función para sincronización forzada
   const forceSync = () => {
     if (user?.id) {
-      // Sincronización forzada solicitada
       setLoading(true)
       syncProfile()
     }

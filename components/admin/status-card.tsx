@@ -2,69 +2,75 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { LucideIcon } from "lucide-react"
-
-interface StatusItem {
-  label: string
-  value: number
-  color: string
-  bgColor: string
-}
+import { CheckCircle, Clock, X, AlertCircle } from "lucide-react"
 
 interface StatusCardProps {
+  status: 'success' | 'warning' | 'error' | 'pending'
   title: string
-  items: StatusItem[]
-  icon?: LucideIcon
-  iconColor?: string
-  bgGradient?: string
-  badge?: string
+  description: string
+  count?: number
 }
 
-export function StatusCard({ 
-  title, 
-  items, 
-  icon: Icon,
-  iconColor = "text-gray-600",
-  bgGradient = "bg-gradient-to-br from-gray-50 to-gray-100/50",
-  badge 
-}: StatusCardProps) {
+export function StatusCard({ status, title, description, count }: StatusCardProps) {
+  const getStatusConfig = () => {
+    switch (status) {
+      case 'success':
+        return {
+          icon: CheckCircle,
+          color: 'text-green-600',
+          bgColor: 'bg-green-50',
+          borderColor: 'border-green-200',
+          badgeVariant: 'default' as const
+        }
+      case 'warning':
+        return {
+          icon: Clock,
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-50',
+          borderColor: 'border-yellow-200',
+          badgeVariant: 'secondary' as const
+        }
+      case 'error':
+        return {
+          icon: X,
+          color: 'text-red-600',
+          bgColor: 'bg-red-50',
+          borderColor: 'border-red-200',
+          badgeVariant: 'destructive' as const
+        }
+      case 'pending':
+        return {
+          icon: AlertCircle,
+          color: 'text-blue-600',
+          bgColor: 'bg-blue-50',
+          borderColor: 'border-blue-200',
+          badgeVariant: 'outline' as const
+        }
+    }
+  }
+
+  const config = getStatusConfig()
+  const Icon = config.icon
+
   return (
-    <Card className={bgGradient}>
+    <Card className={`${config.bgColor} ${config.borderColor}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        <div className="flex items-center space-x-2">
-          {Icon && <Icon className={`h-4 w-4 ${iconColor}`} />}
-          {badge && (
-            <Badge variant="secondary" className="text-xs">
-              {badge}
-            </Badge>
-          )}
-        </div>
+        <Icon className={`h-4 w-4 ${config.color}`} />
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {items.map((item, index) => (
-            <div key={index} className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <div 
-                  className="h-3 w-3 rounded-full" 
-                  style={{ backgroundColor: item.color }}
-                />
-                <span className="text-sm font-medium">{item.label}</span>
-              </div>
-              <div 
-                className="px-2 py-1 rounded text-xs font-medium"
-                style={{ 
-                  backgroundColor: item.bgColor,
-                  color: item.color
-                }}
-              >
-                {item.value}
-              </div>
-            </div>
-          ))}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-2xl font-bold">{count || 0}</div>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+          {count !== undefined && (
+            <Badge variant={config.badgeVariant}>
+              {status}
+            </Badge>
+          )}
         </div>
       </CardContent>
     </Card>
   )
-} 
+}

@@ -1,19 +1,19 @@
-﻿// ✅ ACTUALIZADO: Usar el nuevo cliente Supabase optimizado
+﻿// ✅ ACTUALIZADO: Usar el nuevo cliente Supabase unificado
 // Este archivo mantiene compatibilidad con el código existente
-import { getSupabaseClient, supabaseClient } from './supabase-client'
+import { getSupabaseClient, getSupabaseClientSync, supabaseClient } from './supabase-unified'
 
-// Re-exportar el cliente optimizado
+// Re-exportar el cliente unificado
 export const supabase = supabaseClient
 
-// Re-exportar la función getSupabaseClient
-export { getSupabaseClient }
+// Re-exportar las funciones helper
+export { getSupabaseClient, getSupabaseClientSync }
 
 // Función de fallback para compatibilidad
 export function getSupabaseClientFallback() {
   try {
-    return getSupabaseClient();
+    return getSupabaseClientSync();
   } catch (error) {
-return null;
+    return null;
   }
 }
 

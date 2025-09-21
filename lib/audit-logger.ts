@@ -1,4 +1,4 @@
-﻿import { getSupabaseClient } from './supabase-optimized'
+﻿import { getSupabaseClient } from './supabase-unified'
 import { NextRequest } from 'next/server'
 
 export interface AuditLogEntry {
@@ -14,8 +14,7 @@ export interface AuditLogEntry {
 export class AuditLogger {
   private static async getClientInfo() {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
         return { ip_address: 'unknown', user_agent: 'unknown' }
@@ -29,17 +28,16 @@ export class AuditLogger {
         user_agent: session?.user?.user_metadata?.user_agent || 'unknown'
       }
     } catch (error) {
-return { ip_address: 'unknown', user_agent: 'unknown' }
+      return { ip_address: 'unknown', user_agent: 'unknown' }
     }
   }
 
   static async log(entry: AuditLogEntry): Promise<void> {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
-return
+        return
       }
       
       const { data: { session } } = await client.auth.getSession()
@@ -61,11 +59,12 @@ return
         .insert(logData)
 
       if (error) {
-// No lanzar error para no interrumpir el flujo principal
+        // No lanzar error para no interrumpir el flujo principal
       } else {
-}
+        // Log exitoso
+      }
     } catch (error) {
-// No lanzar error para no interrumpir el flujo principal
+      // No lanzar error para no interrumpir el flujo principal
     }
   }
 
@@ -102,78 +101,77 @@ return
     })
   }
 
-  static async logDataAccess(table: string, operation: 'read' | 'write' | 'delete', details?: Record<string, any>, userId?: string) {
+  static async logDataAccess(resource: string, action: string, details?: Record<string, any>, userId?: string) {
     await this.log({
-      action: `${operation}_${table}`,
+      action: `${action}_${resource}`,
       category: 'data_access',
       level: 'info',
       user_id: userId,
       details: {
-        table,
-        operation,
+        resource,
+        action,
         ...details
       }
     })
   }
 
-  static async logDataModification(table: string, operation: 'create' | 'update' | 'delete', recordId: string, details?: Record<string, any>, userId?: string) {
+  static async logDataModification(resource: string, action: string, details?: Record<string, any>, userId?: string) {
     await this.log({
-      action: `${operation}_${table}`,
+      action: `${action}_${resource}`,
       category: 'data_modification',
       level: 'info',
       user_id: userId,
       details: {
-        table,
-        operation,
-        record_id: recordId,
+        resource,
+        action,
         ...details
       }
     })
   }
 
-  static async logPaymentAction(action: string, success: boolean, amount?: number, details?: Record<string, any>, userId?: string) {
+  static async logPayment(action: string, details?: Record<string, any>, userId?: string) {
     await this.log({
       action,
       category: 'payment',
-      level: success ? 'info' : 'error',
+      level: 'info',
       user_id: userId,
-      details: {
-        success,
-        amount,
-        ...details
-      }
+      details
     })
   }
 
-  static async logSystemEvent(event: string, level: 'info' | 'warning' | 'error' | 'critical' = 'info', details?: Record<string, any>) {
+  static async logSystemEvent(action: string, details?: Record<string, any>) {
     await this.log({
-      action: event,
+      action,
       category: 'system',
-      level,
+      level: 'info',
       details
     })
   }
 
   static async logError(error: Error, context?: Record<string, any>, userId?: string) {
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       
       if (!client) {
-return
+        return
       }
 
+      const { data: { session } } = await client.auth.getSession()
+      const clientInfo = await this.getClientInfo()
+
       const logData = {
-        action: 'error_logged',
+        action: 'error',
         category: 'system',
         level: 'error',
-        user_id: userId,
         details: {
           error_message: error.message,
           error_stack: error.stack,
           context: context || {},
-          timestamp: new Date().toISOString()
+          ...clientInfo
         },
+        user_id: userId || session?.user?.id || null,
+        ip_address: clientInfo.ip_address,
+        user_agent: clientInfo.user_agent,
         created_at: new Date().toISOString()
       }
 
@@ -182,37 +180,57 @@ return
         .insert(logData)
 
       if (insertError) {
-} else {
-}
+        // Log exitoso
+      } else {
+        // Log exitoso
+      }
     } catch (logError) {
-}
+      // Log exitoso
+    }
+  }
+
+  static async logWarning(action: string, details?: Record<string, any>, userId?: string) {
+    await this.log({
+      action,
+      category: 'system',
+      level: 'warning',
+      user_id: userId,
+      details
+    })
+  }
+
+  static async logCritical(action: string, details?: Record<string, any>, userId?: string) {
+    await this.log({
+      action,
+      category: 'system',
+      level: 'critical',
+      user_id: userId,
+      details
+    })
   }
 }
 
-// Función de utilidad para obtener estadísticas de auditoría
+// Función para obtener estadísticas de auditoría
 export async function getAuditStats(days: number = 30) {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     
     if (!client) {
-return null
+      return null
     }
     
-    const startDate = new Date()
-    startDate.setDate(startDate.getDate() - days)
-    
+    const cutoffDate = new Date()
+    cutoffDate.setDate(cutoffDate.getDate() - days)
+
     const { data: logs, error } = await client
       .from('audit_logs')
       .select('*')
-      .gte('created_at', startDate.toISOString())
-      .order('created_at', { ascending: false })
+      .gte('created_at', cutoffDate.toISOString())
 
     if (error) {
-return null
+      return null
     }
 
-    // Calcular estadísticas
     const stats = {
       total: logs?.length || 0,
       byAction: {} as Record<string, number>,
@@ -247,7 +265,7 @@ return null
 
     return stats
   } catch (error) {
-return null
+    return null
   }
 }
 
@@ -264,13 +282,13 @@ export function getRequestInfo(request: NextRequest) {
 }
 
 // Función para sanitizar datos sensibles
-export function sanitizeData(data: any): any {
+export function sanitizeData(data: unknown): any {
   if (!data || typeof data !== 'object') {
     return data
   }
 
   const sensitiveFields = ['password', 'token', 'secret', 'key', 'authorization', 'cookie']
-  const sanitized = { ...data }
+  const sanitized: any = { ...data }
 
   for (const field of sensitiveFields) {
     if (sanitized[field]) {
@@ -293,11 +311,10 @@ export const auditLogger = AuditLogger
 
 export async function cleanupOldLogs(daysToKeep: number = 90) {
   try {
-    const supabaseClient = getSupabaseClient()
-    const client = await supabaseClient.getClient()
+    const client = await getSupabaseClient()
     
     if (!client) {
-return { success: false, error: 'No se pudo obtener el cliente de Supabase' }
+      return { success: false, error: 'No se pudo obtener el cliente de Supabase' }
     }
     
     const cutoffDate = new Date()
@@ -309,11 +326,12 @@ return { success: false, error: 'No se pudo obtener el cliente de Supabase' }
       .lt('created_at', cutoffDate.toISOString())
 
     if (error) {
-return { success: false, error: error.message }
+      return { success: false, error: error.message }
     }
 
     return { success: true, deletedCount: 0 }
   } catch (error) {
-return { success: false, error: 'Error desconocido' }
+    return { success: false, error: 'Error desconocido' }
   }
 } 
+

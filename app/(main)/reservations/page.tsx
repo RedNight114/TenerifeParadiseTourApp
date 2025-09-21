@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useAuthContext } from "@/components/auth-provider"
 import { useReservations } from "@/hooks/use-reservations"
-import { getSupabaseClient } from "@/lib/supabase-optimized"
+import { getSupabaseClient } from "@/lib/supabase-unified"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -38,10 +38,9 @@ window.location.href = '/auth/login'
     if (!user?.id) return
 
     try {
-      const supabaseClient = getSupabaseClient()
-      const client = await supabaseClient.getClient()
+      const client = await getSupabaseClient()
       if (!client) {
-return
+        return
       }
       const { data, error } = await client
         .from("profiles")
@@ -50,22 +49,24 @@ return
         .maybeSingle()
 
       if (error) {
-return
+        return
       }
 
       if (data) {
         setProfile(data)
       }
     } catch (error) {
-}
+      // Error handled
+    }
   }
 
   const handleCancelReservation = async (reservationId: string) => {
     try {
       await cancelReservation(reservationId)
     } catch (error) {
-}
-  }
+        // Error handled
+      }
+    }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -431,4 +432,3 @@ return
     </div>
   )
 }
-
