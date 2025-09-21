@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useEffect, useState, useCallback } from 'react'
-import { useAuthContext } from '@/components/auth-provider'
+import { useAuth } from '@/hooks/use-auth'
 import { getSupabaseClient } from '@/lib/supabase-unified'
 
 export type UserRole = 'client' | 'admin' | 'manager' | 'staff' | 'guide'
@@ -71,7 +71,7 @@ export const checkPermission = async (userId: string, permission: string): Promi
 }
 
 export function useAuthorization(): AuthorizationState {
-  const { user } = useAuthContext()
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [permissions, setPermissions] = useState<Permission[]>([])
@@ -184,7 +184,7 @@ export function useAuthorization(): AuthorizationState {
 
 // Hook para verificar autorización en componentes
 export function useRequireAuth(requiredRole?: UserRole, requiredPermission?: string) {
-  const { user, loading: authLoading } = useAuthContext()
+  const { user, isLoading: authLoading } = useAuth()
   const { 
     isLoading: authzLoading, 
     userRole, 

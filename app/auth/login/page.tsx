@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { AuthPageWrapper } from "@/components/auth/auth-page-wrapper"
 import { EmailVerificationNotice } from "@/components/auth/email-verification-notice"
 import { LegalModal } from "@/components/legal-modals"
@@ -49,7 +49,7 @@ function LoginPageMain() {
     type: null
   })
 
-  const { signIn, signOut, user, profile, loading, error } = useAuthContext()
+  const { login: signIn, user, profile, isLoading: loading, error } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -108,19 +108,6 @@ function LoginPageMain() {
       if (result.error) {
         // Manejar error de login
         let errorMessage = "Error al iniciar sesión"
-        
-        if (result.error && typeof result.error === 'object' && 'message' in result.error) {
-          const errorMsg = (result.error as any).message
-          if (errorMsg?.includes("Invalid login credentials")) {
-            errorMessage = "Credenciales incorrectas"
-          } else if (errorMsg?.includes("Email not confirmed")) {
-            errorMessage = "Email no confirmado"
-          } else if (errorMsg?.includes("Too many requests")) {
-            errorMessage = "Demasiados intentos"
-          } else {
-            errorMessage = errorMsg
-          }
-        }
         showToast('error', "Error de autenticación", {
           description: errorMessage,
           duration: 5000,

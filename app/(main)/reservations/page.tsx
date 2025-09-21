@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect, useMemo, useCallback } from "react"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { useReservations } from "@/hooks/use-reservations"
 import { getSupabaseClient } from "@/lib/supabase-unified"
 import { Button } from "@/components/ui/button"
@@ -15,7 +15,8 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 export default function ReservationsPage() {
-  const { user, loading: authLoading, isAuthenticated } = useAuthContext()
+  const { user, isLoading: authLoading } = useAuth()
+  const isAuthenticated = !!user
   const { reservations, loading: reservationsLoading, error: reservationsError, cancelReservation } = useReservations()
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()

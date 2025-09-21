@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuthContext } from "@/components/auth-provider"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { useProfileSync } from "@/hooks/use-profile-sync"
 import {
@@ -20,10 +21,11 @@ export function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [logoError, setLogoError] = useState(false)
-  const { user, signOut } = useAuthContext()
+  const { user, logout } = useAuth()
   
   // ✅ NUEVO: Usar el hook de sincronización de perfil
   const { profile, loading: profileLoading, error: profileError } = useProfileSync()
+  const router = useRouter()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -36,7 +38,8 @@ export function Navbar() {
 
   const handleSignOut = async () => {
     try {
-      await signOut()
+      await logout()
+      router.push("/")
     } catch (error) {
       // Error handled
     }

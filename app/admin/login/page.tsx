@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -32,7 +32,7 @@ export default function AdminLoginPage() {
   const [logoError, setLogoError] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
 
-  const { signIn, user, profile, loading: authLoading } = useAuthContext()
+  const { login: signIn, user, profile, isLoading: authLoading } = useAuth()
   const router = useRouter()
 
   // Verificar si ya está autenticado y es admin

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useServiceDetails } from "@/hooks/use-service-details"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { ServiceDetailsLoading } from "@/components/service-details-loading"
 
 import UnifiedPricingParticipantSelector from "@/components/unified-pricing-participant-selector"
@@ -48,7 +48,7 @@ export default function ServiceDetailsPage() {
     error,
     refreshService
   } = useServiceDetails(serviceId as string)
-  const { user, loading: authLoading } = useAuthContext()
+  const { user, isLoading: authLoading } = useAuth()
   const { getServicePricing, loading: pricingLoading } = useAgePricing()
   
 

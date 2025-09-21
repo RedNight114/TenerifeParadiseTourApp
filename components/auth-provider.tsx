@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react'
-import { useAuth } from '@/hooks/use-auth'
+import { useAuth as useAuthHook } from '@/hooks/use-auth'
 
 interface AuthContextType {
   user: any
@@ -21,7 +21,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const auth = useAuth()
+  const auth = useAuthHook()
   const [isClient, setIsClient] = useState(false)
 
   // Evitar problemas de hidratación

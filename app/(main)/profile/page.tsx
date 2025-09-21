@@ -1,7 +1,7 @@
 ﻿"use client"
 
 import { useState, useEffect } from "react"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -15,7 +15,8 @@ import { AvatarUpload } from "@/components/avatar-upload"
 import { Profile } from "@/lib/supabase"
 
 export default function ProfilePage() {
-  const { user, loading, isAuthenticated } = useAuthContext()
+  const { user, isLoading: loading } = useAuth()
+  const isAuthenticated = !!user
   const [profile, setProfile] = useState<Profile | null>(null)
   const [formData, setFormData] = useState({
     full_name: "",

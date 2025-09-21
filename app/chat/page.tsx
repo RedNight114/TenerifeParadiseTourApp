@@ -29,8 +29,8 @@ import {
   Video,
   Mail
 } from 'lucide-react';
+import { useAuth } from '@/hooks/use-auth';
 import { useChatUnified } from '@/hooks/use-chat-unified';
-import { useAuthContext } from '@/components/auth-provider';
 import { ChatAuthWrapper } from '@/components/auth/chat-auth-wrapper';
 import { cn } from '@/lib/utils';
 import '@/styles/enhanced-chat.css';
@@ -52,7 +52,9 @@ function ChatPageContent() {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   
-  const { user, isAuthenticated, isAdmin } = useAuthContext();
+  const { user } = useAuth();
+  const isAuthenticated = !!user;
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   // Referencias para elementos del DOM
   const fileInputRef = useRef<HTMLInputElement>(null);

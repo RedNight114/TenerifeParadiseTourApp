@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { AuthPageWrapper } from "@/components/auth/auth-page-wrapper"
 import { LegalModal } from "@/components/legal-modals"
 import { Button } from "@/components/ui/button"
@@ -45,7 +45,8 @@ function RegisterPageContent() {
     type: null
   })
 
-  const { signUp, signInWithProvider, resendVerificationEmail, isAuthenticated, loading, error: authError } = useAuthContext()
+  const { user, register: signUp, loginWithProvider: signInWithProvider, resendVerificationEmail, isLoading: loading, error: authError } = useAuth()
+  const isAuthenticated = !!user
   const router = useRouter()
   const searchParams = useSearchParams()
 

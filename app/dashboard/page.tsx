@@ -1,17 +1,17 @@
 "use client"
 
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import AuthGuard from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 
 export default function DashboardPage() {
-  const { user, profile, signOut } = useAuthContext()
+  const { user, profile, logout } = useAuth()
   const router = useRouter()
 
   const handleSignOut = async () => {
-    await signOut()
+    await logout()
     router.push("/")
   }
 

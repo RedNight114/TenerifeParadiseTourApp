@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { Loader2, Shield, AlertTriangle, CheckCircle } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -19,7 +19,7 @@ export function AdminGuardEnhanced({
   fallback, 
   requireRole = "admin" 
 }: AdminGuardEnhancedProps) {
-  const { user, profile, loading: authLoading } = useAuthContext()
+  const { user, profile, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [isAuthorized, setIsAuthorized] = useState(false)
   const [isChecking, setIsChecking] = useState(true)

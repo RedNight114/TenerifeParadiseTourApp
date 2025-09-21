@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { useAuthContext } from "@/components/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { useUnifiedData } from "@/hooks/use-unified-data"
 import { OptimizedServiceGallery } from "@/components/optimized-service-gallery"
 import { Button } from "@/components/ui/button"
@@ -61,7 +61,7 @@ import type { Service, Profile } from "@/lib/supabase"
 
 export default function BookingPage() {
   const { serviceId } = useParams()
-  const { user, loading: authLoading, signOut } = useAuthContext()
+  const { user, isLoading: authLoading, logout } = useAuth()
   const { data: services, isLoading: servicesLoading, refetch: refreshServices } = useServices()
   const router = useRouter()
 
@@ -134,7 +134,7 @@ export default function BookingPage() {
 
   const handleSignOut = async () => {
     try {
-      await signOut()
+      await logout()
       router.push("/")
     } catch (error) {
       showToast('error', "Error al cerrar sesión")
