@@ -99,30 +99,30 @@ export function AdvancedError({
     switch (error.type) {
       case 'network':
         return [
-          { label: 'Verificar conexión', action: () => window.location.reload() },
+          { label: 'Verificar conexión', action: () => typeof window !== 'undefined' && window.location.reload() },
           { label: 'Reintentar', action: onRetry },
-          { label: 'Ir al inicio', action: () => window.location.href = '/' }
+          { label: 'Ir al inicio', action: () => typeof window !== 'undefined' && (window.location.href = '/') }
         ]
       case 'server':
         return [
           { label: 'Reintentar', action: onRetry },
-          { label: 'Contactar soporte', action: () => window.location.href = '/contact' },
-          { label: 'Ir al inicio', action: () => window.location.href = '/' }
+          { label: 'Contactar soporte', action: () => typeof window !== 'undefined' && (window.location.href = '/contact') },
+          { label: 'Ir al inicio', action: () => typeof window !== 'undefined' && (window.location.href = '/') }
         ]
       case 'auth':
         return [
-          { label: 'Iniciar sesión', action: () => window.location.href = '/auth/login' },
-          { label: 'Ir al inicio', action: () => window.location.href = '/' }
+          { label: 'Iniciar sesión', action: () => typeof window !== 'undefined' && (window.location.href = '/auth/login') },
+          { label: 'Ir al inicio', action: () => typeof window !== 'undefined' && (window.location.href = '/') }
         ]
       case 'validation':
         return [
           { label: 'Reintentar', action: onRetry },
-          { label: 'Volver', action: () => window.history.back() }
+          { label: 'Volver', action: () => typeof window !== 'undefined' && window.history.back() }
         ]
       default:
         return [
           { label: 'Reintentar', action: onRetry },
-          { label: 'Ir al inicio', action: () => window.location.href = '/' }
+          { label: 'Ir al inicio', action: () => typeof window !== 'undefined' && (window.location.href = '/') }
         ]
     }
   }
@@ -368,7 +368,7 @@ export function PageError({
           
           <Button 
             variant="outline" 
-            onClick={() => window.location.href = '/'}
+            onClick={() => typeof window !== 'undefined' && (window.location.href = '/')}
             className="w-full"
           >
             <Home className="w-4 h-4 mr-2" />
@@ -377,7 +377,7 @@ export function PageError({
           
           <Button 
             variant="ghost" 
-            onClick={() => window.history.back()}
+            onClick={() => typeof window !== 'undefined' && window.history.back()}
             className="w-full"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />

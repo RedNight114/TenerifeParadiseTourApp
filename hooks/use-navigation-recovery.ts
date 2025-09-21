@@ -2,11 +2,11 @@
 
 import { useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuthContext } from '@/components/auth-provider'
+import { useAuth } from '@/hooks/use-auth'
 
 export function useNavigationRecovery() {
   const router = useRouter()
-  const { user, loading } = useAuthContext()
+  const { user, isLoading: loading } = useAuth()
   const hasNavigated = useRef(false)
   const lastPath = useRef<string>('')
 
@@ -58,7 +58,7 @@ export function useNavigationRecovery() {
       return
     }
 
-    if (window.history.length > 1) {
+    if (typeof window !== 'undefined' && window.history.length > 1) {
       window.history.back()
     } else {
       // Si no hay historial, ir a la página principal
