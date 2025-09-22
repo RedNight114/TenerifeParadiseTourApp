@@ -27,7 +27,8 @@ const UnifiedChatWidget = dynamic(
 )
 import ErrorBoundary, { HydrationErrorFallback } from "@/components/error-boundary"
 import { AuthErrorBoundary } from "@/components/auth-error-boundary"
-import { CriticalResourcePreloader } from "@/components/preload-resources"
+import { Analytics } from '@vercel/analytics/react'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -159,7 +160,6 @@ export default function RootLayout({
         />
       </head>
       <body className={`${geist.variable} ${geistMono.variable} antialiased`}>
-        <CriticalResourcePreloader />
         <ErrorBoundary fallback={HydrationErrorFallback}>
           <ThemeProvider
             attribute="class"
@@ -186,6 +186,10 @@ export default function RootLayout({
             </UnifiedQueryProvider>
           </ThemeProvider>
         </ErrorBoundary>
+        
+        {/* Vercel Analytics y Speed Insights */}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   )

@@ -14,9 +14,13 @@ import { AdvancedLoading, SectionLoading, TableLoading } from "@/components/adva
 import { AdvancedError } from "@/components/advanced-error-handling"
 import type { Service } from "@/lib/supabase"
 import Image from "next/image"
-import { toast } from "sonner"
+import { usePageTracking, useInteractionTracking } from "@/hooks/use-analytics"
 
 export default function ServicesPage() {
+  // Analytics
+  usePageTracking('services')
+  const { trackClick, trackFormSubmit } = useInteractionTracking()
+
   const {
     data: services,
     isLoading: servicesLoading,

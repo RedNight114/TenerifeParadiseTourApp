@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Calendar, MapPin, Users, Clock, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 import { CancelReservationModal } from "@/components/cancel-reservation-modal"
-import { ReservationsNavbar } from "@/components/reservations-navbar"
+import { usePageTracking, useInteractionTracking } from "@/hooks/use-analytics"
 
 interface Reservation {
   id: string
@@ -24,6 +24,10 @@ interface Reservation {
 }
 
 export default function ReservationsPage() {
+  // Analytics
+  usePageTracking('reservations')
+  const { trackClick } = useInteractionTracking()
+
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)

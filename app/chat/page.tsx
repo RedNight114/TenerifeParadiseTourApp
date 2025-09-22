@@ -33,9 +33,13 @@ import { useAuth } from '@/hooks/use-auth';
 import { useChatUnified } from '@/hooks/use-chat-unified';
 import { ChatAuthWrapper } from '@/components/auth/chat-auth-wrapper';
 import { cn } from '@/lib/utils';
-import '@/styles/enhanced-chat.css';
+import { usePageTracking, useInteractionTracking } from "@/hooks/use-analytics"
 
 function ChatPageContent() {
+  // Analytics
+  usePageTracking('chat')
+  const { trackClick } = useInteractionTracking()
+
   const [message, setMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showSettings, setShowSettings] = useState(false);
