@@ -11,19 +11,35 @@ export async function PATCH(
     const { getSupabaseClient } = await import("@/lib/supabase-unified")
     const supabase = await getSupabaseClient()
     
-    const { data, error } = await supabase
-      .from('services')
-      .update(body)
-      .eq('id', id)
-      .select()
-      .single()
+    // Usar la función update_service_simple que valida los datos
+    const { data, error } = await supabase.rpc('update_service_simple', {
+      service_id: id,
+      service_data: body
+    })
 
     if (error) {
+      console.error('Error actualizando servicio:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ service: data })
+    if (!data?.success) {
+      return NextResponse.json({ error: data?.error || 'Error actualizando servicio' }, { status: 400 })
+    }
+
+    // Obtener el servicio actualizado para devolverlo
+    const { data: service, error: fetchError } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', id)
+      .single()
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ service, message: data.message })
   } catch (error) {
+    console.error('Error interno:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' }, 
       { status: 500 }
@@ -58,6 +74,7 @@ export async function DELETE(
     )
   }
 }
+
 
 
 

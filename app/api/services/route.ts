@@ -31,24 +31,41 @@ export async function POST(request: NextRequest) {
     const { getSupabaseClient } = await import("@/lib/supabase-unified")
     const supabase = await getSupabaseClient()
     
-    const { data, error } = await supabase
-      .from('services')
-      .insert([body])
-      .select()
-      .single()
+    // Usar la función create_service_simple que valida los datos
+    const { data, error } = await supabase.rpc('create_service_simple', {
+      service_data: body
+    })
 
     if (error) {
+      console.error('Error creando servicio:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json({ service: data })
+    if (!data?.success) {
+      return NextResponse.json({ error: data?.error || 'Error creando servicio' }, { status: 400 })
+    }
+
+    // Obtener el servicio creado para devolverlo
+    const { data: service, error: fetchError } = await supabase
+      .from('services')
+      .select('*')
+      .eq('id', data.service_id)
+      .single()
+
+    if (fetchError) {
+      return NextResponse.json({ error: fetchError.message }, { status: 500 })
+    }
+
+    return NextResponse.json({ service, message: data.message })
   } catch (error) {
+    console.error('Error interno:', error)
     return NextResponse.json(
       { error: 'Error interno del servidor' }, 
       { status: 500 }
     )
   }
 }
+
 
 
 
