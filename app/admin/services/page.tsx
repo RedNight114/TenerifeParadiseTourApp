@@ -224,19 +224,33 @@ export default function AdminServices() {
       const { getSupabaseClient } = await import("@/lib/supabase-unified")
       const supabase = await getSupabaseClient()
       
-      const { data, error } = await supabase
-        .from('services')
-        .insert([serviceData])
-        .select()
+      // Usar la función create_service_simple que valida los datos
+      const { data, error } = await supabase.rpc('create_service_simple', {
+        service_data: serviceData
+      })
 
       if (error) throw error
       
-      setServices(prev => [data[0], ...prev])
+      if (!data?.success) {
+        throw new Error(data?.error || 'Error creando servicio')
+      }
+
+      // Obtener el servicio creado para agregarlo a la lista
+      const { data: newService, error: fetchError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('id', data.service_id)
+        .single()
+
+      if (fetchError) throw fetchError
+      
+      setServices(prev => [newService, ...prev])
       setIsNewServiceOpen(false)
       toast.success('Servicio creado correctamente')
-    } catch (error) {
-      toast.error('Error creando servicio')
-      }
+    } catch (error: any) {
+      console.error('Error creando servicio:', error)
+      toast.error(error?.message || 'Error creando servicio')
+    }
   }
 
   // Función para actualizar servicio
@@ -245,28 +259,38 @@ export default function AdminServices() {
       const { getSupabaseClient } = await import("@/lib/supabase-unified")
       const supabase = await getSupabaseClient()
       
-      const { error } = await supabase
-        .from('services')
-        .update({
-          ...serviceData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', serviceData.id)
+      // Usar la función update_service_simple que valida los datos
+      const { data, error } = await supabase.rpc('update_service_simple', {
+        service_id: serviceData.id,
+        service_data: serviceData
+      })
 
       if (error) throw error
       
+      if (!data?.success) {
+        throw new Error(data?.error || 'Error actualizando servicio')
+      }
+
+      // Obtener el servicio actualizado para actualizar la lista
+      const { data: updatedService, error: fetchError } = await supabase
+        .from('services')
+        .select('*')
+        .eq('id', serviceData.id)
+        .single()
+
+      if (fetchError) throw fetchError
+      
       setServices(prev => prev.map(service => 
-        service.id === serviceData.id 
-          ? { ...service, ...serviceData, updated_at: new Date().toISOString() }
-          : service
+        service.id === serviceData.id ? updatedService : service
       ))
       
       setIsEditServiceOpen(false)
       setSelectedService(null)
       toast.success('Servicio actualizado correctamente')
-    } catch (error) {
-      toast.error('Error actualizando servicio')
-      }
+    } catch (error: any) {
+      console.error('Error actualizando servicio:', error)
+      toast.error(error?.message || 'Error actualizando servicio')
+    }
   }
 
   // Función para eliminar servicio
