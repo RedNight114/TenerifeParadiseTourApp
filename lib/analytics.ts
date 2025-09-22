@@ -3,7 +3,18 @@
  * Personalización de eventos y métricas
  */
 
-import { track } from '@vercel/analytics'
+// Importación segura de Vercel Analytics
+let track: ((event: string, properties?: Record<string, any>) => void) | null = null
+
+try {
+  // Intentar importar Vercel Analytics
+  const analytics = require('@vercel/analytics')
+  if (analytics && typeof analytics.track === 'function') {
+    track = analytics.track
+  }
+} catch (error) {
+  console.warn('Vercel Analytics not available:', error)
+}
 
 // Tipos de eventos personalizados
 export type CustomEvent = 
@@ -21,7 +32,15 @@ export type CustomEvent =
 // Función para trackear eventos personalizados
 export function trackEvent(event: CustomEvent, properties?: Record<string, any>) {
   try {
-    track(event, properties)
+    // Verificar que la función track esté disponible
+    if (track && typeof track === 'function') {
+      track(event, properties)
+    } else {
+      // En desarrollo, solo mostrar un log
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Analytics event:', event, properties)
+      }
+    }
   } catch (error) {
     console.warn('Error tracking event:', error)
   }

@@ -22,14 +22,18 @@ export function useAnalytics() {
   const trackWithUser = (event: string, properties?: Record<string, any>) => {
     if (!analyticsConfig.enabled) return
 
-    const eventProperties = {
-      ...properties,
-      user_id: user?.id,
-      user_role: profile?.role,
-      timestamp: new Date().toISOString()
-    }
+    try {
+      const eventProperties = {
+        ...properties,
+        user_id: user?.id,
+        user_role: profile?.role,
+        timestamp: new Date().toISOString()
+      }
 
-    analytics.trackEvent(event as any, eventProperties)
+      analytics.trackEvent(event as any, eventProperties)
+    } catch (error) {
+      console.warn('Error tracking event with user context:', error)
+    }
   }
 
   return {
@@ -45,10 +49,14 @@ export function usePageTracking(pageName: string) {
 
   useEffect(() => {
     if (analyticsConfig.enabled && analyticsConfig.trackPageViews) {
-      track('page_viewed', {
-        page_name: pageName,
-        url: window.location.pathname
-      })
+      try {
+        track('page_viewed', {
+          page_name: pageName,
+          url: typeof window !== 'undefined' ? window.location.pathname : '/'
+        })
+      } catch (error) {
+        console.warn('Error tracking page view:', error)
+      }
     }
   }, [pageName, track])
 }
@@ -59,30 +67,42 @@ export function useInteractionTracking() {
 
   const trackClick = (element: string, properties?: Record<string, any>) => {
     if (analyticsConfig.enabled && analyticsConfig.trackUserInteractions) {
-      track('user_click', {
-        element,
-        ...properties
-      })
+      try {
+        track('user_click', {
+          element,
+          ...properties
+        })
+      } catch (error) {
+        console.warn('Error tracking click:', error)
+      }
     }
   }
 
   const trackFormSubmit = (formName: string, success: boolean, properties?: Record<string, any>) => {
     if (analyticsConfig.enabled && analyticsConfig.trackUserInteractions) {
-      track('form_submit', {
-        form_name: formName,
-        success,
-        ...properties
-      })
+      try {
+        track('form_submit', {
+          form_name: formName,
+          success,
+          ...properties
+        })
+      } catch (error) {
+        console.warn('Error tracking form submit:', error)
+      }
     }
   }
 
   const trackError = (errorType: string, errorMessage: string, properties?: Record<string, any>) => {
     if (analyticsConfig.enabled) {
-      track('error_occurred', {
-        error_type: errorType,
-        error_message: errorMessage,
-        ...properties
-      })
+      try {
+        track('error_occurred', {
+          error_type: errorType,
+          error_message: errorMessage,
+          ...properties
+        })
+      } catch (error) {
+        console.warn('Error tracking error event:', error)
+      }
     }
   }
 
