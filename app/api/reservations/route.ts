@@ -1,6 +1,9 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 
+// Forzar que esta ruta sea dinámica
+export const dynamic = 'force-dynamic'
+
 export async function GET(request: NextRequest) {
   try {
     // Crear cliente Supabase específico para esta API

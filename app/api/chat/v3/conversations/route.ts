@@ -3,6 +3,9 @@ import { getSupabaseClient } from '@/lib/supabase-unified'
 import { createClient } from '@supabase/supabase-js'
 import { chatService } from '@/lib/services/chat-service-unified'
 
+// Forzar que esta ruta sea dinámica
+export const dynamic = 'force-dynamic'
+
 // Helper para obtener usuario autenticado desde cookies
 async function getAuthenticatedUser(request: NextRequest) {
   try {
