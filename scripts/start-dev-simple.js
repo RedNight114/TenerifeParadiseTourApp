@@ -1,59 +1,25 @@
 /**
- * Script simple para iniciar Next.js sin interferir con su funcionamiento interno
+ * Script simple para iniciar Next.js sin polyfills complejos
  */
 
 const { spawn } = require('child_process')
 const path = require('path')
 
-console.log('🚀 Iniciando Next.js con configuración simple...')
+console.log('🚀 Iniciando Next.js (modo simple)...')
 
-// Solo interceptar console.error para suprimir errores específicos
-const originalConsoleError = console.error
-console.error = function(...args) {
-  const message = args.join(' ')
-  
-  // Suprimir solo errores específicos de window.location
-  const suppressedMessages = [
-    'TypeError: Cannot destructure property \'protocol\' of \'window.location\' as it is undefined',
-    'at getLocationOrigin',
-    'at parseRelativeUrl',
-    'at parseUrl'
-  ]
-  
-  const shouldSuppress = suppressedMessages.some(suppressed => 
-    message.includes(suppressed)
-  )
-  
-  if (!shouldSuppress) {
-    originalConsoleError.apply(console, args)
-  }
-}
-
-// Interceptar también console.warn para suprimir warnings de webpack
-const originalConsoleWarn = console.warn
-console.warn = function(...args) {
-  const message = args.join(' ')
-  
-  const suppressedMessages = [
-    'Serializing big strings',
-    'impacts deserialization performance',
-    'consider using Buffer instead'
-  ]
-  
-  const shouldSuppress = suppressedMessages.some(suppressed => 
-    message.includes(suppressed)
-  )
-  
-  if (!shouldSuppress) {
-    originalConsoleWarn.apply(console, args)
-  }
-}
+// Configurar variables de entorno básicas
+process.env.NODE_OPTIONS = '--max-old-space-size=4096'
+process.env.NEXT_TELEMETRY_DISABLED = '1'
 
 // Iniciar Next.js directamente
 const nextProcess = spawn('next', ['dev'], {
   cwd: path.resolve(__dirname, '..'),
   stdio: 'inherit',
-  shell: true
+  shell: true,
+  env: {
+    ...process.env,
+    NODE_ENV: 'development'
+  }
 })
 
 nextProcess.on('close', (code) => {

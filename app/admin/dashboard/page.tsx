@@ -627,9 +627,7 @@ function DashboardContent() {
       {/* Estadísticas principales */}
       <section aria-labelledby="stats-heading">
         <h2 id="stats-heading" className="sr-only">Estadísticas principales</h2>
-        <Suspense fallback={<DashboardLoading />}>
-          <DashboardStatsModern />
-        </Suspense>
+        <DashboardStatsModern />
       </section>
 
       {/* Acciones rápidas y estado del sistema */}

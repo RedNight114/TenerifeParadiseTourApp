@@ -191,7 +191,7 @@ setError('Error obteniendo métricas de rendimiento')
       <button
         onClick={() => setIsVisible(!isVisible)}
         className={`
-          fixed top-4 right-4 z-50 
+          performance-monitor-button fixed top-4 right-4 
           p-2 rounded-full shadow-lg transition-all duration-200
           ${isVisible 
             ? 'bg-blue-600 text-white hover:bg-blue-700' 
@@ -211,7 +211,7 @@ setError('Error obteniendo métricas de rendimiento')
       {/* Panel principal - mejor posicionado y menos intrusivo */}
       {isVisible && (
         <div className="
-          fixed top-16 right-4 z-40 
+          performance-monitor-panel fixed top-16 right-4 
           bg-white/95 backdrop-blur-md 
           border border-gray-200 rounded-lg shadow-xl
           p-4 min-w-[280px] max-w-[320px]

@@ -527,11 +527,38 @@ export class ChatServiceUnified {
         }
       }
 
+      // Calcular mensajes no leídos y obtener último mensaje para todas las conversaciones
+      const conversationsWithUnread = await Promise.all(
+        (conversations || []).map(async (conv) => {
+          // Obtener mensajes no leídos
+          const { count } = await supabase
+            .from('messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('conversation_id', conv.id)
+            .eq('is_read', false)
+
+          // Obtener último mensaje
+          const { data: lastMessage } = await supabase
+            .from('messages')
+            .select('id, content, sender_id, created_at, message_type')
+            .eq('conversation_id', conv.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .single()
+
+          return {
+            ...conv,
+            unread_count: count || 0,
+            last_message: lastMessage || null
+          }
+        })
+      )
+
       // Guardar en caché
-      await unifiedCache.set(cacheKey, conversations || [], { ttl: this.defaultTTL })
+      await unifiedCache.set(cacheKey, conversationsWithUnread, { ttl: this.defaultTTL })
 
       return {
-        data: conversations || [],
+        data: conversationsWithUnread,
         error: null,
         success: true
       }

@@ -1,188 +1,99 @@
-﻿import { type NextRequest, NextResponse } from "next/server"
-import { getSupabaseClient } from "@/lib/supabase-unified"
-import { 
-  createReservationSchema, 
-  getReservationsQuerySchema,
-  validateData
-} from "@/lib/validation-schemas"
-import { sanitizeObject } from "@/lib/api-validation"
-import { createValidationErrorResponse } from "@/lib/api-validation"
-import { notifyNewReservation } from "@/lib/notification-service"
+﻿import { NextRequest, NextResponse } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-// Forzar renderizado dinámico para evitar errores de build
-export const dynamic = 'force-dynamic'
-export const runtime = 'nodejs'
-
-// Función para obtener el usuario autenticado
-async function getAuthenticatedUser(request: NextRequest) {
-  try {
-    const authHeader = request.headers.get('authorization')
-    if (!authHeader?.startsWith('Bearer ')) {
-      return null
-    }
-
-    const token = authHeader.substring(7)
-    const supabase = await getSupabaseClient()
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    
-    if (error || !user) {
-      return null
-    }
-
-    return user
-  } catch (error) {
-    return null
-  }
-}
-
-// POST - Crear reserva (requiere autenticación)
-export async function POST(request: NextRequest) {
-  try {
-    // Verificar autenticación
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json(
-        { error: "No autorizado - Usuario no autenticado" },
-        { status: 401 }
-      )
-    }
-
-    // Obtener y validar el body
-    const body = await request.json().catch(() => ({}))
-    
-    const validation = validateData(createReservationSchema, body)
-
-    if (!validation.success) {
-      return createValidationErrorResponse(validation.errors)
-    }
-
-    const validatedData = validation.data
-
-    // Asegurar que el usuario solo puede crear reservas para sí mismo
-    if (validatedData.user_id !== user.id) {
-      return NextResponse.json(
-        { error: "No autorizado - Solo puede crear reservas para sí mismo" },
-        { status: 403 }
-      )
-    }
-
-    // Sanitizar los datos antes de procesarlos
-    const sanitizedData = sanitizeObject(validatedData)
-
-    // Obtener cliente unificado
-    const supabase = await getSupabaseClient()
-
-    // Crear la reserva
-    const { data, error } = await supabase
-      .from("reservations")
-      .insert([
-        {
-          user_id: sanitizedData.user_id,
-          service_id: sanitizedData.service_id,
-          reservation_date: sanitizedData.reservation_date,
-          reservation_time: sanitizedData.reservation_time,
-          guests: sanitizedData.guests,
-          total_amount: sanitizedData.total_amount,
-          status: sanitizedData.status,
-          payment_status: sanitizedData.payment_status,
-          special_requests: sanitizedData.special_requests,
-          contact_name: sanitizedData.contact_name,
-          contact_email: sanitizedData.contact_email,
-          contact_phone: sanitizedData.contact_phone,
-        },
-      ])
-      .select()
-      .single()
-
-    if (error) {
-      return NextResponse.json({ error: "Error al crear la reserva" }, { status: 500 })
-    }
-
-    // Enviar notificación a los administradores sobre la nueva reserva
-    try {
-      await notifyNewReservation(data)
-    } catch (notificationError) {
-      // No fallar la creación de la reserva si falla la notificación
-    }
-    
-    return NextResponse.json(data)
-  } catch (error) {
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
-  }
-}
-
-// GET - Obtener reservas (permite ver propias reservas)
 export async function GET(request: NextRequest) {
   try {
-    // Verificar autenticación
-    const user = await getAuthenticatedUser(request)
-    if (!user) {
-      return NextResponse.json(
-        { error: "No autorizado - Usuario no autenticado" },
-        { status: 401 }
-      )
-    }
-
-    // Validar query parameters
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
-
-    // Si no se especifica userId, usar el del usuario autenticado
-    const targetUserId = userId || user.id
-
-    // Obtener cliente unificado
-    const supabase = await getSupabaseClient()
-
-    // Verificar si puede ver reservas de otros usuarios (solo admins)
-    if (targetUserId !== user.id) {
-      // Verificar si es admin
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-
-      if (profile?.role !== 'admin') {
-        return NextResponse.json(
-          { error: "No autorizado - No puede ver reservas de otros usuarios" },
-          { status: 403 }
-        )
+    // Crear cliente Supabase específico para esta API
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
       }
-    }
-
-    if (!targetUserId) {
-      return NextResponse.json({ error: "User ID requerido" }, { status: 400 })
-    }
-
-    const queryValidation = validateData(getReservationsQuerySchema, { userId: targetUserId })
+    )
     
-    if (!queryValidation.success) {
-      return createValidationErrorResponse(queryValidation.errors)
+    // Obtener cookies de la request
+    const accessToken = request.cookies.get('sb-access-token')?.value
+    const refreshToken = request.cookies.get('sb-refresh-token')?.value
+    
+    console.log('Cookies found:', { 
+      hasAccessToken: !!accessToken, 
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length || 0
+    })
+    
+    if (!accessToken) {
+      console.error('No access token found in cookies')
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
 
-    const validatedQuery = queryValidation.data
+    // Establecer la sesión manualmente
+    const { data: { user }, error: authError } = await supabase.auth.setSession({
+      access_token: accessToken,
+      refresh_token: refreshToken || ''
+    })
+    
+    if (authError || !user) {
+      console.error('Auth error:', authError)
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
+    }
 
-    const { data, error } = await supabase
-      .from("reservations")
+    console.log('User authenticated:', user.email)
+
+    // Obtener las reservas del usuario con información del servicio
+    const { data: reservations, error } = await supabase
+      .from('reservations')
       .select(`
-        *,
-        service:services(
+        id,
+        service_id,
+        reservation_date,
+        reservation_time,
+        guests,
+        total_amount,
+        status,
+        created_at,
+        services (
           title,
-          category,
-          description,
-          price
+          images,
+          location,
+          duration
         )
       `)
-      .eq("user_id", validatedQuery.userId)
-      .order("created_at", { ascending: false })
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
 
     if (error) {
-      return NextResponse.json({ error: "Error al obtener las reservas" }, { status: 500 })
+      console.error('Error fetching reservations:', error)
+      return NextResponse.json({ error: 'Error al obtener las reservas' }, { status: 500 })
     }
-    
-    return NextResponse.json(data)
+
+    console.log('Reservations found:', reservations?.length || 0)
+
+    // Transformar los datos para que coincidan con la interfaz
+    const formattedReservations = reservations?.map(reservation => ({
+      id: reservation.id,
+      service_id: reservation.service_id,
+      service_name: reservation.services?.title || 'Servicio no disponible',
+      service_image: reservation.services?.images?.[0] || '',
+      date: reservation.reservation_date,
+      time: reservation.reservation_time,
+      participants: reservation.guests,
+      total_price: reservation.total_amount,
+      status: reservation.status,
+      created_at: reservation.created_at,
+      location: reservation.services?.location || 'Ubicación no disponible',
+      duration: reservation.services?.duration ? `${reservation.services.duration} horas` : 'Duración no disponible'
+    })) || []
+
+    return NextResponse.json({ 
+      reservations: formattedReservations 
+    })
+
   } catch (error) {
-    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 })
+    console.error('Error in reservations API:', error)
+    return NextResponse.json({ error: 'Error interno del servidor' }, { status: 500 })
   }
 }
-

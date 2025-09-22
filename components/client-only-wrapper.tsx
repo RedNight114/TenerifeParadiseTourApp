@@ -11,7 +11,7 @@ interface ClientOnlyProps {
  * Componente que solo renderiza sus hijos en el cliente
  * Evita errores de SSR cuando se accede a window, document, etc.
  */
-export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
+export function ClientOnlyWrapper({ children, fallback = null }: ClientOnlyProps) {
   const [hasMounted, setHasMounted] = useState(false)
 
   useEffect(() => {

@@ -21,7 +21,7 @@ import {
   ArrowDownRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getSupabaseClient } from '@/lib/supabase'
+import { getSupabaseClient } from '@/lib/supabase-unified'
 
 interface DashboardStats {
   totalReservations: number

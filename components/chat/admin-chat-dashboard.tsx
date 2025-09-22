@@ -59,20 +59,36 @@ export default function AdminChatDashboard({ showHeader = true, showNavbar = tru
     setError(null)
     
     try {
-      const response = await fetch('/api/chat/v3/conversations')
+      console.log('🔍 Chat: Cargando conversaciones...')
+      const response = await fetch('/api/chat/v3/conversations', {
+        method: 'GET',
+        credentials: 'include', // Incluir cookies de autenticación
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+      console.log('🔍 Chat: Respuesta recibida:', response.status, response.ok)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log('🔍 Chat: Datos recibidos:', data)
         
         // Separar conversaciones por estado
         const unassigned = data.conversations.filter((conv: Conversation) => conv.status === 'waiting')
         const assigned = data.conversations.filter((conv: Conversation) => conv.status === 'active')
         
+        console.log('🔍 Chat: Conversaciones sin asignar:', unassigned.length)
+        console.log('🔍 Chat: Conversaciones asignadas:', assigned.length)
+        
         setUnassignedConversations(unassigned)
         setAssignedConversations(assigned)
       } else {
+        const errorText = await response.text()
+        console.error('🔍 Chat: Error en respuesta:', response.status, errorText)
         setError('Error cargando conversaciones')
       }
     } catch (err: unknown) {
+      console.error('🔍 Chat: Error en carga:', err)
       setError(`Error: ${err instanceof Error ? err.message : 'Error desconocido'}`)
     } finally {
       setIsLoading(false)
@@ -82,7 +98,13 @@ export default function AdminChatDashboard({ showHeader = true, showNavbar = tru
   // Cargar mensajes de una conversación
   const loadMessages = useCallback(async (conversationId: string) => {
     try {
-      const response = await fetch(`/api/chat/v3/messages?conversation_id=${conversationId}`)
+      const response = await fetch(`/api/chat/v3/messages?conversation_id=${conversationId}`, {
+        method: 'GET',
+        credentials: 'include', // Incluir cookies de autenticación
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setMessages(data.messages || [])

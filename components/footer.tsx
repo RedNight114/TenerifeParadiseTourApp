@@ -4,7 +4,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
 import { usePathname } from "next/navigation"
-import { Facebook, Instagram, Mail, Phone, MapPin, Clock, Shield, Star, CheckCircle, ArrowUp } from "lucide-react"
+import { Facebook, Instagram, Mail, Phone, MapPin, Clock, Shield, Star, CheckCircle } from "lucide-react"
 import { CookieSettingsModal } from "@/components/cookie-settings-modal"
 import { LegalModal } from "@/components/legal-modals"
 
@@ -26,9 +26,6 @@ export function Footer() {
     { id: 'gastronomia', name: 'Experiencias Gastronómicas', count: 0 }
   ]
 
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
 
   const openLegalModal = (type: 'privacy' | 'terms' | 'cookies') => {
     setLegalModal({ isOpen: true, type })
@@ -262,16 +259,6 @@ export function Footer() {
           </div>
         </div>
 
-        {/* Single Scroll to Top Button - Solo en páginas públicas */}
-        {!isAdminPage && (
-          <button
-            onClick={scrollToTop}
-            className="fixed bottom-6 right-6 p-3 bg-gradient-to-r from-[#F4C762] to-[#FFD700] text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-110 z-50"
-            aria-label="Volver arriba"
-          >
-            <ArrowUp className="h-5 w-5" />
-          </button>
-        )}
       </footer>
 
       {/* Cookie Settings Modal */}

@@ -47,7 +47,8 @@ export interface ChatActions {
 }
 
 export function useChatUnified(): ChatState & ChatActions {
-  const { user, isAuthenticated, isInitialized } = useAuthContext()
+  const { user, profile, isAuthenticated, isInitialized } = useAuthContext()
+  const isAdmin = profile?.role === 'admin'
   
   // Estado del chat
   const [state, setState] = useState<ChatState>({
@@ -82,7 +83,10 @@ export function useChatUnified(): ChatState & ChatActions {
     try {
       setState(prev => ({ ...prev, isLoading: true, error: null }))
       
-      const response = await chatService.getUserConversations(user.id)
+      // Los administradores ven todas las conversaciones, los usuarios solo las suyas
+      const response = isAdmin 
+        ? await chatService.getAllConversations()
+        : await chatService.getUserConversations(user.id)
       
       if (response.success) {
         const conversations = response.data || []
@@ -110,7 +114,7 @@ export function useChatUnified(): ChatState & ChatActions {
         isLoading: false
       }))
     }
-  }, [user?.id, isAuthenticated, isInitialized])
+  }, [user?.id, isAuthenticated, isInitialized, isAdmin])
 
   /**
    * Crear conversación

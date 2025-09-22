@@ -1450,12 +1450,13 @@ setFormData(prev => ({
                   <SimpleAgePricing 
                     serviceId={service.id}
                     servicePrice={formData.price || 0}
-                    onRangesChange={useCallback((ranges: unknown[]) => {
+                    onRangesChange={(ranges: unknown[]) => {
                       // Aquí puedes manejar los cambios en los rangos de edad
                       // Solo log en desarrollo y con throttling
                       if (process.env.NODE_ENV === 'development') {
-                        }
-                    }, [])}
+                        console.log('Ranges changed:', ranges)
+                      }
+                    }}
                   />
                 ) : (
                   <div className="text-center py-8 text-gray-500">

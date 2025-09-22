@@ -11,10 +11,11 @@ export default function MainLayout({
 }) {
   const pathname = usePathname()
   const isBookingPage = pathname?.startsWith('/booking')
+  const isReservationsPage = pathname === '/reservations'
 
   return (
     <div className="min-h-screen flex flex-col">
-      {!isBookingPage && <Navbar />}
+      {!isBookingPage && !isReservationsPage && <Navbar />}
       <main className="flex-1">
         {children}
       </main>

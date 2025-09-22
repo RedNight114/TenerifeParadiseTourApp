@@ -1,15 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getSupabaseClient } from '@/lib/supabase-unified'
+import { createClient } from '@supabase/supabase-js'
 import { chatService } from '@/lib/services/chat-service-unified'
+
+// Helper para obtener usuario autenticado desde cookies
+async function getAuthenticatedUser(request) {
+  try {
+    const token = request.cookies.get('sb-access-token')?.value
+    if (!token) {
+      return { user: null, error: 'No hay token de acceso' }
+    }
+
+    const supabase = await getSupabaseClient()
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    
+    if (error || !user) {
+      return { user: null, error: 'Token inválido' }
+    }
+
+    return { user, error: null }
+  } catch (error) {
+    return { user: null, error: 'Error de autenticación' }
+  }
+}
+
 
 // Función optimizada para obtener mensajes
 async function getMessages(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await getSupabaseClient()
     
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(request)
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -73,10 +95,10 @@ async function getMessages(request: NextRequest) {
 // Función optimizada para enviar mensaje
 async function sendMessage(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await getSupabaseClient()
     
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(request)
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

@@ -228,7 +228,7 @@ export function DevPerformanceMetrics() {
   }
 
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="dev-metrics-button fixed bottom-4 right-20">
       {showMetrics ? (
         <PerformanceMetrics showDetails={true} className="w-80" />
       ) : (

@@ -1,15 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs'
-import { cookies } from 'next/headers'
+import { getSupabaseClient } from '@/lib/supabase-unified'
+import { createClient } from '@supabase/supabase-js'
 import { chatService } from '@/lib/services/chat-service-unified'
+
+// Helper para obtener usuario autenticado desde cookies
+async function getAuthenticatedUser(request: NextRequest) {
+  try {
+    const token = request.cookies.get('sb-access-token')?.value
+    if (!token) {
+      return { user: null, error: 'No hay token de acceso' }
+    }
+
+    const supabase = await getSupabaseClient()
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    
+    if (error || !user) {
+      return { user: null, error: 'Token inválido' }
+    }
+
+    return { user, error: null }
+  } catch (error) {
+    return { user: null, error: 'Error de autenticación' }
+  }
+}
 
 // Función optimizada para obtener conversaciones
 async function getConversations(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await getSupabaseClient()
     
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(request)
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }
@@ -39,12 +60,23 @@ async function getConversations(request: NextRequest) {
       date_to: dateTo || undefined
     }
 
-    // Verificar si es admin
-    const { data: profile } = await supabase
+    // Verificar si es admin usando cliente de servicio
+    const serviceClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false
+        }
+      }
+    )
+    
+    const { data: profile } = await serviceClient
       .from('profiles')
       .select('role')
       .eq('id', user.id)
-      .single()
+      .maybeSingle()
 
     let response
     if (profile?.role === 'admin') {
@@ -78,10 +110,10 @@ async function getConversations(request: NextRequest) {
 // Función optimizada para crear conversación
 async function createConversation(request: NextRequest) {
   try {
-    const supabase = createRouteHandlerClient({ cookies })
+    const supabase = await getSupabaseClient()
     
     // Verificar autenticación
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    const { user, error: authError } = await getAuthenticatedUser(request)
     if (authError || !user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
     }

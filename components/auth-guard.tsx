@@ -38,17 +38,42 @@ function AuthGuard({
       return
     }
 
-    // Si está autenticado y está en la página de login, redirigir al dashboard
+    // Si está autenticado y está en la página de login, NO redirigir automáticamente
+    // Dejar que LoginRedirect maneje la redirección
     if (isAuthenticated && redirectTo === '/auth/login') {
-      // Redirigir a admin/dashboard si es admin, sino a dashboard normal
-      if (isAdmin) {
-        router.push('/admin/dashboard')
-      } else {
-        router.push('/dashboard')
+      // Solo redirigir si estamos en admin/login (no en auth/login)
+      if (typeof window !== 'undefined' && window.location.pathname === '/admin/login') {
+        if (isAdmin) {
+          router.push('/admin/dashboard')
+        } else {
+          router.push('/auth/login') // Redirigir al login normal si no es admin
+        }
       }
+      // Para auth/login, no hacer nada - LoginRedirect se encargará
       return
     }
+
+    // Si está autenticado y está en /dashboard, verificar si debería estar en /profile
+    if (isAuthenticated && typeof window !== 'undefined' && window.location.pathname === '/dashboard') {
+      if (profile?.role === 'client' || profile?.role === 'user') {
+        router.push('/profile')
+        return
+      }
+    }
   }, [isInitialized, loading, isAuthenticated, isAdmin, requireAuth, requireAdmin, redirectTo, router])
+
+  // Mostrar loading mientras se inicializa
+  if (!isInitialized || loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando permisos</h2>
+          <p className="text-gray-600">Validando acceso...</p>
+        </div>
+      </div>
+    )
+  }
 
   // Si requiere autenticación y no está autenticado, mostrar contenido de carga
   if (requireAuth && !isAuthenticated && isInitialized) {
@@ -71,19 +96,6 @@ function AuthGuard({
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-red-600 mx-auto mb-4"></div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Acceso denegado</h2>
           <p className="text-gray-600">No tienes permisos para acceder a esta página</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Mostrar loading mientras se inicializa
-  if (!isInitialized || loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando permisos</h2>
-          <p className="text-gray-600">Validando acceso...</p>
         </div>
       </div>
     )

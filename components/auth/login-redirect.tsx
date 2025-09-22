@@ -42,51 +42,17 @@ export function LoginRedirect({ user, profile, redirectPath }: LoginRedirectProp
         targetPath = '/admin/dashboard'
         showToast('success', '¡Bienvenido Administrador!')
       } else {
+        // Para usuarios normales (user o client), ir al perfil
         targetPath = '/profile'
         showToast('success', '¡Bienvenido!')
       }
     }
 
-    // Mostrar mensaje de bienvenida personalizado
-    const welcomeMessage = profile.role === 'admin' 
-      ? `¡Bienvenido ${profile.full_name || user.email}!`
-      : `¡Bienvenido ${profile.full_name || user.email}!`
-
-    showToast('success', welcomeMessage)
-
-    // Iniciar countdown
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          setIsRedirecting(true)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
+    // Redirección inmediata sin countdown para evitar bucles
+    setTimeout(() => {
+      router.push(targetPath)
+    }, 100)
   }, [user, profile, redirectPath, router])
-
-  useEffect(() => {
-    if (isRedirecting) {
-      // Determinar la ruta final
-      let finalPath = redirectPath
-      if (!finalPath) {
-        if (profile?.role === 'admin') {
-          finalPath = '/admin/dashboard'
-        } else {
-          finalPath = '/profile'
-        }
-      }
-
-      // Redirección con delay para mostrar la animación
-      setTimeout(() => {
-        router.push(finalPath)
-      }, 500)
-    }
-  }, [isRedirecting, profile, redirectPath, router])
 
   if (!user || !profile) return null
 

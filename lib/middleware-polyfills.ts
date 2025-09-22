@@ -20,7 +20,7 @@ if (typeof window === 'undefined' && typeof global !== 'undefined') {
       replace: () => {},
       reload: () => {},
       toString: () => 'https://localhost:3000/'
-    }
+    } as any
   }
 }
 

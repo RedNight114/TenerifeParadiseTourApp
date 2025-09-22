@@ -1,0 +1,75 @@
+/* 
+ * Z-Index Management para evitar superposición de elementos flotantes
+ * 
+ * Jerarquía de z-index:
+ * - Modal overlays: z-50 (más alto)
+ * - Dropdowns/Tooltips: z-40
+ * - Chat Widget: z-40
+ * - Performance Monitor: z-30
+ * - Dev Metrics: z-30
+ * - Navigation: z-20
+ * - Content: z-10 (por defecto)
+ */
+
+/* Asegurar que los elementos flotantes no se superpongan */
+.chat-widget-container {
+  z-index: 40 !important;
+}
+
+.chat-widget-floating {
+  z-index: 40 !important;
+}
+
+.performance-monitor-button {
+  z-index: 30 !important;
+}
+
+.performance-monitor-panel {
+  z-index: 30 !important;
+}
+
+
+.dev-metrics-button {
+  z-index: 30 !important;
+}
+
+/* Ajustes específicos para móviles */
+@media (max-width: 768px) {
+  .chat-widget-container {
+    bottom: 1rem;
+    right: 1rem;
+  }
+  
+  .performance-monitor-button {
+    top: 1rem;
+    right: 1rem;
+  }
+}
+
+/* Ajustes para desktop - separar elementos */
+@media (min-width: 769px) {
+  .chat-widget-container {
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+  
+  .performance-monitor-button {
+    top: 1rem;
+    right: 1rem;
+  }
+}
+
+/* Asegurar que los elementos no se superpongan en pantallas pequeñas */
+@media (max-width: 480px) {
+  .chat-widget-floating {
+    width: calc(100vw - 2rem);
+    height: calc(100vh - 2rem);
+    bottom: 1rem;
+    right: 1rem;
+  }
+  
+  .performance-monitor-panel {
+    width: calc(100vw - 2rem);
+    right: 1rem;
+  }
+}

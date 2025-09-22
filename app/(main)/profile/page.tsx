@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import AuthGuard from "@/components/auth-guard"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -14,9 +15,8 @@ import { getSupabaseClient } from "@/lib/supabase-unified"
 import { AvatarUpload } from "@/components/avatar-upload"
 import { Profile } from "@/lib/supabase"
 
-export default function ProfilePage() {
-  const { user, isLoading: loading } = useAuth()
-  const isAuthenticated = !!user
+function ProfilePageContent() {
+  const { user } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [formData, setFormData] = useState({
     full_name: "",
@@ -25,14 +25,6 @@ export default function ProfilePage() {
   const [isUpdating, setIsUpdating] = useState(false)
   const [updateStatus, setUpdateStatus] = useState<"idle" | "success" | "error">("idle")
   const [errorMessage, setErrorMessage] = useState("")
-  const router = useRouter()
-
-  // Redirigir si no está autenticado
-  useEffect(() => {
-    if (!loading && !isAuthenticated) {
-window.location.href = '/auth/login'
-    }
-  }, [loading, isAuthenticated])
 
   // Cargar perfil cuando el usuario esté disponible
   useEffect(() => {
@@ -44,33 +36,40 @@ window.location.href = '/auth/login'
   const loadProfile = async () => {
     if (!user?.id) return
 
+    console.log('🔍 Profile: Cargando perfil para usuario:', user?.id)
+
     try {
       const client = await getSupabaseClient()
       
       if (!client) {
+        console.log('🔍 Profile: No se pudo obtener cliente Supabase')
         return
       }
       
       const { data, error } = await client
         .from("profiles")
         .select("*")
-        .eq("id", user.id)
+        .eq("id", user?.id)
         .maybeSingle()
 
       if (error) {
+        console.log('🔍 Profile: Error cargando perfil:', error.message)
         return
       }
 
       if (data) {
+        console.log('🔍 Profile: Perfil cargado exitosamente:', data)
         const profileData = data as unknown as Profile
         setProfile(profileData)
         setFormData({
           full_name: profileData.full_name || "",
           email: profileData.email || "",
         })
+      } else {
+        console.log('🔍 Profile: No se encontró perfil para el usuario')
       }
     } catch (error) {
-      // Error handled
+      console.log('🔍 Profile: Error en loadProfile:', error)
     }
   }
 
@@ -106,7 +105,7 @@ window.location.href = '/auth/login'
         throw new Error("No se pudo obtener el cliente de Supabase")
       }
       
-      const { error: profileError } = await client.from("profiles").update(updateData).eq("id", user.id)
+      const { error: profileError } = await client.from("profiles").update(updateData).eq("id", user?.id)
 
       if (profileError) throw profileError
 
@@ -137,23 +136,7 @@ window.location.href = '/auth/login'
     }
   }
 
-  // Mostrar loading mientras verifica autenticación
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando autenticación</h2>
-          <p className="text-gray-600">Por favor, espera un momento...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // Si no está autenticado, no mostrar nada (ya se redirigió)
-  if (!isAuthenticated || !user) {
-    return null
-  }
+  // AuthGuard ya maneja la autenticación, no necesitamos verificaciones adicionales
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -184,8 +167,8 @@ window.location.href = '/auth/login'
                 <div className="relative">
                   <AvatarUpload
                     currentAvatarUrl={profile?.avatar_url}
-                    userId={user.id}
-                    fallbackText={profile?.full_name?.charAt(0) || user.email?.charAt(0) || "U"}
+                    userId={user?.id || ''}
+                    fallbackText={profile?.full_name?.charAt(0) || user?.email?.charAt(0) || "U"}
                     onAvatarChange={handleAvatarChange}
                     size="lg"
                   />
@@ -194,13 +177,13 @@ window.location.href = '/auth/login'
                   <h2 className="text-2xl font-bold text-gray-900 mb-2">
                     {profile?.full_name || "Usuario"}
                   </h2>
-                  <p className="text-gray-600 mb-2">{profile?.email || user.email}</p>
+                  <p className="text-gray-600 mb-2">{profile?.email || user?.email}</p>
                   <div className="flex items-center justify-center md:justify-start space-x-2">
                     <Badge variant={profile?.role === "admin" ? "destructive" : "secondary"}>
                       {profile?.role === "admin" ? "Administrador" : "Cliente"}
                     </Badge>
                     <Badge variant="outline">
-                      Miembro desde {formatDate(user.created_at)}
+                      Miembro desde {formatDate(user?.created_at || '')}
                     </Badge>
                   </div>
                 </div>
@@ -313,7 +296,7 @@ window.location.href = '/auth/login'
                       <span className="font-medium">ID de Usuario</span>
                     </div>
                     <span className="text-sm text-gray-600 font-mono">
-                      {user.id.substring(0, 8)}...
+                      {user?.id?.substring(0, 8)}...
                     </span>
                   </div>
 
@@ -322,8 +305,8 @@ window.location.href = '/auth/login'
                       <Mail className="w-4 h-4 text-gray-400" />
                       <span className="font-medium">Email Verificado</span>
                     </div>
-                    <Badge variant={user.email_confirmed_at ? "default" : "secondary"}>
-                      {user.email_confirmed_at ? "Sí" : "No"}
+                    <Badge variant={user?.email_confirmed_at ? "default" : "secondary"}>
+                      {user?.email_confirmed_at ? "Sí" : "No"}
                     </Badge>
                   </div>
 
@@ -333,7 +316,7 @@ window.location.href = '/auth/login'
                       <span className="font-medium">Fecha de Registro</span>
                     </div>
                     <span className="text-sm text-gray-600">
-                      {formatDate(user.created_at)}
+                      {formatDate(user?.created_at || '')}
                     </span>
                   </div>
 
@@ -353,5 +336,13 @@ window.location.href = '/auth/login'
         </div>
       </section>
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <AuthGuard requireAuth={true} redirectTo="/auth/login">
+      <ProfilePageContent />
+    </AuthGuard>
   )
 }

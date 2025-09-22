@@ -1,435 +1,486 @@
 ﻿"use client"
 
-import { useState, useEffect, useMemo, useCallback } from "react"
-import { useAuth } from "@/hooks/use-auth"
-import { useReservations } from "@/hooks/use-reservations"
-import { getSupabaseClient } from "@/lib/supabase-unified"
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Calendar, AlertCircle, CheckCircle, User, Plus, X, Clock, MapPin, Users, CreditCard } from "lucide-react"
-import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { Calendar, MapPin, Users, Clock, X, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
+import { CancelReservationModal } from "@/components/cancel-reservation-modal"
+import { ReservationsNavbar } from "@/components/reservations-navbar"
+
+interface Reservation {
+  id: string
+  service_id: string
+  service_name: string
+  service_image: string
+  date: string
+  time: string
+  participants: number
+  total_price: number
+  status: 'pending' | 'confirmed' | 'cancelled' | 'completed'
+  created_at: string
+  location: string
+  duration: string
+}
 
 export default function ReservationsPage() {
-  const { user, isLoading: authLoading } = useAuth()
-  const isAuthenticated = !!user
-  const { reservations, loading: reservationsLoading, error: reservationsError, cancelReservation } = useReservations()
-  const [profile, setProfile] = useState<any>(null)
-  const router = useRouter()
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [filteredReservations, setFilteredReservations] = useState<Reservation[]>([])
+  const [loading, setLoading] = useState(true)
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+  const [authError, setAuthError] = useState<string | null>(null)
+  const [filter, setFilter] = useState<string>('all')
+  const [sortBy, setSortBy] = useState<string>('date')
+  const [cancelModal, setCancelModal] = useState<{
+    isOpen: boolean
+    reservation: Reservation | null
+  }>({ isOpen: false, reservation: null })
 
-  // Redirigir si no está autenticado
+  // Evitar problemas de hidratación
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-window.location.href = '/auth/login'
-    }
-  }, [authLoading, isAuthenticated])
+    setMounted(true)
+  }, [])
 
-  // Cargar perfil cuando el usuario esté disponible
   useEffect(() => {
-    if (user?.id) {
-      loadProfile()
+    if (mounted) {
+      loadReservations()
     }
-  }, [user?.id])
+  }, [mounted])
 
-  const loadProfile = async () => {
-    if (!user?.id) return
+  // Filtrar y ordenar reservas
+  useEffect(() => {
+    let filtered = [...reservations]
 
+    // Aplicar filtro
+    if (filter !== 'all') {
+      filtered = filtered.filter(reservation => reservation.status === filter)
+    }
+
+    // Aplicar ordenamiento
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'date':
+          return new Date(a.date).getTime() - new Date(b.date).getTime()
+        case 'price':
+          return b.total_price - a.total_price
+        case 'status':
+          return a.status.localeCompare(b.status)
+        default:
+          return 0
+      }
+    })
+
+    setFilteredReservations(filtered)
+  }, [reservations, filter, sortBy])
+
+  const loadReservations = async () => {
     try {
-      const client = await getSupabaseClient()
-      if (!client) {
-        return
+      setLoading(true)
+      setAuthError(null)
+      
+      console.log('Loading reservations...')
+      
+      // Verificar cookies primero
+      const cookies = document.cookie
+      console.log('Current cookies:', cookies)
+      
+      const response = await fetch('/api/reservations', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+      
+      console.log('Response status:', response.status)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        console.error('API Error:', response.status, errorData)
+        
+        if (response.status === 401) {
+          setAuthError('No estás autenticado. Por favor, inicia sesión.')
+          return
+        }
+        
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
-      const { data, error } = await client
-        .from("profiles")
-        .select("*")
-        .eq("id", user.id)
-        .maybeSingle()
-
-      if (error) {
-        return
-      }
-
-      if (data) {
-        setProfile(data)
-      }
+      
+      const data = await response.json()
+      console.log('Reservations loaded:', data.reservations?.length || 0)
+      setReservations(data.reservations || [])
     } catch (error) {
-      // Error handled
+      console.error('Error loading reservations:', error)
+      setAuthError('Error al cargar las reservas')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleCancelReservation = async (reservationId: string) => {
     try {
-      await cancelReservation(reservationId)
-    } catch (error) {
-        // Error handled
+      setCancellingId(reservationId)
+      
+      const response = await fetch(`/api/reservations/${reservationId}/cancel`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include'
+      })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+      
+      // Recargar las reservas después de cancelar
+      await loadReservations()
+      
+      // Cerrar modal
+      setCancelModal({ isOpen: false, reservation: null })
+    } catch (error) {
+      console.error('Error cancelling reservation:', error)
+    } finally {
+      setCancellingId(null)
     }
+  }
+
+  const openCancelModal = (reservation: Reservation) => {
+    setCancelModal({ isOpen: true, reservation })
+  }
+
+  const closeCancelModal = () => {
+    if (!cancellingId) {
+      setCancelModal({ isOpen: false, reservation: null })
+    }
+  }
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <Badge className="bg-green-100 text-green-800">Confirmada</Badge>
-      case "pending":
-        return <Badge className="bg-yellow-100 text-yellow-800">Pendiente</Badge>
-      case "cancelled":
-        return <Badge className="bg-red-100 text-red-800">Cancelada</Badge>
-      case "completed":
-        return <Badge className="bg-blue-100 text-blue-800">Completada</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
+    const statusMap = {
+      'confirmado': { 
+        label: 'Confirmada', 
+        className: 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200', 
+        icon: CheckCircle 
+      },
+      'pendiente': { 
+        label: 'Pendiente', 
+        className: 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800 border border-yellow-200', 
+        icon: Clock 
+      },
+      'cancelado': { 
+        label: 'Cancelada', 
+        className: 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800 border border-red-200', 
+        icon: X 
+      },
+      'completada': { 
+        label: 'Completada', 
+        className: 'bg-gradient-to-r from-blue-100 to-indigo-100 text-blue-800 border border-blue-200', 
+        icon: CheckCircle 
+      }
     }
-  }
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "confirmed":
-        return <CheckCircle className="w-4 h-4 text-green-600" />
-      case "pending":
-        return <Clock className="w-4 h-4 text-yellow-600" />
-      case "cancelled":
-        return <X className="w-4 h-4 text-red-600" />
-      case "completed":
-        return <CheckCircle className="w-4 h-4 text-blue-600" />
-      default:
-        return <AlertCircle className="w-4 h-4 text-gray-600" />
+    
+    const statusInfo = statusMap[status as keyof typeof statusMap] || { 
+      label: status, 
+      className: 'bg-gradient-to-r from-gray-100 to-slate-100 text-gray-800 border border-gray-200', 
+      icon: AlertCircle 
     }
-  }
-
-  const getPaymentStatusBadge = (paymentStatus: string) => {
-    switch (paymentStatus) {
-      case "pagado":
-        return <Badge className="bg-green-100 text-green-800 ml-2">Pago realizado</Badge>
-      case "pendiente":
-        return <Badge className="bg-yellow-100 text-yellow-800 ml-2">Pago pendiente</Badge>
-      case "error":
-        return <Badge className="bg-red-100 text-red-800 ml-2">Pago fallido</Badge>
-      default:
-        return <Badge variant="secondary" className="ml-2">{paymentStatus}</Badge>
-    }
+    
+    const Icon = statusInfo.icon
+    
+    return (
+      <Badge className={`${statusInfo.className} px-3 py-1 font-semibold shadow-sm`}>
+        <Icon className="w-4 h-4 mr-2" />
+        {statusInfo.label}
+      </Badge>
+    )
   }
 
   const formatDate = (dateString: string) => {
     try {
-      return new Date(dateString).toLocaleDateString("es-ES", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
+      const date = new Date(dateString)
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
       })
     } catch {
-      return "Fecha no disponible"
+      return dateString
     }
   }
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("es-ES", {
-      style: "currency",
-      currency: "EUR",
-    }).format(price)
+    try {
+      return new Intl.NumberFormat('es-ES', {
+        style: 'currency',
+        currency: 'EUR'
+      }).format(price)
+    } catch {
+      return `${price}€`
+    }
   }
 
-  const getUserInitials = useCallback((name: string) => {
-    return name
-      .split(" ")
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2)
-  }, [])
-
-  const getUserAvatar = useCallback(() => {
-    return profile?.avatar_url || "/placeholder.svg"
-  }, [profile?.avatar_url])
-
-  const getUserName = useCallback(() => {
-    return profile?.full_name || user?.email || "Usuario"
-  }, [profile?.full_name, user?.email])
-
-  const ReservationCard = useCallback(({ reservation }: { reservation: any }) => (
-    <Card className="hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-      <CardHeader className="pb-4">
-        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-          <div className="flex-1">
-            <CardTitle className="text-xl sm:text-2xl mb-3 text-gray-900">{reservation.service_name}</CardTitle>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 text-sm sm:text-base text-gray-600">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
-                <span>{formatDate(reservation.date)}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
-                <span>{reservation.location || "Tenerife"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Users className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
-                <span>{reservation.participants} personas</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {getStatusIcon(reservation.status)}
-            {getStatusBadge(reservation.status)}
-            {getPaymentStatusBadge(reservation.payment_status)}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pt-0">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
-            <div className="text-2xl sm:text-3xl font-bold text-blue-600">
-              {formatPrice(reservation.total_price)}
-            </div>
-            <div className="text-sm sm:text-base text-gray-600 bg-gray-50 px-3 py-1 rounded-full">
-              Reserva #{reservation.id.slice(0, 8)}
-            </div>
-          </div>
-          {reservation.status === "pending" && (
-            <Button
-              variant="outline"
-              size="default"
-              onClick={() => handleCancelReservation(reservation.id)}
-              className="text-red-600 border-red-200 hover:bg-red-50 w-full sm:w-auto"
-            >
-              <X className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-              Cancelar
-            </Button>
-          )}
-        </div>
-        {reservation.notes && (
-          <div className="text-sm sm:text-base text-gray-700 leading-relaxed">{reservation.notes}</div>
-        )}
-      </CardContent>
-    </Card>
-  ), [handleCancelReservation])
-
-  // Mostrar loading mientras verifica autenticación
-  if (authLoading) {
+  // No renderizar nada hasta que esté montado
+  if (!mounted) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando autenticación</h2>
-          <p className="text-gray-600">Por favor, espera un momento...</p>
+          <div className="mx-auto w-12 h-12 bg-gradient-to-br from-blue-100 to-green-100 rounded-full flex items-center justify-center mb-4">
+            <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+          </div>
+          <p className="text-gray-600 text-lg">Inicializando...</p>
         </div>
       </div>
     )
   }
 
-  // Si no está autenticado, no mostrar nada (ya se redirigió)
-  if (!user) {
-    return null
+  // Mostrar error de autenticación
+  if (authError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-red-50 via-white to-orange-50 flex items-center justify-center">
+        <Card className="max-w-lg w-full mx-4 border-0 shadow-2xl bg-white">
+          <CardContent className="text-center py-12">
+            <div className="mx-auto w-20 h-20 bg-gradient-to-br from-red-100 to-orange-100 rounded-full flex items-center justify-center mb-6">
+              <AlertCircle className="w-10 h-10 text-red-500" />
+            </div>
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">Error de Autenticación</h3>
+            <p className="text-gray-600 mb-8">{authError}</p>
+            <Button 
+              onClick={() => window.location.href = '/auth/login'}
+              className="bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Ir al Login
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
-  // Filtrar reservas por estado - optimizado con useMemo
-  const upcomingReservations = useMemo(() => 
-    reservations.filter(
-      (r) => r.status === "confirmed" && new Date(r.date) > new Date()
-    ), [reservations]
-  )
-  
-  const pendingReservations = useMemo(() => 
-    reservations.filter((r) => r.status === "pending"), [reservations]
-  )
-  
-  const historyReservations = useMemo(() => 
-    reservations.filter(
-      (r) => r.status === "completed" || r.status === "cancelled" || new Date(r.date) < new Date()
-    ), [reservations]
-  )
-
-  // Mostrar error si hay problemas cargando reservas
-  if (reservationsError) {
+  if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-8">
-          <Alert className="mb-6">
-            <AlertCircle className="w-4 h-4" />
-            <AlertDescription>
-              Error al cargar las reservas: {reservationsError}
-            </AlertDescription>
-          </Alert>
-          <Button onClick={() => window.location.reload()}>
-            Reintentar
-          </Button>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 bg-gradient-to-br from-blue-100 to-green-100 rounded-full flex items-center justify-center mb-6">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Cargando reservas</h2>
+          <p className="text-gray-600 text-lg">Obteniendo tus reservas...</p>
+          <div className="mt-4 flex justify-center">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce mx-1"></div>
+            <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce mx-1" style={{animationDelay: '0.1s'}}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce mx-1" style={{animationDelay: '0.2s'}}></div>
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-      {/* Hero Section */}
-      <section className="relative py-24 overflow-hidden">
-        <div
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{
-            backgroundImage: "url('/images/hero-background.avif')",
-          }}
-        >
-          <div className="absolute inset-0 bg-black/50" />
-        </div>
-        <div className="relative z-10 container mx-auto px-4">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
-              Mis Reservas
-            </h1>
-            <p className="text-xl text-white/90 max-w-2xl mx-auto">
-              Gestiona todas tus reservas y experiencias en Tenerife
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      <ReservationsNavbar />
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-16">
+        {/* Header Mejorado */}
+        <div className="mb-10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent mb-3">
+                Mis Reservas
+              </h1>
+              <p className="text-lg text-gray-600">
+                Gestiona todas tus reservas y excursiones en Tenerife
+              </p>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="bg-white rounded-full px-4 py-2 shadow-sm border">
+                <span className="text-sm font-medium text-gray-600">
+                  {reservations.length} reserva{reservations.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <Button 
+                onClick={() => window.location.href = '/services'}
+                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                Nueva Reserva
+              </Button>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* Content Section */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          {/* User Info */}
-          <div className="mb-8">
-            <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6 p-6 sm:p-8 bg-white rounded-xl shadow-lg border border-gray-100">
-              <Avatar className="w-16 h-16 sm:w-20 sm:h-20 ring-4 ring-blue-50 flex-shrink-0">
-                <AvatarImage src={getUserAvatar()} alt={getUserName()} className="object-cover" />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white text-lg sm:text-xl font-bold">
-                  {getUserInitials(getUserName())}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 text-center sm:text-left">
-                <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-1">{getUserName()}</h2>
-                <p className="text-base sm:text-lg text-gray-600 mb-4">{user?.email}</p>
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                  <Link href="/profile">
-                    <Button variant="outline" size="default" className="w-full sm:w-auto px-6 py-2">
-                      <User className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      Ver Perfil
-                    </Button>
-                  </Link>
-                  <Link href="/services">
-                    <Button size="default" className="w-full sm:w-auto px-6 py-2 bg-blue-600 hover:bg-blue-700">
-                      <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                      Nueva Reserva
-                    </Button>
-                  </Link>
-                </div>
+          
+          {/* Filtros y Búsqueda */}
+          <div className="bg-white rounded-xl shadow-sm border p-6">
+            <div className="flex flex-wrap items-center gap-6">
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-semibold text-gray-700">Filtrar por:</span>
+                <select 
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                >
+                  <option value="all">Todas ({reservations.length})</option>
+                  <option value="confirmado">Confirmadas ({reservations.filter(r => r.status === 'confirmado').length})</option>
+                  <option value="pendiente">Pendientes ({reservations.filter(r => r.status === 'pendiente').length})</option>
+                  <option value="cancelado">Canceladas ({reservations.filter(r => r.status === 'cancelado').length})</option>
+                </select>
+              </div>
+              <div className="flex items-center space-x-3">
+                <span className="text-sm font-semibold text-gray-700">Ordenar por:</span>
+                <select 
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-4 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                >
+                  <option value="date">Fecha</option>
+                  <option value="price">Precio</option>
+                  <option value="status">Estado</option>
+                </select>
+              </div>
+              <div className="ml-auto">
+                <span className="text-sm text-gray-500">
+                  Mostrando {filteredReservations.length} de {reservations.length} reservas
+                </span>
               </div>
             </div>
           </div>
-
-          {/* Tabs */}
-          <Tabs defaultValue="upcoming" className="w-full">
-            <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 mb-8 h-auto p-1">
-              <TabsTrigger value="upcoming" className="flex items-center gap-2 py-3 px-4 text-sm sm:text-base">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Próximas</span>
-                <span className="sm:hidden">Próximas</span>
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {upcomingReservations.length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="pending" className="flex items-center gap-2 py-3 px-4 text-sm sm:text-base">
-                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Pendientes</span>
-                <span className="sm:hidden">Pendientes</span>
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {pendingReservations.length}
-                </Badge>
-              </TabsTrigger>
-              <TabsTrigger value="history" className="flex items-center gap-2 py-3 px-4 text-sm sm:text-base">
-                <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
-                <span className="hidden sm:inline">Historial</span>
-                <span className="sm:hidden">Historial</span>
-                <Badge variant="secondary" className="ml-1 text-xs">
-                  {historyReservations.length}
-                </Badge>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="upcoming" className="space-y-4">
-              {reservationsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Cargando reservas...</p>
-                </div>
-              ) : upcomingReservations.length > 0 ? (
-                upcomingReservations.map((reservation) => (
-                  <ReservationCard key={reservation.id} reservation={reservation} />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No tienes reservas próximas</h3>
-                    <p className="text-gray-600 mb-4">
-                      Explora nuestros servicios y reserva tu próxima aventura en Tenerife
-                    </p>
-                    <Link href="/services">
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ver Servicios
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="pending" className="space-y-4">
-              {reservationsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Cargando reservas...</p>
-                </div>
-              ) : pendingReservations.length > 0 ? (
-                pendingReservations.map((reservation) => (
-                  <ReservationCard key={reservation.id} reservation={reservation} />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No tienes reservas pendientes</h3>
-                    <p className="text-gray-600">
-                      Todas tus reservas están confirmadas o completadas
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-
-            <TabsContent value="history" className="space-y-4">
-              {reservationsLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Cargando historial...</p>
-                </div>
-              ) : historyReservations.length > 0 ? (
-                historyReservations.map((reservation) => (
-                  <ReservationCard key={reservation.id} reservation={reservation} />
-                ))
-              ) : (
-                <Card>
-                  <CardContent className="p-8 text-center">
-                    <CheckCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">No tienes historial de reservas</h3>
-                    <p className="text-gray-600 mb-4">
-                      Comienza a explorar y reserva tu primera experiencia en Tenerife
-                    </p>
-                    <Link href="/services">
-                      <Button>
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ver Servicios
-                      </Button>
-                    </Link>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
-          </Tabs>
         </div>
-      </section>
+
+        {/* Reservations List */}
+        {reservations.length === 0 ? (
+          <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-blue-50">
+            <CardContent className="text-center py-16">
+              <div className="mx-auto w-24 h-24 bg-gradient-to-br from-blue-100 to-green-100 rounded-full flex items-center justify-center mb-6">
+                <AlertCircle className="w-12 h-12 text-blue-500" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 mb-3">No tienes reservas</h3>
+              <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                Aún no has realizado ninguna reserva. Explora nuestros servicios y reserva tu próxima aventura en Tenerife.
+              </p>
+              <Button 
+                onClick={() => window.location.href = '/services'}
+                className="bg-gradient-to-r from-blue-600 to-green-600 hover:from-blue-700 hover:to-green-700 text-white px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+              >
+                Explorar Servicios
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-8">
+            {filteredReservations.length === 0 ? (
+              <Card className="border-0 shadow-xl bg-gradient-to-br from-white to-yellow-50">
+                <CardContent className="text-center py-16">
+                  <div className="mx-auto w-24 h-24 bg-gradient-to-br from-yellow-100 to-orange-100 rounded-full flex items-center justify-center mb-6">
+                    <AlertCircle className="w-12 h-12 text-yellow-500" />
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">No hay reservas con este filtro</h3>
+                  <p className="text-gray-600 mb-8 max-w-md mx-auto">
+                    No se encontraron reservas que coincidan con los criterios seleccionados.
+                  </p>
+                  <Button 
+                    onClick={() => setFilter('all')}
+                    className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white px-8 py-3 text-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                  >
+                    Ver Todas las Reservas
+                  </Button>
+                </CardContent>
+              </Card>
+            ) : (
+              filteredReservations.map((reservation, index) => (
+              <Card key={reservation.id} className="overflow-hidden border-0 shadow-xl hover:shadow-2xl transition-all duration-300 bg-white">
+                <CardHeader className="pb-6 bg-gradient-to-r from-blue-50 to-green-50">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3 mb-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-green-500 rounded-xl flex items-center justify-center">
+                          <span className="text-white font-bold text-lg">
+                            {reservation.service_name.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <CardTitle className="text-2xl font-bold text-gray-900 mb-1">
+                            {reservation.service_name}
+                          </CardTitle>
+                          <div className="flex items-center space-x-2 text-sm text-gray-500">
+                            <span className="bg-white px-2 py-1 rounded-full">#{reservation.id.slice(-8)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Calendar className="w-4 h-4 text-blue-500" />
+                          <span className="font-medium">{formatDate(reservation.date)}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Clock className="w-4 h-4 text-green-500" />
+                          <span className="font-medium">{reservation.time}</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <Users className="w-4 h-4 text-purple-500" />
+                          <span className="font-medium">{reservation.participants} personas</span>
+                        </div>
+                        <div className="flex items-center space-x-2 text-gray-600">
+                          <MapPin className="w-4 h-4 text-red-500" />
+                          <span className="font-medium truncate">{reservation.location}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end space-y-3">
+                      {getStatusBadge(reservation.status)}
+                      <div className="text-right">
+                        <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-green-600 bg-clip-text text-transparent">
+                          {formatPrice(reservation.total_price)}
+                        </div>
+                        <div className="text-sm text-gray-500">
+                          Duración: {reservation.duration}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="text-sm text-gray-500">
+                        <span className="font-medium">Reserva realizada:</span> {formatDate(reservation.created_at)}
+                      </div>
+                      <div className="w-1 h-1 bg-gray-300 rounded-full"></div>
+                      <div className="text-sm text-gray-500">
+                        <span className="font-medium">ID:</span> {reservation.id.slice(0, 8)}...
+                      </div>
+                    </div>
+                    
+                    {reservation.status === 'confirmado' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openCancelModal(reservation)}
+                        disabled={cancellingId === reservation.id}
+                        className="text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300 transition-all duration-200"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancelar Reserva
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+      
+      {/* Modal de Cancelación */}
+      <CancelReservationModal
+        isOpen={cancelModal.isOpen}
+        onClose={closeCancelModal}
+        onConfirm={() => cancelModal.reservation && handleCancelReservation(cancelModal.reservation.id)}
+        reservationName={cancelModal.reservation?.service_name || ''}
+        reservationDate={cancelModal.reservation ? formatDate(cancelModal.reservation.date) : ''}
+        isLoading={cancellingId === cancelModal.reservation?.id}
+      />
     </div>
   )
 }

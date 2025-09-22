@@ -420,6 +420,11 @@ function LoginPageMain() {
           onClose={closeLegalModal}
         />
       )}
+
+      {/* Redirección después del login */}
+      {showRedirect && user && profile && (
+        <LoginRedirect user={user} profile={profile} />
+      )}
     </div>
   )
 }

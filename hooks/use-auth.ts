@@ -5,6 +5,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { getSupabaseClient } from '@/lib/supabase-unified'
 import { logAuth, logError } from '@/lib/logger'
 import { withAuthErrorHandling, handleAuthError } from '@/lib/auth-error-handler'
+import { setSessionCookies, clearSessionCookies, hasActiveSession, getAccessToken } from '@/lib/cookie-manager'
 
 interface Profile {
   id: string
@@ -12,7 +13,7 @@ interface Profile {
   full_name?: string
   avatar_url?: string
   phone?: string
-  role: "user" | "admin"
+  role: "user" | "admin" | "client"
   created_at: string
   updated_at: string
 }
@@ -132,6 +133,7 @@ export function useAuth() {
     try {
       const supabase = await getSupabaseClient()
       
+      // Primero intentar obtener un solo perfil
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -140,6 +142,30 @@ export function useAuth() {
 
       if (error) {
         logAuth('Error cargando perfil', { error: error.message })
+        
+        // Si hay error de múltiples filas, obtener todos y tomar el más reciente
+        if (error.message.includes('multiple (or no) rows returned')) {
+          logAuth('Múltiples perfiles encontrados, obteniendo el más reciente...')
+          
+          const { data: profiles, error: multipleError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', userId)
+            .order('created_at', { ascending: false })
+
+          if (multipleError) {
+            logAuth('Error obteniendo múltiples perfiles', { error: multipleError.message })
+            return null
+          }
+
+          if (profiles && profiles.length > 0) {
+            const latestProfile = profiles[0]
+            logAuth('Perfil más reciente seleccionado', { profileId: latestProfile.id })
+            setProfile(latestProfile)
+            return latestProfile
+          }
+        }
+        
         return null
       }
 
@@ -192,7 +218,27 @@ export function useAuth() {
         
         const supabase = await getSupabaseClient();
 
-        // Obtener sesión actual
+        // Verificar cookies primero
+        if (hasActiveSession()) {
+          const accessToken = getAccessToken()
+          if (accessToken) {
+            try {
+              const { data: { user }, error } = await supabase.auth.getUser(accessToken)
+              if (user && !error) {
+                logAuth('Sesión restaurada desde cookies')
+                setUser(user)
+                await loadProfile(user.id)
+                setIsInitialized(true)
+                return
+              }
+            } catch (error) {
+              logAuth('Error validando token de cookie, limpiando cookies')
+              clearSessionCookies()
+            }
+          }
+        }
+
+        // Obtener sesión actual desde Supabase
         try {
           const { data: { session }, error: sessionError } = await supabase.auth.getSession();
           
@@ -227,13 +273,19 @@ export function useAuth() {
                 setUser(session.user);
                 await loadProfile(session.user.id);
               } else if (event === 'SIGNED_OUT') {
+                clearSessionCookies()
                 setUser(null);
                 setProfile(null);
               } else if (event === 'TOKEN_REFRESHED' && session?.user) {
                 logAuth('Token refrescado automáticamente');
+                // Actualizar cookies con nuevos tokens
+                if (session.access_token && session.refresh_token) {
+                  setSessionCookies(session.access_token, session.refresh_token)
+                }
                 setUser(session.user);
               } else if (event === 'TOKEN_REFRESHED' && !session) {
                 logAuth('Token refresh falló, cerrando sesión');
+                clearSessionCookies()
                 setUser(null);
                 setProfile(null);
               }
@@ -277,15 +329,21 @@ export function useAuth() {
         return { data: null, error: error.message }
       }
 
+      // Guardar cookies de sesión
+      if (data.session?.access_token && data.session?.refresh_token) {
+        setSessionCookies(data.session.access_token, data.session.refresh_token)
+        logAuth('Cookies de sesión guardadas')
+      }
+
       if (data.user) {
         logAuth('Login exitoso')
         setUser(data.user)
-        await loadProfile(data.user.id)
+        const loadedProfile = await loadProfile(data.user.id)
         // Retornar información completa para redirección
         return {
           data: {
             user: data.user,
-            profile: authStateRef.current.profile
+            profile: loadedProfile
           },
           error: null
         };
@@ -356,7 +414,9 @@ export function useAuth() {
         return { success: false, error: error.message }
       }
 
-      logAuth('Logout exitoso')
+      // Limpiar cookies de sesión
+      clearSessionCookies()
+      logAuth('Logout exitoso - cookies limpiadas')
       setUser(null)
       setProfile(null)
       return { success: true, error: null }

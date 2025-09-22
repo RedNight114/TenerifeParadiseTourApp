@@ -23,13 +23,25 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuthHook()
   const [isClient, setIsClient] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   // Evitar problemas de hidratación
   useEffect(() => {
     setIsClient(true)
   }, [])
 
-  // Memoizar el contexto
+  // Inicialización mejorada con timeout
+  useEffect(() => {
+    if (isClient) {
+      const initTimer = setTimeout(() => {
+        setIsInitialized(true)
+      }, 100) // Pequeño delay para asegurar inicialización
+
+      return () => clearTimeout(initTimer)
+    }
+  }, [isClient])
+
+  // Memoizar el contexto con dependencias optimizadas
   const contextValue = useMemo(() => ({
     user: auth.user,
     profile: auth.profile,
@@ -37,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     error: auth.error,
     isAuthenticated: !!auth.user,
     isAdmin: auth.profile?.role === 'admin',
-    isInitialized: auth.isInitialized,
+    isInitialized: isInitialized && auth.isInitialized,
     signIn: auth.login,
     signUp: auth.register,
     signOut: auth.logout,
@@ -54,6 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     auth.logout,
     auth.loginWithProvider,
     auth.resendVerificationEmail,
+    isInitialized,
   ])
 
   // Renderizar contenido solo en el cliente para evitar problemas de hidratación

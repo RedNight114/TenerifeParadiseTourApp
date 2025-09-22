@@ -52,9 +52,9 @@ function ChatPageContent() {
   const [showNotification, setShowNotification] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   
-  const { user } = useAuth();
-  const isAuthenticated = !!user;
-  const isAdmin = user?.user_metadata?.role === 'admin';
+  const { user, profile, isLoading: authLoading, isInitialized } = useAuth();
+  const isAuthenticated = !!user && isInitialized;
+  const isAdmin = profile?.role === 'admin';
 
   // Referencias para elementos del DOM
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -302,6 +302,19 @@ function ChatPageContent() {
     conv.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     conv.description?.toLowerCase().includes(searchQuery.toLowerCase())
   ) || [];
+
+  // Mostrar loading mientras se inicializa
+  if (!isInitialized || authLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Verificando sesión</h2>
+          <p className="text-gray-600">Por favor, espera un momento...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Mostrar estado de autenticación
   if (!isAuthenticated) {
@@ -1010,9 +1023,5 @@ function ChatPageContent() {
 }
 
 export default function ChatPage() {
-  return (
-    <ChatAuthWrapper>
-      <ChatPageContent />
-    </ChatAuthWrapper>
-  );
+  return <ChatPageContent />;
 }

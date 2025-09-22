@@ -15,14 +15,15 @@ const nextConfig = {
     optimizePackageImports: ['@tanstack/react-query', '@supabase/supabase-js'],
   },
 
-  // Configuración de ESLint para producción - más permisiva
+  // Configuración de ESLint para producción
   eslint: {
-    ignoreDuringBuilds: true, // Temporalmente deshabilitado para producción
+    ignoreDuringBuilds: false,
+    dirs: ['app', 'components', 'lib', 'hooks'],
   },
 
   // Configuración de TypeScript
   typescript: {
-    ignoreBuildErrors: true, // Temporalmente deshabilitado para producción
+    ignoreBuildErrors: false,
   },
 
   // Configuración de imágenes optimizada
