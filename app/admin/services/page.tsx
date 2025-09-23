@@ -1067,7 +1067,7 @@ function ServiceForm({
     const newRange: AgeRange = {
       id: Date.now().toString(),
       min_age: 0,
-      max_age: 17,
+      max_age: 12,
       price: 0,
       description: ''
     }
@@ -1085,16 +1085,52 @@ function ServiceForm({
   }
 
   const updateAgeRange = (id: string, field: keyof AgeRange, value: string | number) => {
+    const newRanges = formData.age_ranges?.map(range => 
+      range.id === id ? { ...range, [field]: value } : range
+    ) || []
+    
     setFormData({
       ...formData,
-      age_ranges: formData.age_ranges?.map(range => 
-        range.id === id ? { ...range, [field]: value } : range
-      ) || []
+      age_ranges: newRanges
     })
+    
+    // Validación en tiempo real
+    if (newRanges.length > 0) {
+      const isValid = validateAgeRanges(newRanges)
+      if (!isValid) {
+        // Mostrar error específico
+        const range = newRanges.find(r => r.id === id)
+        if (range && field === 'min_age' && range.min_age > range.max_age) {
+          toast.error('La edad mínima no puede ser mayor que la edad máxima')
+        } else if (range && field === 'max_age' && range.min_age > range.max_age) {
+          toast.error('La edad máxima no puede ser menor que la edad mínima')
+        }
+      }
+    }
   }
 
   const validateAgeRanges = (ranges: AgeRange[]): boolean => {
     if (!ranges || ranges.length === 0) return true
+    
+    // Verificar cada rango individualmente
+    for (let i = 0; i < ranges.length; i++) {
+      const range = ranges[i]
+      
+      // Verificar que min_age <= max_age
+      if (range.min_age > range.max_age) {
+        return false
+      }
+      
+      // Verificar que las edades sean válidas (0-100 años)
+      if (range.min_age < 0 || range.max_age < 0 || range.min_age > 100 || range.max_age > 100) {
+        return false
+      }
+      
+      // Verificar que el precio sea válido
+      if (range.price < 0) {
+        return false
+      }
+    }
     
     // Verificar que no haya rangos superpuestos
     for (let i = 0; i < ranges.length; i++) {
@@ -1102,15 +1138,11 @@ function ServiceForm({
         const range1 = ranges[i]
         const range2 = ranges[j]
         
-        // Verificar superposición
-        if (!(range1.max_age < range2.min_age || range2.max_age < range1.min_age)) {
+        // Verificar superposición: dos rangos se superponen si no están completamente separados
+        const rangesOverlap = !(range1.max_age < range2.min_age || range2.max_age < range1.min_age)
+        if (rangesOverlap) {
           return false
         }
-      }
-      
-      // Verificar que min_age <= max_age
-      if (ranges[i].min_age > ranges[i].max_age) {
-        return false
       }
     }
     
@@ -1123,7 +1155,7 @@ function ServiceForm({
     // Validar rangos de edad
     if (formData.age_ranges && formData.age_ranges.length > 0) {
       if (!validateAgeRanges(formData.age_ranges)) {
-        toast.error('Los rangos de edad no pueden superponerse y la edad mínima debe ser menor o igual a la máxima')
+        toast.error('Error en rangos de edad: verifica que las edades sean válidas (0-100 años), no se superpongan y que la edad mínima sea menor o igual a la máxima')
         return
       }
     }
@@ -1143,6 +1175,7 @@ function ServiceForm({
       edad_maxima_ninos: formData.edad_maxima_ninos ? parseInt(formData.edad_maxima_ninos) : undefined,
       deposit_amount: formData.deposit_amount ? parseFloat(formData.deposit_amount) : undefined,
       age_ranges: formData.age_ranges && formData.age_ranges.length > 0 ? formData.age_ranges : undefined,
+      difficulty_level: formData.difficulty_level || undefined,
       ...(service && { id: service.id })
     }
 
@@ -1151,16 +1184,14 @@ function ServiceForm({
 
   const difficultyLevels = [
     { id: 'facil', name: 'Fácil' },
-    { id: 'medio', name: 'Medio' },
-    { id: 'dificil', name: 'Difícil' },
-    { id: 'experto', name: 'Experto' }
+    { id: 'moderado', name: 'Moderado' },
+    { id: 'dificil', name: 'Difícil' }
   ]
 
   const priceTypes = [
     { id: 'per_person', name: 'Por Persona' },
-    { id: 'per_group', name: 'Por Grupo' },
-    { id: 'per_hour', name: 'Por Hora' },
-    { id: 'per_day', name: 'Por Día' }
+    { id: 'total', name: 'Total' },
+    { id: 'age_ranges', name: 'Por Rangos de Edad' }
   ]
 
   const activityTypes = [
@@ -1513,7 +1544,7 @@ function ServiceForm({
                     id="edad_maxima_ninos"
                     type="number"
                     min="0"
-                    max="17"
+                    max="100"
                     value={formData.edad_maxima_ninos}
                     onChange={(e) => setFormData({...formData, edad_maxima_ninos: e.target.value})}
                     placeholder="12"
@@ -1704,7 +1735,7 @@ function ServiceForm({
                         <Input
                           type="number"
                           min="0"
-                          max="17"
+                          max="100"
                           value={range.min_age}
                           onChange={(e) => updateAgeRange(range.id, 'min_age', parseInt(e.target.value) || 0)}
                           className="h-11 border-gray-200 focus:border-indigo-400 focus:ring-indigo-200 text-center"
@@ -1721,7 +1752,7 @@ function ServiceForm({
                         <Input
                           type="number"
                           min="0"
-                          max="17"
+                          max="100"
                           value={range.max_age}
                           onChange={(e) => updateAgeRange(range.id, 'max_age', parseInt(e.target.value) || 0)}
                           className="h-11 border-gray-200 focus:border-indigo-400 focus:ring-indigo-200 text-center"
