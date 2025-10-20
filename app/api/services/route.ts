@@ -1,22 +1,69 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { parsePaginationParams, toPostgrestCount } from '@/app/api/_utils/pagination'
+import { generateEtagFromIds, isNotModified } from '@/app/api/_utils/etag'
+import { I18N_ENABLED } from '@/app/config/i18n'
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const legacy = searchParams.get('legacy') === 'true'
-    const parsedLimit = Number(searchParams.get('limit'))
-    const parsedOffset = Number(searchParams.get('offset'))
+    const parsed = parsePaginationParams(searchParams)
+    if (!parsed.ok) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
+    const { limit, offset, cursor, sort, order, count, legacy } = parsed.value
 
-    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50
-    const offset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0
+    // Locale opcional para lecturas traducidas en PR-B
+    const localeParam = (searchParams.get('locale') || '').toLowerCase()
+    const locale = localeParam.split('-')[0]
 
     const { getSupabaseClient } = await import("@/lib/supabase-unified")
     const supabase = await getSupabaseClient()
 
-    const { data, error, count } = await supabase
+    const shouldAsc = order === 'asc'
+    const countMode = toPostgrestCount(count)
+
+    let query = supabase
       .from('services')
-      .select('*', { count: 'exact' })
-      .order('created_at', { ascending: false })
+      .select('*', { count: countMode as any })
+
+    if (cursor) {
+      if (sort === 'created_at') {
+        query = shouldAsc ? query.gt('created_at', cursor) : query.lt('created_at', cursor)
+      } else {
+        query = shouldAsc ? query.gt('id', cursor) : query.lt('id', cursor)
+      }
+      const { data, error, count: total } = await query
+        .order(sort, { ascending: shouldAsc })
+        .limit(limit)
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 })
+      }
+
+      if (legacy) {
+        return NextResponse.json(data || [])
+      }
+
+      const ids = (data || []).map((i: any) => i.id + (I18N_ENABLED && locale ? `:${locale}` : ''))
+      const etag = generateEtagFromIds(ids)
+      if (isNotModified(request as any, etag)) {
+        return new NextResponse(null, { status: 304, headers: { ETag: etag } })
+      }
+
+      const nextCursor = (data && data.length === limit) ? String((data[data.length - 1] as any)[sort]) : null
+      return NextResponse.json({
+        items: await mapWithTranslations(supabase, data || [], locale),
+        page: {
+          limit,
+          nextCursor,
+          count,
+          total: count === 'exact' ? (typeof total === 'number' ? total : null) : null
+        }
+      }, { headers: { ETag: etag } })
+    }
+
+    const { data, error, count: total } = await query
+      .order(sort, { ascending: shouldAsc })
       .range(offset, offset + limit - 1)
 
     if (error) {
@@ -27,14 +74,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(data || [])
     }
 
+    const ids = (data || []).map((i: any) => i.id + (I18N_ENABLED && locale ? `:${locale}` : ''))
+    const etag = generateEtagFromIds(ids)
+    if (isNotModified(request as any, etag)) {
+      return new NextResponse(null, { status: 304, headers: { ETag: etag } })
+    }
+
     return NextResponse.json({
-      items: data || [],
+      items: await mapWithTranslations(supabase, data || [], locale),
       page: {
         limit,
         offset,
-        total: typeof count === 'number' ? count : (data?.length || 0)
+        count,
+        total: count === 'exact' ? (typeof total === 'number' ? total : null) : null
       }
-    })
+    }, { headers: { ETag: etag } })
   } catch (error) {
     return NextResponse.json(
       { error: 'Error interno del servidor' }, 
@@ -83,6 +137,38 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     )
   }
+}
+
+async function mapWithTranslations(supabase: any, items: any[], locale?: string) {
+  if (!I18N_ENABLED || !locale || !items.length) return items
+  const ids = items.map((i: any) => i.id)
+  const { data: translations, error } = await supabase
+    .from('service_translations')
+    .select('service_id, title, description, slug, status')
+    .in('service_id', ids)
+    .eq('locale', locale)
+
+  if (error || !translations?.length) return items
+
+  const byService: Record<string, { verified?: any; auto?: any }> = {}
+  for (const t of translations) {
+    const bucket = byService[t.service_id] || (byService[t.service_id] = {})
+    if (t.status === 'verified' && !bucket.verified) bucket.verified = t
+    else if (t.status === 'auto' && !bucket.auto) bucket.auto = t
+  }
+
+  return items.map((s: any) => {
+    const pick = byService[s.id]?.verified || byService[s.id]?.auto
+    if (!pick) return s
+    return {
+      ...s,
+      title: pick.title ?? s.title,
+      description: pick.description ?? s.description,
+      slug_localized: pick.slug || null,
+      translation_status: byService[s.id]?.verified ? 'verified' : 'auto',
+      locale,
+    }
+  })
 }
 
 
