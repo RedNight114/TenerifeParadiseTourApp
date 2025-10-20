@@ -20,7 +20,8 @@ import {
   BarChart3,
   FileText,
   Image,
-  Home
+  Home,
+  MapPin
 } from 'lucide-react'
 import { useAuthContext } from '@/components/auth-provider'
 
@@ -52,6 +53,11 @@ const navigationItems: NavItem[] = [
     title: 'Servicios',
     href: '/admin/services',
     icon: Package
+  },
+  {
+    title: 'Mapa',
+    href: '/admin/map',
+    icon: MapPin
   },
   {
     title: 'Chat',

@@ -1,0 +1,507 @@
+/* Estilos para el mapa 3D con Mapbox y texturas reales */
+
+/* Variables CSS para el mapa 3D */
+:root {
+  --mapbox-3d-primary: #3B82F6;
+  --mapbox-3d-secondary: #10B981;
+  --mapbox-3d-accent: #F59E0B;
+  --mapbox-3d-danger: #EF4444;
+  --mapbox-3d-surface: rgba(255, 255, 255, 0.95);
+  --mapbox-3d-surface-alt: rgba(248, 250, 252, 0.95);
+  --mapbox-3d-shadow: rgba(15, 23, 42, 0.1);
+  --mapbox-3d-shadow-hover: rgba(15, 23, 42, 0.15);
+  --mapbox-3d-border: rgba(226, 232, 240, 0.8);
+}
+
+/* Contenedor principal del mapa */
+.mapbox-3d-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  box-shadow: 0 10px 25px var(--mapbox-3d-shadow);
+}
+
+/* Estilos para marcadores personalizados - animaciones optimizadas */
+.custom-marker {
+  position: relative;
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out;
+  cursor: pointer;
+  will-change: transform;
+  transform-origin: center;
+}
+
+.custom-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px var(--mapbox-3d-shadow-hover);
+}
+
+.custom-marker.selected {
+  transform: scale(1.2);
+  z-index: 1000;
+}
+
+/* Evitar movimiento durante pan/zoom del mapa */
+.mapboxgl-canvas-container .custom-marker {
+  transition: none !important;
+}
+
+.mapboxgl-canvas-container .custom-marker:hover {
+  transition: transform 0.2s ease-out, box-shadow 0.2s ease-out !important;
+}
+
+/* Marcador de hotel */
+.custom-marker.hotel {
+  background: linear-gradient(135deg, var(--mapbox-3d-primary), #1D4ED8);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.custom-marker.hotel:hover {
+  background: linear-gradient(135deg, #2563EB, #1E40AF);
+  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.4);
+}
+
+/* Marcador de servicio */
+.custom-marker.service {
+  background: linear-gradient(135deg, var(--mapbox-3d-secondary), #059669);
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.custom-marker.service:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Efecto de pulso para marcadores seleccionados */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.pulse-ring {
+  animation: pulse 2s infinite;
+}
+
+/* Marcador de ubicación del usuario */
+.user-location-marker {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  background: var(--mapbox-3d-primary);
+  border: 3px solid white;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.pulse-dot {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  right: -8px;
+  bottom: -8px;
+  border: 2px solid var(--mapbox-3d-primary);
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+/* Estilos para popups personalizados */
+.custom-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 25px 50px -12px var(--mapbox-3d-shadow-hover) !important;
+  background: transparent !important;
+  border: 1px solid var(--mapbox-3d-border) !important;
+  max-width: 400px !important;
+  overflow: hidden;
+}
+
+.custom-popup .mapboxgl-popup-tip {
+  border-top-color: var(--mapbox-3d-border) !important;
+}
+
+.custom-popup .mapboxgl-popup-close-button {
+  background: var(--mapbox-3d-surface) !important;
+  border-radius: 50% !important;
+  width: 24px !important;
+  height: 24px !important;
+  font-size: 16px !important;
+  color: #6B7280 !important;
+  border: 1px solid var(--mapbox-3d-border) !important;
+  box-shadow: 0 2px 8px var(--mapbox-3d-shadow) !important;
+}
+
+.custom-popup .mapboxgl-popup-close-button:hover {
+  background: var(--mapbox-3d-surface-alt) !important;
+  color: #374151 !important;
+}
+
+/* Controles del mapa */
+.mapboxgl-ctrl-group {
+  background: var(--mapbox-3d-surface) !important;
+  border: 1px solid var(--mapbox-3d-border) !important;
+  border-radius: 0.5rem !important;
+  box-shadow: 0 4px 12px var(--mapbox-3d-shadow) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mapboxgl-ctrl-group button {
+  background: transparent !important;
+  color: #374151 !important;
+  border: none !important;
+  border-radius: 0.375rem !important;
+  margin: 2px !important;
+  transition: all 0.2s ease !important;
+}
+
+.mapboxgl-ctrl-group button:hover {
+  background: var(--mapbox-3d-surface-alt) !important;
+  color: #1F2937 !important;
+}
+
+.mapboxgl-ctrl-group button:active {
+  background: #E5E7EB !important;
+}
+
+/* Botón de geolocalización */
+.mapboxgl-ctrl-geolocate {
+  background: var(--mapbox-3d-primary) !important;
+  color: white !important;
+}
+
+.mapboxgl-ctrl-geolocate:hover {
+  background: #2563EB !important;
+}
+
+/* Estilos para las tarjetas de control */
+.control-card {
+  background: var(--mapbox-3d-surface);
+  border: 1px solid var(--mapbox-3d-border);
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 12px var(--mapbox-3d-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.control-card:hover {
+  box-shadow: 0 8px 20px var(--mapbox-3d-shadow-hover);
+}
+
+/* Botones personalizados */
+.mapbox-button {
+  background: var(--mapbox-3d-surface);
+  border: 1px solid var(--mapbox-3d-border);
+  border-radius: 0.5rem;
+  color: #374151;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px var(--mapbox-3d-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.mapbox-button:hover {
+  background: var(--mapbox-3d-surface-alt);
+  border-color: #9CA3AF;
+  box-shadow: 0 4px 12px var(--mapbox-3d-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.mapbox-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px var(--mapbox-3d-shadow);
+}
+
+.mapbox-button.primary {
+  background: var(--mapbox-3d-primary);
+  color: white;
+  border-color: var(--mapbox-3d-primary);
+}
+
+.mapbox-button.primary:hover {
+  background: #2563EB;
+  border-color: #2563EB;
+}
+
+/* Estilos para switches */
+.mapbox-switch {
+  background: var(--mapbox-3d-surface);
+  border: 1px solid var(--mapbox-3d-border);
+  border-radius: 0.375rem;
+  padding: 0.25rem;
+}
+
+/* Información de estado del mapa */
+.map-info {
+  background: var(--mapbox-3d-surface);
+  border: 1px solid var(--mapbox-3d-border);
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 12px var(--mapbox-3d-shadow);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  padding: 0.5rem;
+  font-size: 0.75rem;
+  color: #6B7280;
+}
+
+/* Animaciones suaves */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Efectos de hover para elementos interactivos */
+.interactive-element {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.interactive-element:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px var(--mapbox-3d-shadow-hover);
+}
+
+/* Estilos para el modo oscuro */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mapbox-3d-surface: rgba(15, 23, 42, 0.95);
+    --mapbox-3d-surface-alt: rgba(30, 41, 59, 0.95);
+    --mapbox-3d-shadow: rgba(0, 0, 0, 0.3);
+    --mapbox-3d-shadow-hover: rgba(0, 0, 0, 0.4);
+    --mapbox-3d-border: rgba(51, 65, 85, 0.8);
+  }
+  
+  .mapboxgl-ctrl-group button {
+    color: #F1F5F9 !important;
+  }
+  
+  .mapboxgl-ctrl-group button:hover {
+    background: var(--mapbox-3d-surface-alt) !important;
+    color: #E2E8F0 !important;
+  }
+  
+  .mapbox-button {
+    color: #F1F5F9;
+  }
+  
+  .mapbox-button:hover {
+    color: #E2E8F0;
+  }
+}
+
+/* Responsive design mejorado */
+@media (max-width: 1024px) {
+  .custom-marker {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .custom-marker.selected {
+    width: 44px !important;
+    height: 44px !important;
+  }
+  
+  .control-card {
+    padding: 0.75rem;
+    margin: 0.25rem;
+  }
+  
+  .mapbox-button {
+    padding: 0.375rem 0.5rem;
+    font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .custom-marker {
+    width: 32px !important;
+    height: 32px !important;
+  }
+  
+  .custom-marker.selected {
+    width: 40px !important;
+    height: 40px !important;
+  }
+  
+  .control-card {
+    padding: 0.5rem;
+    margin: 0.125rem;
+  }
+  
+  .mapbox-button {
+    padding: 0.25rem 0.375rem;
+    font-size: 0.7rem;
+  }
+
+  /* Popup responsive */
+  .custom-popup .mapboxgl-popup-content {
+    max-width: 280px !important;
+  }
+  
+  /* Controles del mapa en móvil */
+  .mapboxgl-ctrl-group {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 480px) {
+  .custom-marker {
+    width: 28px !important;
+    height: 28px !important;
+  }
+  
+  .custom-marker.selected {
+    width: 36px !important;
+    height: 36px !important;
+  }
+  
+  .control-card {
+    padding: 0.375rem;
+    margin: 0.125rem;
+  }
+  
+  .mapbox-button {
+    padding: 0.25rem;
+    font-size: 0.65rem;
+  }
+
+  /* Popup muy pequeño */
+  .custom-popup .mapboxgl-popup-content {
+    max-width: 240px !important;
+  }
+  
+  /* Controles del mapa muy pequeños */
+  .mapboxgl-ctrl-group {
+    transform: scale(0.8);
+  }
+}
+
+/* Estilos para el terreno 3D */
+.mapboxgl-map .mapboxgl-canvas-container {
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+/* Efectos de profundidad para el mapa 3D */
+.mapbox-3d-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.05) 0%,
+    rgba(16, 185, 129, 0.05) 50%,
+    rgba(245, 158, 11, 0.05) 100%
+  );
+  pointer-events: none;
+  z-index: 1;
+  border-radius: 0.75rem;
+}
+
+/* Estilos para el indicador de carga */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: 0.75rem;
+}
+
+.loading-spinner {
+  width: 48px;
+  height: 48px;
+  border: 4px solid #E5E7EB;
+  border-top: 4px solid var(--mapbox-3d-primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Estilos para mensajes de error */
+.error-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  border-radius: 0.75rem;
+  text-align: center;
+}
+
+.error-icon {
+  color: var(--mapbox-3d-danger);
+  margin-bottom: 1rem;
+}
+
+.error-message {
+  color: #6B7280;
+  margin-bottom: 1.5rem;
+}
+
+/* Optimizaciones de performance */
+.custom-marker,
+.pulse-ring,
+.user-location-marker {
+  will-change: transform;
+}
+
+.mapboxgl-ctrl-group,
+.control-card,
+.mapbox-button {
+  will-change: transform, box-shadow;
+}

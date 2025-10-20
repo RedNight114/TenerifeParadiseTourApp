@@ -1,10 +1,13 @@
 ﻿"use client"
 
 import React, { Suspense, useState, useEffect } from "react"
+import { useSearchParams, useRouter } from "next/navigation"
 import { AdminLayoutModern } from "@/components/admin/admin-layout-modern"
 import { AdminGuard } from "@/components/admin/admin-guard"
 import { DashboardStatsModern } from "@/components/admin/dashboard-stats-modern"
 import { QuickActionsModern, SystemStatusModern, UserInfoModern } from "@/components/admin/quick-actions-modern"
+import { MapManager } from "@/components/admin/MapManager"
+import { MapStatsAdmin } from "@/components/admin/MapStatsAdmin"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
@@ -20,7 +23,8 @@ import {
   BarChart3,
   FileText,
   Database,
-  Shield
+  Shield,
+  Map
 } from "lucide-react"
 
 // Componente de Resumen con métricas reales
@@ -614,6 +618,29 @@ function DashboardLoading() {
 
 // Componente principal del dashboard
 function DashboardContent() {
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'overview')
+
+  // Actualizar el tab activo cuando cambie la URL
+  useEffect(() => {
+    const tab = searchParams.get('tab') || 'overview'
+    setActiveTab(tab)
+  }, [searchParams])
+
+  // Función para manejar el cambio de tab
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+    // Actualizar la URL sin recargar la página
+    const url = new URL(window.location.href)
+    if (value === 'overview') {
+      url.searchParams.delete('tab')
+    } else {
+      url.searchParams.set('tab', value)
+    }
+    router.replace(url.pathname + url.search, { scroll: false })
+  }
+
   return (
     <div className="space-y-4 lg:space-y-6">
       {/* Header del dashboard */}
@@ -646,8 +673,8 @@ function DashboardContent() {
       {/* Tabs de gestión */}
       <section aria-labelledby="management-tabs-heading">
         <h2 id="management-tabs-heading" className="sr-only">Gestión del sistema</h2>
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 bg-white shadow-sm border border-gray-200">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 bg-white shadow-sm border border-gray-200">
             <TabsTrigger 
               value="overview" 
               className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -684,6 +711,12 @@ function DashboardContent() {
             >
               Auditoría
             </TabsTrigger>
+            <TabsTrigger 
+              value="map" 
+              className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              Mapa
+            </TabsTrigger>
           </TabsList>
 
         {/* Tab de Resumen */}
@@ -714,6 +747,18 @@ function DashboardContent() {
         {/* Tab de Auditoría */}
         <TabsContent value="audit">
           <AuditDashboard />
+        </TabsContent>
+
+        {/* Tab de Mapa */}
+        <TabsContent value="map">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2">
+              <MapManager />
+            </div>
+            <div className="lg:col-span-1">
+              <MapStatsAdmin />
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
       </section>

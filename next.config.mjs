@@ -1,6 +1,4 @@
 /** @type {import('next').NextConfig} */
-// Importar polyfills SSR robustos antes que cualquier otra cosa
-import './lib/ssr-polyfills.mjs'
 
 const nextConfig = {
   // Configuración básica
@@ -161,8 +159,8 @@ const nextConfig = {
     CACHE_TTL_USERS: '300000', // 5 minutos
   },
 
-  // Configuración de output
-  output: 'standalone',
+  // Configuración de output - solo para producción
+  ...(process.env.NODE_ENV === 'production' && { output: 'standalone' }),
 }
 
 export default nextConfig

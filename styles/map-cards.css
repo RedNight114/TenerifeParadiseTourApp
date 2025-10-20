@@ -1,0 +1,305 @@
+/* styles/map-cards.css */
+
+/* Paleta de colores mejorada para el mapa */
+:root {
+  --map-primary: #2563eb;      /* Azul vibrante */
+  --map-secondary: #f59e0b;    /* Ámbar dorado */
+  --map-accent: #10b981;       /* Verde esmeralda */
+  --map-danger: #ef4444;       /* Rojo coral */
+  --map-warning: #f97316;     /* Naranja vibrante */
+  --map-info: #06b6d4;         /* Cian turquesa */
+  --map-surface: #ffffff;      /* Blanco puro */
+  --map-surface-alt: #f8fafc; /* Gris muy claro */
+  --map-text-primary: #0f172a; /* Azul muy oscuro */
+  --map-text-secondary: #475569; /* Gris azulado */
+  --map-border: #e2e8f0;       /* Gris claro */
+  --map-shadow: rgba(15, 23, 42, 0.08); /* Sombra suave */
+  --map-shadow-hover: rgba(15, 23, 42, 0.12); /* Sombra hover */
+}
+
+/* Estilos base para las tarjetas de servicio y hotel mejoradas */
+.service-card, .hotel-card {
+  border-radius: 1rem; /* rounded-2xl */
+  overflow: hidden;
+  box-shadow: 0 10px 15px -3px var(--map-shadow), 0 4px 6px -2px var(--map-shadow);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid var(--map-border);
+  background: var(--map-surface);
+}
+
+.service-card:hover, .hotel-card:hover {
+  box-shadow: 0 25px 50px -12px var(--map-shadow-hover);
+  transform: scale(1.02) translateY(-2px);
+  border-color: var(--map-primary);
+  background: var(--map-surface-alt);
+}
+
+/* Estilos para la imagen del servicio mejorada */
+.service-card-image {
+  transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.service-card:hover .service-card-image {
+  transform: scale(1.05);
+}
+
+/* Estilos para el popup de Mapbox mejorado */
+.mapbox-popup .mapboxgl-popup-content {
+  padding: 0 !important;
+  border-radius: 1rem !important; /* rounded-2xl */
+  box-shadow: 0 25px 50px -12px var(--map-shadow-hover) !important;
+  background: none !important; /* La tarjeta maneja su propio fondo */
+  border: 1px solid var(--map-border) !important;
+  max-width: 400px !important;
+}
+
+.mapbox-popup .mapboxgl-popup-tip {
+  border-top-color: var(--map-border) !important;
+}
+
+/* Asegurar que el contenido de la tarjeta no se desborde */
+.service-card .p-0, .hotel-card .p-0 {
+  overflow: hidden;
+}
+
+/* Estilos para los marcadores minimalistas */
+.minimalist-marker {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.minimalist-marker:hover {
+  transform: scale(1.05) translateY(-2px);
+  box-shadow: 0 10px 15px -3px var(--map-shadow), 0 4px 6px -2px var(--map-shadow);
+}
+
+/* Animaciones suaves personalizadas */
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.02);
+  }
+}
+
+@keyframes gentle-ping {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  75%, 100% {
+    transform: scale(1.1);
+    opacity: 0;
+  }
+}
+
+/* Aplicar animaciones suaves */
+.animate-gentle-pulse {
+  animation: gentle-pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.animate-gentle-ping {
+  animation: gentle-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+/* Mejoras de accesibilidad */
+.service-card:focus-within,
+.hotel-card:focus-within {
+  outline: 2px solid var(--map-primary);
+  outline-offset: 2px;
+}
+
+/* Animaciones suaves para botones */
+.service-card button,
+.hotel-card button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estilos para badges */
+.service-card .badge {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Mejoras de contraste para accesibilidad */
+.service-card h3,
+.hotel-card h3 {
+  color: var(--map-text-primary);
+}
+
+.service-card p,
+.hotel-card p {
+  color: var(--map-text-secondary);
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .service-card, .hotel-card {
+    margin: 0.5rem;
+  }
+  
+  .service-card-image {
+    height: 12rem; /* h-48 */
+  }
+}
+
+/* Estilos para el sidebar mejorado */
+.sidebar-content {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: var(--map-text-secondary);
+}
+
+/* Estilos mejorados para marcadores del mapa */
+.map-marker-service {
+  background: linear-gradient(135deg, var(--map-accent), #059669);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px var(--map-shadow);
+}
+
+.map-marker-hotel {
+  background: linear-gradient(135deg, var(--map-primary), #1d4ed8);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px var(--map-shadow);
+}
+
+.map-marker-cluster-small {
+  background: linear-gradient(135deg, var(--map-accent), #059669);
+  border: 2px solid #ffffff;
+  box-shadow: 0 4px 12px var(--map-shadow);
+}
+
+.map-marker-cluster-medium {
+  background: linear-gradient(135deg, var(--map-warning), #ea580c);
+  border: 2px solid #ffffff;
+  box-shadow: 0 6px 16px var(--map-shadow);
+}
+
+.map-marker-cluster-large {
+  background: linear-gradient(135deg, var(--map-danger), #dc2626);
+  border: 2px solid #ffffff;
+  box-shadow: 0 8px 20px var(--map-shadow);
+}
+
+/* Efectos hover mejorados para marcadores */
+.map-marker-service:hover,
+.map-marker-hotel:hover,
+.map-marker-cluster-small:hover,
+.map-marker-cluster-medium:hover,
+.map-marker-cluster-large:hover {
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 25px var(--map-shadow-hover);
+}
+
+/* Estilos para el header del mapa */
+.map-header {
+  background: linear-gradient(135deg, var(--map-surface), var(--map-surface-alt));
+  border-bottom: 1px solid var(--map-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+/* Estilos para el sidebar */
+.map-sidebar {
+  background: var(--map-surface);
+  border-right: 1px solid var(--map-border);
+  box-shadow: 4px 0 12px var(--map-shadow);
+}
+
+/* Estilos para botones del mapa */
+.map-button-primary {
+  background: white;
+  color: var(--map-text-primary);
+  border: 1px solid var(--map-border);
+  box-shadow: 0 2px 8px var(--map-shadow);
+}
+
+.map-button-primary:hover {
+  background: var(--map-surface-alt);
+  border-color: var(--map-text-secondary);
+  box-shadow: 0 4px 12px var(--map-shadow-hover);
+  transform: translateY(-1px);
+}
+
+.map-button-secondary {
+  background: var(--map-surface);
+  color: var(--map-text-primary);
+  border: 1px solid var(--map-border);
+  box-shadow: 0 2px 8px var(--map-shadow);
+}
+
+.map-button-secondary:hover {
+  background: var(--map-surface-alt);
+  border-color: var(--map-primary);
+  box-shadow: 0 4px 12px var(--map-shadow-hover);
+  transform: translateY(-1px);
+}
+
+/* Estilos para badges mejorados */
+.map-badge-featured {
+  background: white;
+  color: var(--map-text-primary);
+  border: 1px solid var(--map-border);
+}
+
+.map-badge-price {
+  background: white;
+  color: var(--map-text-primary);
+  border: 1px solid var(--map-border);
+}
+
+.map-badge-rating {
+  background: var(--map-surface);
+  color: var(--map-text-primary);
+  border: 1px solid var(--map-border);
+}
+
+/* Estilos para el fondo del mapa */
+.map-container {
+  background: var(--map-surface-alt);
+}
+
+/* Estilos para elementos de información */
+.map-info-card {
+  background: var(--map-surface);
+  border: 1px solid var(--map-border);
+  box-shadow: 0 4px 12px var(--map-shadow);
+  border-radius: 0.75rem;
+}
+
+.map-info-card:hover {
+  box-shadow: 0 8px 20px var(--map-shadow-hover);
+  transform: translateY(-2px);
+}
+
+/* Estilos para el modo oscuro (opcional) */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --map-surface: #0f172a;
+    --map-surface-alt: #1e293b;
+    --map-text-primary: #f1f5f9;
+    --map-text-secondary: #94a3b8;
+    --map-border: #334155;
+    --map-shadow: rgba(0, 0, 0, 0.3);
+    --map-shadow-hover: rgba(0, 0, 0, 0.4);
+  }
+}

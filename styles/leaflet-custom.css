@@ -1,0 +1,354 @@
+/* Estilos para Leaflet */
+@import 'leaflet/dist/leaflet.css';
+
+/* Mejoras para el mapa */
+.leaflet-container {
+  background: #e0f2fe;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Filtros para mejorar la apariencia del mapa */
+.leaflet-tile-pane {
+  filter: contrast(1.1) brightness(1.05) saturate(1.2) hue-rotate(5deg);
+}
+
+/* Mejoras para los controles del mapa */
+.leaflet-control-zoom a {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s ease;
+}
+
+.leaflet-control-zoom a:hover {
+  background: rgba(255, 255, 255, 1);
+  transform: scale(1.05);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Mejoras para el atributo */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Personalización de popups mejorados */
+.custom-popup .leaflet-popup-content-wrapper {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  padding: 0;
+  overflow: hidden;
+}
+
+.custom-popup .leaflet-popup-content {
+  margin: 0;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  min-width: 280px;
+  max-width: 320px;
+}
+
+.custom-popup .leaflet-popup-tip {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Animaciones para iconos */
+.custom-div-icon:hover {
+  transform: scale(1.1);
+  transition: all 0.3s ease;
+}
+
+.hotel-icon:hover {
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+}
+
+.service-icon:hover {
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+}
+
+.cluster-icon:hover {
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
+}
+
+.airport-icon:hover {
+  box-shadow: 0 6px 20px rgba(31, 41, 55, 0.4);
+}
+
+.teide-icon:hover {
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+}
+
+/* Iconos personalizados */
+.custom-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Efectos adicionales para el mapa */
+.leaflet-container .leaflet-overlay-pane svg {
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+}
+
+/* Mejoras para los clusters */
+.marker-cluster-small {
+  background: rgba(34, 197, 94, 0.9) !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 50% !important;
+}
+
+.marker-cluster-medium {
+  background: rgba(16, 185, 129, 0.9) !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 50% !important;
+}
+
+.marker-cluster-large {
+  background: rgba(5, 150, 105, 0.9) !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border-radius: 50% !important;
+}
+
+/* Animaciones suaves para los marcadores */
+.leaflet-marker-icon {
+  transition: all 0.3s ease !important;
+}
+
+.leaflet-marker-icon:hover {
+  transform: scale(1.1) !important;
+  z-index: 1000 !important;
+}
+
+/* Mejoras para el loading del mapa */
+.leaflet-container.loading {
+  opacity: 0.7;
+  transition: opacity 0.3s ease;
+}
+
+/* Efectos de hover para los popups */
+.leaflet-popup-content-wrapper:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.2) !important;
+  transition: all 0.3s ease;
+}
+
+/* Estilos para los iconos personalizados */
+.custom-div-icon {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Efectos para iconos de hoteles */
+.hotel-icon {
+  background: #3B82F6 !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+  border-radius: 50% !important;
+}
+
+.hotel-icon:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4) !important;
+}
+
+/* Efectos para iconos de servicios */
+.service-icon {
+  background: #10B981 !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3) !important;
+  border-radius: 50% !important;
+}
+
+.service-icon:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Efectos para iconos de clusters */
+.cluster-icon {
+  background: #F59E0B !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3) !important;
+  border-radius: 8px !important;
+}
+
+.cluster-icon:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Efectos para iconos de aeropuerto */
+.airport-icon {
+  background: #1F2937 !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(31, 41, 55, 0.3) !important;
+  border-radius: 50% !important;
+}
+
+.airport-icon:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(31, 41, 55, 0.4) !important;
+}
+
+/* Efectos para iconos de Teide */
+.teide-icon {
+  background: #DC2626 !important;
+  border: 3px solid white !important;
+  box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3) !important;
+  border-radius: 50% !important;
+}
+
+.teide-icon:hover {
+  transform: scale(1.1) !important;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4) !important;
+}
+
+/* Marcador de ubicación del usuario */
+.user-location-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Marcadores especiales */
+.airport-marker,
+.teide-marker {
+  background: transparent !important;
+  border: none !important;
+}
+
+/* Clustering */
+.marker-cluster-small {
+  background-color: rgba(181, 226, 140, 0.6);
+  border: 2px solid rgba(110, 204, 57, 0.8);
+}
+
+.marker-cluster-small div {
+  background-color: rgba(110, 204, 57, 0.8);
+  color: white;
+  font-weight: bold;
+}
+
+.marker-cluster-medium {
+  background-color: rgba(241, 211, 87, 0.6);
+  border: 2px solid rgba(240, 194, 12, 0.8);
+}
+
+.marker-cluster-medium div {
+  background-color: rgba(240, 194, 12, 0.8);
+  color: white;
+  font-weight: bold;
+}
+
+.marker-cluster-large {
+  background-color: rgba(253, 156, 115, 0.6);
+  border: 2px solid rgba(241, 128, 23, 0.8);
+}
+
+.marker-cluster-large div {
+  background-color: rgba(241, 128, 23, 0.8);
+  color: white;
+  font-weight: bold;
+}
+
+/* Controles del mapa */
+.leaflet-control-zoom {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-control-zoom a {
+  background: white !important;
+  color: #374151 !important;
+  border: none !important;
+  font-weight: 600 !important;
+}
+
+.leaflet-control-zoom a:hover {
+  background: #f3f4f6 !important;
+  color: #111827 !important;
+}
+
+/* Atribución */
+.leaflet-control-attribution {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-radius: 4px !important;
+  font-size: 11px !important;
+  padding: 2px 6px !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .custom-popup .leaflet-popup-content-wrapper {
+    border-radius: 8px;
+  }
+  
+  .custom-popup .leaflet-popup-content {
+    border-radius: 8px;
+  }
+  
+  .leaflet-control-zoom {
+    border-radius: 6px !important;
+  }
+}
+
+/* Modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .custom-popup .leaflet-popup-content-wrapper {
+    background: #1f2937;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .custom-popup .leaflet-popup-tip {
+    background: #1f2937;
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+  
+  .leaflet-control-zoom a {
+    background: #374151 !important;
+    color: #f9fafb !important;
+  }
+  
+  .leaflet-control-zoom a:hover {
+    background: #4b5563 !important;
+    color: #ffffff !important;
+  }
+  
+  .leaflet-control-attribution {
+    background: rgba(31, 41, 55, 0.9) !important;
+    color: #d1d5db !important;
+  }
+}

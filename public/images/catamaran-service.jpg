@@ -1,0 +1,52 @@
+<svg width="400" height="200" viewBox="0 0 400 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="oceanGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#87CEEB;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4682B4;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="boatGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#F4C762;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0061A8;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Fondo del océano -->
+  <rect width="400" height="200" fill="url(#oceanGradient)"/>
+  
+  <!-- Olas -->
+  <path d="M0,150 Q100,130 200,150 T400,150 L400,200 L0,200 Z" fill="#5DADE2" opacity="0.7"/>
+  <path d="M0,170 Q100,150 200,170 T400,170 L400,200 L0,200 Z" fill="#3498DB" opacity="0.5"/>
+  
+  <!-- Catamarán -->
+  <g transform="translate(150, 80)">
+    <!-- Casco principal -->
+    <ellipse cx="0" cy="20" rx="60" ry="15" fill="url(#boatGradient)"/>
+    
+    <!-- Casco secundario -->
+    <ellipse cx="0" cy="25" rx="50" ry="12" fill="#E8F4FD"/>
+    
+    <!-- Mástil -->
+    <rect x="-2" y="-30" width="4" height="50" fill="#8B4513"/>
+    
+    <!-- Vela -->
+    <path d="M-2,-30 L-2,0 L30,-15 Z" fill="#FFFFFF" opacity="0.9"/>
+    
+    <!-- Bandera -->
+    <rect x="-2" y="-35" width="8" height="5" fill="#F4C762"/>
+  </g>
+  
+  <!-- Sol -->
+  <circle cx="350" cy="30" r="20" fill="#FFD700" opacity="0.8"/>
+  
+  <!-- Nubes -->
+  <g fill="#FFFFFF" opacity="0.7">
+    <ellipse cx="50" cy="30" rx="15" ry="8"/>
+    <ellipse cx="65" cy="30" rx="15" ry="8"/>
+    <ellipse cx="80" cy="30" rx="15" ry="8"/>
+  </g>
+  
+  <!-- Texto -->
+  <text x="200" y="190" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="14" font-weight="bold">
+    Catamarán Blue Oceany
+  </text>
+</svg>

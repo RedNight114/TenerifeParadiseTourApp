@@ -104,12 +104,12 @@ export function Navbar() {
               Servicios
             </Link>
             <Link
-              href="/about"
+              href="/map"
               className={`font-medium text-sm lg:text-base transition-all duration-300 hover:scale-105 ${
                 isScrolled ? "text-gray-700 hover:text-[#0061A8]" : "text-white hover:text-[#F4C762] drop-shadow-lg"
               }`}
             >
-              Nosotros
+              Mapa
             </Link>
             <Link
               href="/contact"
@@ -358,11 +358,11 @@ export function Navbar() {
                 Servicios
               </Link>
               <Link
-                href="/about"
+                href="/map"
                 className="block px-4 xs:px-6 sm:px-8 py-4 sm:py-5 text-gray-700 hover:text-[#0061A8] hover:bg-gray-100 rounded-lg font-medium transition-colors text-sm sm:text-base"
                 onClick={() => setIsMobileMenuOpen(false)}
               >
-                Nosotros
+                Mapa
               </Link>
               <Link
                 href="/contact"

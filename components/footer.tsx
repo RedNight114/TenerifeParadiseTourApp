@@ -109,7 +109,7 @@ export function Footer() {
                 {[
                   { href: "/", label: "Inicio" },
                   { href: "/services", label: "Nuestros Servicios" },
-                  { href: "/about", label: "Sobre Nosotros" },
+                  { href: "/map", label: "Mapa" },
                   { href: "/contact", label: "Contacto" },
                   { href: "/reservations", label: "Mis Reservas" },
                 ].map((link) => (
