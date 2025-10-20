@@ -29,6 +29,8 @@ import ErrorBoundary, { HydrationErrorFallback } from "@/components/error-bounda
 import { AuthErrorBoundary } from "@/components/auth-error-boundary"
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
+import { I18nProvider } from '@/components/i18n-provider'
+import { I18N_ENABLED, I18N_DEFAULT_LOCALE } from '@/app/config/i18n'
 
 const geist = GeistSans
 const geistMono = GeistMono
@@ -171,15 +173,17 @@ export default function RootLayout({
               <ClientOnlyWrapper>
                 <AuthErrorBoundary>
                   <AuthProvider>
-                    <CacheInitializer />
-                    {children}
-                    <ConditionalChatWidget />
-                    <Toaster 
-                      position="top-right"
-                      richColors
-                      closeButton
-                      duration={5000}
-                    />
+                    <I18nProvider locale={I18N_DEFAULT_LOCALE}>
+                      <CacheInitializer />
+                      {children}
+                      <ConditionalChatWidget />
+                      <Toaster 
+                        position="top-right"
+                        richColors
+                        closeButton
+                        duration={5000}
+                      />
+                    </I18nProvider>
                   </AuthProvider>
                 </AuthErrorBoundary>
               </ClientOnlyWrapper>
