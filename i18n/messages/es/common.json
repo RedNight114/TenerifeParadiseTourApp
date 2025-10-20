@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "home": "Inicio",
+    "services": "Servicios",
+    "reservations": "Reservas",
+    "about": "Acerca de",
+    "contact": "Contacto",
+    "admin": "Admin",
+    "login": "Iniciar sesión",
+    "logout": "Cerrar sesión",
+    "profile": "Perfil"
+  },
+  "common": {
+    "title": "Tenerife Paradise Tours",
+    "description": "Descubre la isla de Tenerife con nuestras excursiones y tours únicos",
+    "loading": "Cargando...",
+    "error": "Error",
+    "success": "Éxito",
+    "cancel": "Cancelar",
+    "confirm": "Confirmar",
+    "save": "Guardar",
+    "edit": "Editar",
+    "delete": "Eliminar",
+    "back": "Volver",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "search": "Buscar",
+    "filter": "Filtrar",
+    "sort": "Ordenar",
+    "price": "Precio",
+    "duration": "Duración",
+    "rating": "Valoración",
+    "reviews": "Reseñas",
+    "book_now": "Reservar ahora",
+    "learn_more": "Saber más",
+    "view_details": "Ver detalles"
+  },
+  "forms": {
+    "required": "Campo obligatorio",
+    "invalid_email": "Email inválido",
+    "invalid_phone": "Teléfono inválido",
+    "password_too_short": "La contraseña debe tener al menos 8 caracteres",
+    "passwords_dont_match": "Las contraseñas no coinciden",
+    "terms_required": "Debes aceptar los términos y condiciones",
+    "submit": "Enviar",
+    "reset": "Restablecer",
+    "clear": "Limpiar"
+  },
+  "errors": {
+    "page_not_found": "Página no encontrada",
+    "server_error": "Error del servidor",
+    "network_error": "Error de conexión",
+    "unauthorized": "No autorizado",
+    "forbidden": "Acceso denegado",
+    "validation_error": "Error de validación",
+    "try_again": "Inténtalo de nuevo",
+    "contact_support": "Contacta con soporte"
+  }
+}

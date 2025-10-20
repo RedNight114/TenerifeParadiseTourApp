@@ -1,0 +1,76 @@
+{
+  "list": {
+    "title": "Mis Reservas",
+    "subtitle": "Gestiona tus reservas activas",
+    "empty": "No tienes reservas",
+    "loading": "Cargando reservas...",
+    "error": "Error al cargar reservas",
+    "status": {
+      "pending": "Pendiente",
+      "confirmed": "Confirmada",
+      "cancelled": "Cancelada",
+      "completed": "Completada"
+    },
+    "actions": {
+      "view": "Ver detalles",
+      "cancel": "Cancelar",
+      "modify": "Modificar",
+      "download": "Descargar"
+    }
+  },
+  "detail": {
+    "title": "Detalles de la reserva",
+    "booking_id": "ID de reserva",
+    "service": "Servicio",
+    "date": "Fecha",
+    "time": "Hora",
+    "participants": "Participantes",
+    "total_price": "Precio total",
+    "status": "Estado",
+    "created_at": "Fecha de creación",
+    "updated_at": "Última actualización",
+    "contact_info": "Información de contacto",
+    "special_requests": "Solicitudes especiales",
+    "cancellation_policy": "Política de cancelación",
+    "actions": {
+      "cancel": "Cancelar reserva",
+      "modify": "Modificar reserva",
+      "contact": "Contactar soporte",
+      "download": "Descargar confirmación"
+    }
+  },
+  "form": {
+    "title": "Nueva reserva",
+    "service": "Servicio",
+    "date": "Fecha",
+    "time": "Hora",
+    "participants": "Participantes",
+    "adults": "Adultos",
+    "children": "Niños",
+    "infants": "Bebés",
+    "contact": {
+      "name": "Nombre completo",
+      "email": "Email",
+      "phone": "Teléfono",
+      "notes": "Notas adicionales"
+    },
+    "payment": {
+      "method": "Método de pago",
+      "card": "Tarjeta",
+      "paypal": "PayPal",
+      "bank_transfer": "Transferencia bancaria"
+    },
+    "terms": "Acepto los términos y condiciones",
+    "submit": "Confirmar reserva",
+    "cancel": "Cancelar"
+  },
+  "confirmation": {
+    "title": "Reserva confirmada",
+    "message": "Tu reserva ha sido confirmada exitosamente",
+    "details": "Detalles de la reserva",
+    "next_steps": "Próximos pasos",
+    "email_sent": "Se ha enviado un email de confirmación",
+    "download": "Descargar confirmación",
+    "back_to_services": "Volver a servicios"
+  }
+}

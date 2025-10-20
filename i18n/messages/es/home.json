@@ -1,0 +1,40 @@
+{
+  "hero": {
+    "title": "Descubre Tenerife",
+    "subtitle": "Excursiones únicas en la isla de la eterna primavera",
+    "cta": "Explorar servicios",
+    "scroll_down": "Desplazarse hacia abajo"
+  },
+  "features": {
+    "title": "¿Por qué elegirnos?",
+    "subtitle": "Experiencias auténticas y memorables",
+    "items": {
+      "local_experts": {
+        "title": "Expertos locales",
+        "description": "Guías nativos con conocimiento profundo de la isla"
+      },
+      "small_groups": {
+        "title": "Grupos pequeños",
+        "description": "Experiencias más personales e íntimas"
+      },
+      "sustainable": {
+        "title": "Turismo sostenible",
+        "description": "Respetamos el medio ambiente y las comunidades locales"
+      },
+      "flexible": {
+        "title": "Flexibilidad",
+        "description": "Cancelación gratuita hasta 24h antes"
+      }
+    }
+  },
+  "testimonials": {
+    "title": "Lo que dicen nuestros clientes",
+    "subtitle": "Experiencias reales de viajeros reales",
+    "load_more": "Cargar más reseñas"
+  },
+  "cta": {
+    "title": "¿Listo para tu aventura?",
+    "subtitle": "Reserva tu excursión favorita hoy mismo",
+    "button": "Ver todos los servicios"
+  }
+}

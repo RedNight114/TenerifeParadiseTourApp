@@ -1,0 +1,59 @@
+{
+  "navigation": {
+    "home": "Home",
+    "services": "Services",
+    "reservations": "Reservations",
+    "about": "About",
+    "contact": "Contact",
+    "admin": "Admin",
+    "login": "Login",
+    "logout": "Logout",
+    "profile": "Profile"
+  },
+  "common": {
+    "title": "Tenerife Paradise Tours",
+    "description": "Discover the island of Tenerife with our unique excursions and tours",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "price": "Price",
+    "duration": "Duration",
+    "rating": "Rating",
+    "reviews": "Reviews",
+    "book_now": "Book now",
+    "learn_more": "Learn more",
+    "view_details": "View details"
+  },
+  "forms": {
+    "required": "Required field",
+    "invalid_email": "Invalid email",
+    "invalid_phone": "Invalid phone",
+    "password_too_short": "Password must be at least 8 characters",
+    "passwords_dont_match": "Passwords don't match",
+    "terms_required": "You must accept the terms and conditions",
+    "submit": "Submit",
+    "reset": "Reset",
+    "clear": "Clear"
+  },
+  "errors": {
+    "page_not_found": "Page not found",
+    "server_error": "Server error",
+    "network_error": "Network error",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Access denied",
+    "validation_error": "Validation error",
+    "try_again": "Try again",
+    "contact_support": "Contact support"
+  }
+}

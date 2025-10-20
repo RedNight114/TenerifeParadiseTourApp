@@ -1,0 +1,57 @@
+{
+  "list": {
+    "title": "Nuestros Servicios",
+    "subtitle": "Descubre las mejores excursiones de Tenerife",
+    "empty": "No hay servicios disponibles",
+    "loading": "Cargando servicios...",
+    "error": "Error al cargar servicios",
+    "filters": {
+      "all": "Todos",
+      "adventure": "Aventura",
+      "nature": "Naturaleza",
+      "culture": "Cultura",
+      "water": "Actividades acuáticas"
+    },
+    "sort": {
+      "price_low": "Precio: menor a mayor",
+      "price_high": "Precio: mayor a menor",
+      "duration_short": "Duración: corta a larga",
+      "duration_long": "Duración: larga a corta",
+      "rating": "Mejor valorados",
+      "newest": "Más recientes"
+    }
+  },
+  "detail": {
+    "book": "Reservar",
+    "price": "Precio",
+    "duration": "Duración",
+    "difficulty": "Dificultad",
+    "group_size": "Tamaño del grupo",
+    "includes": "Incluye",
+    "excludes": "No incluye",
+    "what_to_bring": "Qué traer",
+    "meeting_point": "Punto de encuentro",
+    "cancellation": "Política de cancelación",
+    "reviews": "Reseñas",
+    "write_review": "Escribir reseña",
+    "related_services": "Servicios relacionados",
+    "gallery": "Galería",
+    "map": "Mapa",
+    "description": "Descripción",
+    "itinerary": "Itinerario",
+    "faq": "Preguntas frecuentes"
+  },
+  "booking": {
+    "title": "Reservar servicio",
+    "select_date": "Seleccionar fecha",
+    "select_time": "Seleccionar hora",
+    "participants": "Participantes",
+    "adults": "Adultos",
+    "children": "Niños",
+    "infants": "Bebés",
+    "total_price": "Precio total",
+    "continue": "Continuar",
+    "back": "Volver",
+    "confirm": "Confirmar reserva"
+  }
+}

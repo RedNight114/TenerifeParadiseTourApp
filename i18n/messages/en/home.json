@@ -1,0 +1,40 @@
+{
+  "hero": {
+    "title": "Discover Tenerife",
+    "subtitle": "Unique excursions on the island of eternal spring",
+    "cta": "Explore services",
+    "scroll_down": "Scroll down"
+  },
+  "features": {
+    "title": "Why choose us?",
+    "subtitle": "Authentic and memorable experiences",
+    "items": {
+      "local_experts": {
+        "title": "Local experts",
+        "description": "Native guides with deep knowledge of the island"
+      },
+      "small_groups": {
+        "title": "Small groups",
+        "description": "More personal and intimate experiences"
+      },
+      "sustainable": {
+        "title": "Sustainable tourism",
+        "description": "We respect the environment and local communities"
+      },
+      "flexible": {
+        "title": "Flexibility",
+        "description": "Free cancellation up to 24h before"
+      }
+    }
+  },
+  "testimonials": {
+    "title": "What our customers say",
+    "subtitle": "Real experiences from real travelers",
+    "load_more": "Load more reviews"
+  },
+  "cta": {
+    "title": "Ready for your adventure?",
+    "subtitle": "Book your favorite excursion today",
+    "button": "View all services"
+  }
+}
