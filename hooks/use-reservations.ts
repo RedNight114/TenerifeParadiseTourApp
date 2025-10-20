@@ -77,7 +77,7 @@ export function useReservations() {
         date: reservation.booking_date || reservation.reservation_date || '',
         time: reservation.reservation_time || '',
         participants: reservation.participants || reservation.guests || 1,
-        total_price: reservation.total_price || reservation.total_amount || 0,
+        total_price: reservation.total_amount ?? reservation.total_price ?? 0,
         status: reservation.status || 'pending',
         payment_status: reservation.payment_status || 'pendiente',
         notes: reservation.notes || '',

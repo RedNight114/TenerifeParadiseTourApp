@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { corsHeaders, handleOptions, isOriginAllowed } from '@/app/api/_utils/cors'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,10 +8,17 @@ const supabase = createClient(
 )
 
 export async function GET(request: NextRequest) {
+  const maybePreflight = handleOptions(request)
+  if (maybePreflight) return maybePreflight
   try {
     const { searchParams } = new URL(request.url)
     const includeHotels = searchParams.get('hotels') !== 'false'
     const includeServices = searchParams.get('services') !== 'false'
+    const legacy = searchParams.get('legacy') === 'true'
+    const parsedLimit = Number(searchParams.get('limit'))
+    const parsedOffset = Number(searchParams.get('offset'))
+    const limit = Number.isFinite(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 50
+    const offset = Number.isFinite(parsedOffset) && parsedOffset >= 0 ? parsedOffset : 0
 
     const data: any = {
       hoteles: [],
@@ -18,12 +26,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Obtener hoteles si están habilitados
+    let totalHoteles: number | null = null
     if (includeHotels) {
-      const { data: hoteles, error: hotelesError } = await supabase
+      const { data: hoteles, error: hotelesError, count } = await supabase
         .from('hoteles')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('visible_en_mapa', true)
         .order('nombre')
+        .range(offset, offset + limit - 1)
 
       if (hotelesError) {
         console.error('Error fetching hoteles:', hotelesError)
@@ -39,12 +49,14 @@ export async function GET(request: NextRequest) {
           hotel.lng >= -180 && hotel.lng <= 180
         )
         data.hoteles = processedHotels
+        totalHoteles = typeof count === 'number' ? count : (processedHotels?.length || 0)
       }
     }
 
     // Obtener servicios si están habilitados
+    let totalServicios: number | null = null
     if (includeServices) {
-      const { data: servicios, error: serviciosError } = await supabase
+      const { data: servicios, error: serviciosError, count } = await supabase
         .from('services')
         .select(`
           id,
@@ -61,12 +73,13 @@ export async function GET(request: NextRequest) {
           available,
           featured,
           categories(name)
-        `)
+        `, { count: 'exact' })
         .eq('visible_en_mapa', true)
         .eq('available', true)
         .not('lat', 'is', null)
         .not('lng', 'is', null)
         .order('title')
+        .range(offset, offset + limit - 1)
 
       if (serviciosError) {
         console.error('Error fetching servicios:', serviciosError)
@@ -83,18 +96,39 @@ export async function GET(request: NextRequest) {
           service.lng >= -180 && service.lng <= 180
         )
         data.servicios = processedServices
+        totalServicios = typeof count === 'number' ? count : (processedServices?.length || 0)
       }
     }
 
+    if (legacy) {
+    const origin = request.headers.get('origin')
+    const res = NextResponse.json({
+        success: true,
+        data,
+        timestamp: new Date().toISOString()
+    })
+    const headers = corsHeaders(origin)
+    for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+    return res
+    }
+
     return NextResponse.json({
+      items: data,
+      page: {
+        limit,
+        offset,
+        total: {
+          hoteles: totalHoteles ?? (Array.isArray(data.hoteles) ? data.hoteles.length : 0),
+          servicios: totalServicios ?? (Array.isArray(data.servicios) ? data.servicios.length : 0)
+        }
+      },
       success: true,
-      data,
       timestamp: new Date().toISOString()
     })
 
   } catch (error) {
     console.error('Error in map-data API:', error)
-    return NextResponse.json(
+    const res = NextResponse.json(
       { 
         success: false, 
         error: 'Error interno del servidor',
@@ -102,11 +136,48 @@ export async function GET(request: NextRequest) {
       },
       { status: 500 }
     )
+    const headers = corsHeaders(request.headers.get('origin'))
+    for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+    return res
   }
 }
 
 export async function POST(request: NextRequest) {
+  const maybePreflight = handleOptions(request)
+  if (maybePreflight) return maybePreflight
   try {
+    const origin = request.headers.get('origin')
+    if (!isOriginAllowed(origin)) {
+      const res = NextResponse.json({ success: false, error: 'Origen no permitido' }, { status: 403 })
+      const headers = corsHeaders(origin)
+      for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+      return res
+    }
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      const res = NextResponse.json({ success: false, error: 'No autenticado' }, { status: 401 })
+      const headers = corsHeaders(origin)
+      for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+      return res
+    }
+
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (!profile || profile.role !== 'admin') {
+      const res = NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 })
+      const headers = corsHeaders(origin)
+      for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+      return res
+    }
     const body = await request.json()
     const { type, id, lat, lng, visible_en_mapa } = body
 
@@ -148,15 +219,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    return NextResponse.json({
+    const successRes = NextResponse.json({
       success: true,
       data: data[0],
       message: `${type} actualizado correctamente`
     })
+    const headers = corsHeaders(origin)
+    for (const [k, v] of Object.entries(headers)) successRes.headers.set(k, v)
+    return successRes
 
   } catch (error) {
     console.error('Error in map-data POST API:', error)
-    return NextResponse.json(
+    const res = NextResponse.json(
       { 
         success: false, 
         error: 'Error interno del servidor',
@@ -164,5 +238,8 @@ export async function POST(request: NextRequest) {
       },
       { status: 500 }
     )
+    const headers = corsHeaders(request.headers.get('origin'))
+    for (const [k, v] of Object.entries(headers)) res.headers.set(k, v)
+    return res
   }
 }

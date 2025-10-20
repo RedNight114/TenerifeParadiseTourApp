@@ -1,20 +1,9 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-unified'
-import { createClient } from '@supabase/supabase-js'
+import { corsHeaders } from '@/app/api/_utils/cors'
 
-// Cliente de servicio para el middleware (bypass RLS)
-function getServiceClient() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  
-  return createClient(supabaseUrl, serviceKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  })
-}
+// Eliminar cliente de servicio: no usar SUPABASE_SERVICE_ROLE_KEY en middleware
 
 export async function middleware(req: NextRequest) {
   const response = NextResponse.next()
@@ -26,32 +15,26 @@ export async function middleware(req: NextRequest) {
   
   // CORS para APIs
   if (req.nextUrl.pathname.startsWith('/api/')) {
-    response.headers.set('Access-Control-Allow-Origin', process.env.NEXT_PUBLIC_SITE_URL || '*')
-    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    const origin = req.headers.get('origin')
+    const headers = corsHeaders(origin)
+    for (const [k, v] of Object.entries(headers)) response.headers.set(k, v)
+
+    if (req.method === 'OPTIONS') {
+      return new NextResponse('ok', { headers, status: 200 })
+    }
   }
   
       // Redirigir administradores del dashboard normal al dashboard de admin
       if (req.nextUrl.pathname === '/dashboard') {
         try {
           const supabase = await getSupabaseClient()
-          const serviceClient = getServiceClient()
           const token = req.cookies.get('sb-access-token')?.value
           
           if (token) {
             const { data: { user }, error } = await supabase.auth.getUser(token)
             
             if (!error && user) {
-              // Usar cliente de servicio para bypass RLS
-              const { data: profile, error: profileError } = await serviceClient
-                .from('profiles')
-                .select('role')
-                .eq('id', user.id)
-                .maybeSingle()
-              
-              if (profile && profile.role === 'admin') {
-                return NextResponse.redirect(new URL('/admin/dashboard', req.url))
-              }
+              return response
             }
           }
         } catch (error) {
@@ -74,11 +57,8 @@ export async function middleware(req: NextRequest) {
         return response
       }
       
-      // Usar cliente de servicio para verificar usuario y rol
-      const serviceClient = getServiceClient()
-      
-      // Verificar token con Supabase usando cliente de servicio
-      const { data: { user }, error } = await serviceClient.auth.getUser(token)
+      const supabase = await getSupabaseClient()
+      const { data: { user }, error } = await supabase.auth.getUser(token)
       
       if (error || !user) {
         // Token inválido, limpiar cookies y redirigir
@@ -90,19 +70,7 @@ export async function middleware(req: NextRequest) {
         }
         return response
       }
-      
-      // Verificar rol de admin usando cliente de servicio
-      const { data: profile, error: profileError } = await serviceClient
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .maybeSingle()
-      
-      if (!profile || profile.role !== 'admin') {
-        // No es admin, redirigir al dashboard normal
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-      
+
       // Si está en /admin/login y es admin, redirigir al dashboard
       if (req.nextUrl.pathname === '/admin/login') {
         return NextResponse.redirect(new URL('/admin/dashboard', req.url))

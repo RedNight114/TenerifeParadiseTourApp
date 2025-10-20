@@ -84,7 +84,7 @@ export async function GET(request: NextRequest) {
       date: reservation.reservation_date,
       time: reservation.reservation_time,
       participants: reservation.guests,
-      total_price: reservation.total_amount,
+      total_price: reservation.total_amount ?? reservation.total_price,
       status: reservation.status,
       created_at: reservation.created_at,
       location: reservation.services?.location || 'Ubicación no disponible',

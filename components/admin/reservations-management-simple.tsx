@@ -38,7 +38,7 @@ export default function ReservationsManagementSimple() {
         .select(`
           id,
           total_amount,
-          total_price,
+          total_price: total_amount ?? total_price,
           status,
           created_at,
           user_id,

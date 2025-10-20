@@ -208,6 +208,7 @@ export interface Reservation {
   time: string
   guests: number
   total_price: number
+  total_amount?: number
   status: string
   payment_status: string
   notes?: string

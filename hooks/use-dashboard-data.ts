@@ -84,8 +84,8 @@ export function useDashboardData() {
       const statsData: DashboardStats = {
         totalReservations: reservations.length,
         monthlyReservations: monthlyReservations.length,
-        totalRevenue: reservations.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0),
-        monthlyRevenue: monthlyReservations.reduce((sum, r) => sum + (Number(r.total_amount) || 0), 0),
+        totalRevenue: reservations.reduce((sum, r) => sum + (Number(r.total_amount ?? (r as any).total_price) || 0), 0),
+        monthlyRevenue: monthlyReservations.reduce((sum, r) => sum + (Number(r.total_amount ?? (r as any).total_price) || 0), 0),
         totalServices: services.length,
         totalUsers: profiles.length,
         activeServices: services.filter(s => s.available).length,
@@ -131,7 +131,11 @@ export function useDashboardData() {
         .limit(10)
 
       if (error) throw error
-      setRecentReservations(data || [])
+      const normalized = (data || []).map(r => ({
+        ...r,
+        total_amount: r.total_amount ?? r.total_price
+      }))
+      setRecentReservations(normalized)
     } catch (err) {
       }
   }, [])

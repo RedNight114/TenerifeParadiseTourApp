@@ -1,5 +1,6 @@
 ﻿import { NextRequest, NextResponse } from 'next/server'
 import { getSupabaseClient } from '@/lib/supabase-unified'
+import { calculateTotalAmountFromParticipants } from '@/lib/reservations/calc-total'
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,6 +54,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Calcular y validar total
+    const serverCalculatedTotal = calculateTotalAmountFromParticipants(participants || [])
+    const finalTotal = Number.isFinite(totalPrice) && Math.abs(Number(totalPrice) - serverCalculatedTotal) < 0.01
+      ? Number(totalPrice)
+      : serverCalculatedTotal
+
     // Crear la reserva principal
     const { data: reservation, error: reservationError } = await supabase
       .from('reservations')
@@ -61,7 +68,8 @@ export async function POST(request: NextRequest) {
         service_id: serviceId,
         reservation_date: reservationDate,
         status: 'pending',
-        total_price: totalPrice,
+        total_amount: finalTotal,
+        total_price: finalTotal,
         special_requests: specialRequests || null,
         adult_count: participants.filter((p: any) => p.participant_type === 'adult').length,
         child_count: participants.filter((p: any) => p.participant_type === 'child').length,
@@ -104,7 +112,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Obtener la reserva completa con participantes
+    // Obtener la reserva completa con participantes (preferencia por total_amount)
     const { data: completeReservation, error: fetchError } = await supabase
       .from('reservations')
       .select(`
@@ -226,11 +234,18 @@ export async function PUT(request: NextRequest) {
       )
     }
 
+    // Calcular y validar total
+    const serverCalculatedTotal = calculateTotalAmountFromParticipants(participants || [])
+    const finalTotal = Number.isFinite(totalPrice) && Math.abs(Number(totalPrice) - serverCalculatedTotal) < 0.01
+      ? Number(totalPrice)
+      : serverCalculatedTotal
+
     // Actualizar la reserva principal
     const { error: updateError } = await supabase
       .from('reservations')
       .update({
-        total_price: totalPrice,
+        total_amount: finalTotal,
+        total_price: finalTotal,
         special_requests: specialRequests,
         adult_count: participants.filter((p: any) => p.participant_type === 'adult').length,
         child_count: participants.filter((p: any) => p.participant_type === 'child').length,
